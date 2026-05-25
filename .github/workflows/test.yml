@@ -1,0 +1,19 @@
+name: invoiq CI
+on:
+  push:
+    branches: [main]
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+        working-directory: backend
+      - run: node --test tests/api.test.js
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test-secret-min-32-chars-invoiq-ci

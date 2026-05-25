@@ -1,0 +1,36 @@
+{
+  "name": "invoiq-backend",
+  "version": "1.0.0",
+  "description": "invoiq E-Invoice Platform API",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit --detectOpenHandles",
+    "test:verbose": "node --experimental-vm-modules node_modules/.bin/jest --verbose --forceExit"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "transform": {}
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/jwt": "^10.1.0",
+    "@fastify/multipart": "^10.0.0",
+    "bcryptjs": "^3.0.3",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.8.5",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^8.0.8",
+    "stripe": "^22.1.1",
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

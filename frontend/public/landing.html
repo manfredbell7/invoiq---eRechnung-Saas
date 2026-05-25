@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>invoiq — E-Rechnung für jedes System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+/* ── RESET & BASE ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+
+:root {
+  --navy:      #08122A;
+  --navy-mid:  #0E1E42;
+  --navy-lite: #1A3A7C;
+  --blue-pale: #EBF0FB;
+  --blue-ring: #C8D4F0;
+  --white:     #FFFFFF;
+  --bg:        #FFFFFF;
+  --bg-alt:    #F4F6FA;
+  --bg-deep:   #EBEEf5;
+  --text:      #08122A;
+  --text-mid:  #2C3E6B;
+  --text-muted:#6B7FA8;
+  --text-light:#9AAAC8;
+  --border:    #DDE3F0;
+  --border-mid:#C8D0E8;
+  --green:     #0A6640;
+  --green-bg:  #EDFAF3;
+  --red:       #B91C1C;
+  --red-bg:    #FEF2F2;
+  --amber:     #92400E;
+  --amber-bg:  #FFFBEB;
+  --font-disp: 'Fraunces', Georgia, serif;
+  --font-ui:   'DM Sans', system-ui, sans-serif;
+  --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+/* ── SCROLLBAR ────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-alt); }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+
+/* ── TYPOGRAPHY ───────────────────────────────────────────── */
+h1, h2, h3 { font-family: var(--font-disp); font-weight: 400; letter-spacing: -0.025em; line-height: 1.1; }
+
+/* ── SCROLL REVEAL ────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.75s var(--ease-out), transform 0.75s var(--ease-out);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 0.75s var(--ease-out), transform 0.75s var(--ease-out);
+}
+.reveal-left.visible { opacity: 1; transform: translateX(0); }
+.reveal-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.75s var(--ease-out), transform 0.75s var(--ease-out);
+}
+.reveal-right.visible { opacity: 1; transform: translateX(0); }
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.94);
+  transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+}
+.reveal-scale.visible { opacity: 1; transform: scale(1); }
+
+/* ── NAV ──────────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 clamp(20px, 5vw, 64px);
+  background: rgba(255,255,255,0);
+  border-bottom: 1px solid transparent;
+  transition: background 0.4s ease, border-color 0.4s ease, backdrop-filter 0.4s ease;
+}
+nav.scrolled {
+  background: rgba(255,255,255,0.9);
+  border-color: var(--border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none;
+  user-select: none;
+}
+.logo-mark {
+  width: 32px; height: 32px;
+  background: var(--navy);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s;
+}
+.logo:hover .logo-mark { transform: scale(1.06); box-shadow: 0 4px 16px rgba(8,18,42,0.25); }
+.logo-word { font-family: var(--font-disp); font-size: 22px; font-weight: 600; color: var(--navy); letter-spacing: -0.03em; }
+.logo-word span { color: var(--navy-lite); }
+
+.nav-links { display: flex; gap: 32px; align-items: center; }
+.nav-links a {
+  font-size: 14px; font-weight: 500; color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.18s;
+  position: relative;
+}
+.nav-links a::after {
+  content: ''; position: absolute; bottom: -3px; left: 0; right: 100%;
+  height: 1.5px; background: var(--navy);
+  transition: right 0.25s var(--ease-out);
+}
+.nav-links a:hover { color: var(--navy); }
+.nav-links a:hover::after { right: 0; }
+
+.nav-actions { display: flex; gap: 10px; align-items: center; }
+
+.btn {
+  font-family: var(--font-ui); font-weight: 600; cursor: pointer;
+  border-radius: 10px; border: none;
+  display: inline-flex; align-items: center; gap: 7px;
+  transition: transform 0.18s var(--ease-out), box-shadow 0.18s, background 0.18s;
+  text-decoration: none; white-space: nowrap;
+}
+.btn:active { transform: scale(0.97) !important; }
+
+.btn-navy {
+  background: var(--navy); color: #fff;
+  padding: 10px 22px; font-size: 14px;
+  box-shadow: 0 1px 3px rgba(8,18,42,0.18), 0 3px 12px rgba(8,18,42,0.1);
+}
+.btn-navy:hover { background: var(--navy-mid); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(8,18,42,0.22); }
+
+.btn-ghost {
+  background: transparent; color: var(--navy);
+  border: 1.5px solid var(--border);
+  padding: 9px 20px; font-size: 14px;
+}
+.btn-ghost:hover { border-color: var(--border-mid); background: var(--bg-alt); transform: translateY(-1px); }
+
+.btn-lg { padding: 15px 38px; font-size: 16px; border-radius: 12px; }
+.btn-lg.btn-navy { box-shadow: 0 2px 8px rgba(8,18,42,0.18), 0 6px 24px rgba(8,18,42,0.12); }
+.btn-lg.btn-navy:hover { box-shadow: 0 8px 32px rgba(8,18,42,0.24); transform: translateY(-2px); }
+.btn-lg.btn-ghost { padding: 14px 34px; }
+
+/* ── HERO ─────────────────────────────────────────────────── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 120px clamp(20px,5vw,64px) 80px;
+  position: relative; overflow: hidden;
+  text-align: center;
+}
+
+/* Dot grid background */
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(var(--border) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Navy geometric shape top-right */
+.hero-shape {
+  position: absolute; top: 0; right: 0;
+  width: clamp(200px, 35vw, 480px);
+  height: clamp(200px, 50vh, 560px);
+  background: linear-gradient(225deg, var(--navy-mid) 0%, var(--navy) 100%);
+  border-radius: 0 0 0 clamp(60px,10vw,140px);
+  opacity: 0.065;
+  pointer-events: none;
+  transform-origin: top right;
+  animation: shapeFloat 8s ease-in-out infinite;
+}
+@keyframes shapeFloat {
+  0%,100% { transform: scale(1) rotate(0deg); opacity: 0.065; }
+  50%      { transform: scale(1.03) rotate(0.5deg); opacity: 0.08; }
+}
+
+/* Bottom left accent */
+.hero-shape-2 {
+  position: absolute; bottom: 0; left: 0;
+  width: clamp(100px, 20vw, 280px);
+  height: clamp(100px, 30vh, 320px);
+  background: var(--navy-lite);
+  border-radius: 0 clamp(40px,8vw,80px) 0 0;
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--blue-pale); color: var(--navy-lite);
+  border: 1px solid var(--blue-ring);
+  border-radius: 24px; padding: 7px 16px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+  margin-bottom: 32px;
+  position: relative;
+  animation: fadeDown 0.7s var(--ease-out) both;
+}
+.hero-badge-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--navy-lite);
+  animation: pulseDot 2.2s ease-in-out infinite;
+}
+@keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+@keyframes fadeDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+
+.hero h1 {
+  font-size: clamp(44px, 7vw, 88px);
+  color: var(--navy);
+  margin-bottom: 28px;
+  max-width: 800px;
+  animation: heroTitle 0.9s 0.1s var(--ease-out) both;
+}
+@keyframes heroTitle { from { opacity:0; transform:translateY(32px); } to { opacity:1; transform:translateY(0); } }
+
+.hero h1 em { font-style: italic; color: var(--navy-lite); }
+
+.hero-sub {
+  font-size: clamp(16px, 2vw, 20px);
+  color: var(--text-muted);
+  max-width: 520px;
+  line-height: 1.75;
+  margin-bottom: 48px;
+  font-weight: 300;
+  animation: heroSub 0.9s 0.2s var(--ease-out) both;
+}
+@keyframes heroSub { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+
+.hero-ctas {
+  display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+  margin-bottom: 72px;
+  animation: heroCta 0.9s 0.3s var(--ease-out) both;
+}
+@keyframes heroCta { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+
+/* Stats bar */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--white);
+  box-shadow: 0 2px 16px rgba(8,18,42,0.06);
+  max-width: 700px;
+  width: 100%;
+  animation: statsIn 1s 0.4s var(--ease-out) both;
+}
+@keyframes statsIn { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+
+.stat-cell {
+  padding: 22px 16px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s;
+}
+.stat-cell::after {
+  content: '';
+  position: absolute; bottom: 0; left: 50%; right: 50%;
+  height: 2px; background: var(--navy);
+  transition: left 0.3s var(--ease-out), right 0.3s var(--ease-out);
+}
+.stat-cell:hover { background: var(--bg-alt); }
+.stat-cell:hover::after { left: 0; right: 0; }
+.stat-cell:last-child { border-right: none; }
+.stat-val { font-family: var(--font-disp); font-size: 28px; font-weight: 600; color: var(--navy); line-height: 1; }
+.stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 5px; font-weight: 500; letter-spacing: 0.3px; }
+
+/* ── SECTION COMMON ───────────────────────────────────────── */
+section { padding: clamp(64px, 10vh, 120px) clamp(20px, 5vw, 64px); }
+.section-label {
+  display: inline-flex; align-items: center;
+  background: var(--blue-pale); color: var(--navy-lite);
+  border: 1px solid var(--blue-ring);
+  border-radius: 20px; padding: 4px 14px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+  text-transform: uppercase; margin-bottom: 20px;
+}
+.section-title {
+  font-size: clamp(32px, 4.5vw, 56px);
+  color: var(--navy);
+  max-width: 640px;
+  margin: 0 auto 16px;
+  text-align: center;
+}
+.section-title em { font-style: italic; color: var(--navy-lite); }
+.section-sub {
+  font-size: 17px; color: var(--text-muted);
+  text-align: center; max-width: 520px; margin: 0 auto;
+  line-height: 1.7; font-weight: 300;
+}
+
+/* ── FEATURES ─────────────────────────────────────────────── */
+#features { background: var(--bg-alt); }
+.features-header { text-align: center; margin-bottom: 64px; }
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
+  gap: 20px;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+  transition: border-color 0.25s, transform 0.25s var(--ease-out), box-shadow 0.25s;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+.feature-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--blue-pale), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.feature-card:hover { border-color: var(--navy-lite); transform: translateY(-4px); box-shadow: 0 10px 32px rgba(8,18,42,0.1); }
+.feature-card:hover::before { opacity: 0.5; }
+
+.feature-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  background: var(--blue-pale);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin-bottom: 18px;
+  transition: transform 0.3s var(--ease-out), background 0.3s;
+}
+.feature-card:hover .feature-icon { transform: scale(1.1) rotate(-4deg); background: var(--navy); }
+
+.feature-title { font-weight: 700; font-size: 16px; color: var(--navy); margin-bottom: 8px; position: relative; }
+.feature-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; position: relative; }
+
+/* ── HOW IT WORKS ─────────────────────────────────────────── */
+#how { background: var(--white); }
+.how-header { text-align: center; margin-bottom: 72px; }
+
+.how-steps {
+  max-width: 900px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 0;
+  position: relative;
+}
+.how-steps::before {
+  content: '';
+  position: absolute; left: 28px; top: 28px; bottom: 28px;
+  width: 2px; background: linear-gradient(to bottom, var(--navy) 0%, var(--border) 100%);
+}
+
+.how-step {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 28px;
+  align-items: flex-start;
+  padding: 32px 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.how-step:last-child { border-bottom: none; }
+
+.step-num {
+  width: 58px; height: 58px; border-radius: 50%;
+  background: var(--white); border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-disp); font-size: 20px; font-weight: 600; color: var(--navy);
+  flex-shrink: 0; position: relative; z-index: 1;
+  transition: background 0.3s, border-color 0.3s, transform 0.3s var(--ease-out);
+}
+.how-step:hover .step-num { background: var(--navy); border-color: var(--navy); color: #fff; transform: scale(1.08); }
+
+.step-content {}
+.step-title { font-weight: 700; font-size: 17px; color: var(--navy); margin-bottom: 6px; }
+.step-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; }
+.step-tag {
+  display: inline-block; margin-top: 10px;
+  background: var(--blue-pale); color: var(--navy-lite);
+  border: 1px solid var(--blue-ring);
+  border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+/* ── PRICING ──────────────────────────────────────────────── */
+#pricing { background: var(--bg-alt); }
+.pricing-header { text-align: center; margin-bottom: 64px; }
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.pricing-card {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 32px 28px;
+  position: relative;
+  transition: transform 0.25s var(--ease-out), box-shadow 0.25s, border-color 0.25s;
+}
+.pricing-card:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(8,18,42,0.1); }
+.pricing-card.featured {
+  background: var(--navy);
+  border-color: var(--navy);
+  box-shadow: 0 8px 32px rgba(8,18,42,0.2);
+}
+.pricing-card.featured:hover { box-shadow: 0 16px 48px rgba(8,18,42,0.3); }
+
+.pricing-badge {
+  position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+  background: var(--navy-lite); color: #fff;
+  font-size: 11px; font-weight: 800; padding: 4px 16px; border-radius: 20px;
+  letter-spacing: 0.5px; white-space: nowrap;
+}
+
+.pricing-name { font-weight: 700; font-size: 15px; margin-bottom: 16px; }
+.pricing-card:not(.featured) .pricing-name { color: var(--text-muted); }
+.pricing-card.featured .pricing-name { color: rgba(255,255,255,0.65); }
+
+.pricing-price { display: flex; align-items: baseline; gap: 4px; margin-bottom: 6px; }
+.pricing-amount { font-family: var(--font-disp); font-size: 56px; font-weight: 500; line-height: 1; }
+.pricing-card:not(.featured) .pricing-amount { color: var(--navy); }
+.pricing-card.featured .pricing-amount { color: #fff; }
+.pricing-period { font-size: 15px; }
+.pricing-card:not(.featured) .pricing-period { color: var(--text-light); }
+.pricing-card.featured .pricing-period { color: rgba(255,255,255,0.45); }
+.pricing-docs { font-size: 13px; margin-bottom: 24px; }
+.pricing-card:not(.featured) .pricing-docs { color: var(--text-muted); }
+.pricing-card.featured .pricing-docs { color: rgba(255,255,255,0.45); }
+
+.pricing-divider { height: 1px; margin: 0 0 24px; }
+.pricing-card:not(.featured) .pricing-divider { background: var(--border); }
+.pricing-card.featured .pricing-divider { background: rgba(255,255,255,0.12); }
+
+.pricing-features { list-style: none; margin-bottom: 28px; }
+.pricing-features li {
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: 14px; margin-bottom: 11px;
+}
+.pricing-card:not(.featured) .pricing-features li:first-child { color: var(--navy); font-weight: 600; }
+.pricing-card:not(.featured) .pricing-features li { color: var(--text-muted); }
+.pricing-card.featured .pricing-features li:first-child { color: #fff; font-weight: 600; }
+.pricing-card.featured .pricing-features li { color: rgba(255,255,255,0.65); }
+.pricing-check { flex-shrink: 0; margin-top: 2px; font-size: 13px; }
+.pricing-card:not(.featured) .pricing-check { color: var(--navy-lite); }
+.pricing-card.featured .pricing-check { color: rgba(255,255,255,0.5); }
+
+.btn-white-inv {
+  background: #fff; color: var(--navy);
+  border: none; border-radius: 10px;
+  padding: 13px 28px; font-size: 15px;
+  font-family: var(--font-ui); font-weight: 700;
+  cursor: pointer; width: 100%; justify-content: center;
+  display: flex; align-items: center;
+  transition: transform 0.18s var(--ease-out), box-shadow 0.18s, background 0.18s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+.btn-white-inv:hover { background: #f0f4ff; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+
+.btn-block {
+  width: 100%; justify-content: center;
+  padding: 13px 28px; font-size: 15px;
+}
+
+/* ── ERP LOGOS ────────────────────────────────────────────── */
+#erp { background: var(--white); }
+.erp-header { text-align: center; margin-bottom: 52px; }
+
+.erp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+  gap: 16px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.erp-card {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px;
+  transition: border-color 0.2s, transform 0.2s var(--ease-out), background 0.2s;
+  cursor: default;
+  text-align: center;
+}
+.erp-card:hover { border-color: var(--navy-lite); background: var(--white); transform: translateY(-3px); }
+.erp-icon { font-size: 28px; }
+.erp-name { font-weight: 700; font-size: 14px; color: var(--navy); }
+.erp-method { font-size: 11px; color: var(--text-muted); }
+.erp-tag {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+  background: var(--blue-pale); color: var(--navy-lite);
+  border: 1px solid var(--blue-ring);
+}
+.erp-tag.soon { background: var(--amber-bg); color: var(--amber); border-color: #FDE68A; }
+
+/* ── CTA BAND ─────────────────────────────────────────────── */
+.cta-band {
+  background: var(--navy);
+  padding: clamp(64px,10vh,100px) clamp(20px,5vw,64px);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.cta-band::before {
+  content: '';
+  position: absolute; top: -80px; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 200px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-label {
+  display: inline-flex; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 20px;
+  padding: 5px 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+  text-transform: uppercase; margin-bottom: 20px;
+}
+.cta-band h2 { color: #fff; font-size: clamp(28px, 4vw, 52px); margin-bottom: 14px; }
+.cta-band p { color: rgba(255,255,255,0.55); font-size: 17px; margin-bottom: 36px; font-weight: 300; }
+
+/* ── FOOTER ───────────────────────────────────────────────── */
+footer {
+  background: var(--white);
+  border-top: 1px solid var(--border);
+  padding: 36px clamp(20px, 5vw, 64px);
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 16px;
+}
+.footer-links { display: flex; gap: 24px; }
+.footer-links a { font-size: 13px; color: var(--text-light); text-decoration: none; transition: color 0.15s; }
+.footer-links a:hover { color: var(--navy); }
+.footer-copy { font-size: 13px; color: var(--text-light); }
+
+/* ── MOBILE NAV ───────────────────────────────────────────── */
+.nav-hamburger {
+  display: none; flex-direction: column; gap: 5px;
+  background: none; border: none; cursor: pointer;
+  padding: 4px;
+}
+.nav-hamburger span {
+  display: block; width: 22px; height: 2px;
+  background: var(--navy); border-radius: 2px;
+  transition: transform 0.3s var(--ease-out), opacity 0.3s;
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.mobile-menu {
+  position: fixed; top: 64px; left: 0; right: 0; z-index: 99;
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 20px clamp(20px,5vw,48px) 24px;
+  display: flex; flex-direction: column; gap: 4px;
+  transform: translateY(-110%);
+  transition: transform 0.4s var(--ease-out);
+}
+.mobile-menu.open { transform: translateY(0); }
+.mobile-menu a {
+  padding: 12px 16px; border-radius: 10px;
+  font-size: 16px; font-weight: 500; color: var(--navy);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.mobile-menu a:hover { background: var(--bg-alt); }
+.mobile-menu .mobile-ctas { display: flex; gap: 10px; margin-top: 12px; padding-top: 16px; border-top: 1px solid var(--border); }
+.mobile-menu .mobile-ctas .btn { flex: 1; justify-content: center; }
+
+/* ── RESPONSIVE ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .nav-links, .nav-actions { display: none; }
+  .nav-hamburger { display: flex; }
+
+  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .stat-cell:nth-child(2) { border-right: none; }
+  .stat-cell:nth-child(3) { border-top: 1px solid var(--border); }
+  .stat-cell:nth-child(4) { border-top: 1px solid var(--border); border-right: none; }
+
+  .how-steps::before { left: 21px; }
+  .how-step { grid-template-columns: 44px 1fr; gap: 20px; }
+  .step-num { width: 44px; height: 44px; font-size: 17px; }
+
+  .pricing-grid { grid-template-columns: 1fr; max-width: 420px; }
+
+  footer { flex-direction: column; text-align: center; }
+  .footer-links { justify-content: center; flex-wrap: wrap; gap: 16px; }
+}
+
+@media (max-width: 480px) {
+  .hero-ctas { flex-direction: column; align-items: center; }
+  .btn-lg { width: 100%; max-width: 340px; justify-content: center; }
+  .stats-bar { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="logo" aria-label="invoiq Startseite">
+    <div class="logo-mark" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="8" width="3.5" height="9" rx="1.75" fill="#93C5FD"/>
+        <rect x="2" y="2" width="3.5" height="4" rx="1.75" fill="#fff"/>
+        <circle cx="13.5" cy="12" r="4.5" stroke="#fff" stroke-width="2.2" fill="none"/>
+        <rect x="15.8" y="7" width="2.5" height="10" rx="1.25" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="logo-word">inv<span>o</span>iq</div>
+  </a>
+
+  <div class="nav-links" role="navigation" aria-label="Hauptnavigation">
+    <a href="#features">Funktionen</a>
+    <a href="#how">So funktioniert's</a>
+    <a href="#pricing">Preise</a>
+    <a href="#erp">Konnektoren</a>
+  </div>
+
+  <div class="nav-actions">
+    <button class="btn btn-ghost" onclick="showApp()">Anmelden</button>
+    <button class="btn btn-navy" onclick="showApp()">Kostenlos starten →</button>
+  </div>
+
+  <button class="nav-hamburger" id="hamburger" aria-label="Menü öffnen" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobileMenu" role="navigation" aria-label="Mobile Navigation">
+  <a href="#features" class="mobile-link">Funktionen</a>
+  <a href="#how" class="mobile-link">So funktioniert's</a>
+  <a href="#pricing" class="mobile-link">Preise</a>
+  <a href="#erp" class="mobile-link">Konnektoren</a>
+  <div class="mobile-ctas">
+    <button class="btn btn-ghost" onclick="showApp()">Anmelden</button>
+    <button class="btn btn-navy" onclick="showApp()">Starten →</button>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero" aria-label="Hero">
+  <div class="hero-shape" aria-hidden="true"></div>
+  <div class="hero-shape-2" aria-hidden="true"></div>
+
+  <div class="hero-badge" role="note">
+    <div class="hero-badge-dot" aria-hidden="true"></div>
+    E-Rechnungspflicht 2027 · EN 16931 · GoBD · Peppol
+  </div>
+
+  <h1>E-Rechnung für<br /><em>jedes</em> System.</h1>
+
+  <p class="hero-sub">
+    XRechnung · ZUGFeRD · Peppol — in 48 Stunden live.<br />
+    SAP, DATEV, Lexware oder jedes andere ERP-System.
+  </p>
+
+  <div class="hero-ctas">
+    <button class="btn btn-navy btn-lg" onclick="showApp()">Kostenlos starten →</button>
+    <button class="btn btn-ghost btn-lg" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">So funktioniert's</button>
+  </div>
+
+  <div class="stats-bar" role="list">
+    <div class="stat-cell" role="listitem">
+      <div class="stat-val">48h</div>
+      <div class="stat-lbl">bis Go-Live</div>
+    </div>
+    <div class="stat-cell" role="listitem">
+      <div class="stat-val">100%</div>
+      <div class="stat-lbl">EN 16931 konform</div>
+    </div>
+    <div class="stat-cell" role="listitem">
+      <div class="stat-val">GoBD</div>
+      <div class="stat-lbl">Archivierung</div>
+    </div>
+    <div class="stat-cell" role="listitem">
+      <div class="stat-val">10+</div>
+      <div class="stat-lbl">ERP-Systeme</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="features-header">
+    <div class="reveal">
+      <span class="section-label">Funktionen</span>
+    </div>
+    <h2 class="section-title reveal reveal-delay-1">
+      Alles was Sie brauchen.<br /><em>Nichts was Sie nicht brauchen.</em>
+    </h2>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-card reveal reveal-delay-1">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">XRechnung & ZUGFeRD</div>
+      <div class="feature-desc">Automatische EN 16931-konforme Generierung — ohne manuellen Aufwand. Jede Rechnung sofort gesetzeskonform.</div>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <div class="feature-icon">🔗</div>
+      <div class="feature-title">Jedes ERP-System</div>
+      <div class="feature-desc">SAP S/4HANA, ECC, DATEV, Lexware, Microsoft Dynamics — oder per REST API. In Minuten verbunden.</div>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <div class="feature-icon">🔒</div>
+      <div class="feature-title">GoBD-Archivierung</div>
+      <div class="feature-desc">SHA-256-gesichert, unveränderlich, 10 Jahre. AWS Frankfurt. Vollständiger Audit-Trail für jede Transaktion.</div>
+    </div>
+    <div class="feature-card reveal reveal-delay-1">
+      <div class="feature-icon">🌍</div>
+      <div class="feature-title">Peppol & EU-Netzwerk</div>
+      <div class="feature-desc">Direktversand über das europäische Peppol-Netzwerk. Bereit für ViDA und internationale Mandate.</div>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <div class="feature-icon">🏷</div>
+      <div class="feature-title">White-Label bereit</div>
+      <div class="feature-desc">SAP-Beratungshäuser deployen invoiq unter eigenem Brand. Eigene Domain, Logo, Farbschema.</div>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Compliance Dashboard</div>
+      <div class="feature-desc">EN 16931-Score, offene Fehler, Archivstatus — alles in Echtzeit. Für jede Rechnung, jedes Format.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="how-header">
+    <div class="reveal">
+      <span class="section-label">So funktioniert's</span>
+    </div>
+    <h2 class="section-title reveal reveal-delay-1">Von der Rechnung<br /><em>zum Archiv</em> — automatisch.</h2>
+  </div>
+
+  <div class="how-steps" role="list">
+    <div class="how-step reveal reveal-left" role="listitem">
+      <div class="step-num" aria-hidden="true">1</div>
+      <div class="step-content">
+        <div class="step-title">ERP-System verbinden</div>
+        <div class="step-desc">Wählen Sie Ihr ERP aus der Liste. SAP, DATEV, Lexware, Dynamics — oder nutzen Sie die universelle REST API. Einmalig einrichten, dauerhaft automatisch.</div>
+        <span class="step-tag">SAP · DATEV · Lexware · REST</span>
+      </div>
+    </div>
+    <div class="how-step reveal reveal-left reveal-delay-1" role="listitem">
+      <div class="step-num" aria-hidden="true">2</div>
+      <div class="step-content">
+        <div class="step-title">Rechnungsdaten übertragen</div>
+        <div class="step-desc">Ihr ERP sendet Rechnungsdaten an invoiq. Automatisch, bei jeder Faktura. Kein manueller Export, keine doppelte Datenpflege.</div>
+        <span class="step-tag">Automatisch · Echtzeit</span>
+      </div>
+    </div>
+    <div class="how-step reveal reveal-left reveal-delay-2" role="listitem">
+      <div class="step-num" aria-hidden="true">3</div>
+      <div class="step-content">
+        <div class="step-title">EN 16931 Validierung & XML-Generierung</div>
+        <div class="step-desc">invoiq generiert das konforme XML (XRechnung UBL 2.1 oder ZUGFeRD CII) und validiert es sofort gegen EN 16931. Fehler werden mit Klartexthinweisen angezeigt.</div>
+        <span class="step-tag">EN 16931 · XRechnung · ZUGFeRD</span>
+      </div>
+    </div>
+    <div class="how-step reveal reveal-left reveal-delay-3" role="listitem">
+      <div class="step-num" aria-hidden="true">4</div>
+      <div class="step-content">
+        <div class="step-title">Versand & Zustellung</div>
+        <div class="step-desc">Die fertige E-Rechnung wird per E-Mail, Peppol-Netzwerk oder direktem API-Webhook an den Empfänger zugestellt. Status-Tracking in Echtzeit.</div>
+        <span class="step-tag">Peppol · E-Mail · API</span>
+      </div>
+    </div>
+    <div class="how-step reveal reveal-left reveal-delay-1" role="listitem">
+      <div class="step-num" aria-hidden="true">5</div>
+      <div class="step-content">
+        <div class="step-title">GoBD-konforme Archivierung</div>
+        <div class="step-desc">Jedes Dokument wird mit SHA-256 gehasht, unveränderlich in AWS Frankfurt gespeichert und 10 Jahre aufbewahrt — vollständig §147 AO konform.</div>
+        <span class="step-tag">GoBD · SHA-256 · §147 AO · 10 Jahre</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="pricing-header">
+    <div class="reveal">
+      <span class="section-label">Preise</span>
+    </div>
+    <h2 class="section-title reveal reveal-delay-1">Transparent.<br /><em>Kein usage-based Billing.</em></h2>
+    <p class="section-sub reveal reveal-delay-2">Fester Monatspreis, keine Überraschungen. Jederzeit kündbar.</p>
+  </div>
+
+  <div class="pricing-grid">
+    <div class="pricing-card reveal reveal-delay-1">
+      <div class="pricing-name">Starter</div>
+      <div class="pricing-price">
+        <span class="pricing-amount">49</span>
+        <span class="pricing-period">€/Monat</span>
+      </div>
+      <div class="pricing-docs">100 Dokumente/Monat</div>
+      <div class="pricing-divider"></div>
+      <ul class="pricing-features">
+        <li><span class="pricing-check">✓</span>XRechnung + ZUGFeRD</li>
+        <li><span class="pricing-check">✓</span>E-Mail-Versand</li>
+        <li><span class="pricing-check">✓</span>GoBD-Archiv</li>
+        <li><span class="pricing-check">✓</span>1 Nutzer</li>
+      </ul>
+      <button class="btn btn-navy btn-block" onclick="showApp()">Kostenlos testen</button>
+    </div>
+
+    <div class="pricing-card featured reveal reveal-delay-2">
+      <div class="pricing-badge">EMPFOHLEN</div>
+      <div class="pricing-name">Business</div>
+      <div class="pricing-price">
+        <span class="pricing-amount">199</span>
+        <span class="pricing-period">€/Monat</span>
+      </div>
+      <div class="pricing-docs">1.000 Dokumente/Monat</div>
+      <div class="pricing-divider"></div>
+      <ul class="pricing-features">
+        <li><span class="pricing-check">✓</span>+ Peppol BIS 3.0</li>
+        <li><span class="pricing-check">✓</span>+ Inbound-Empfang</li>
+        <li><span class="pricing-check">✓</span>+ 5 ERP-Konnektoren</li>
+        <li><span class="pricing-check">✓</span>5 Nutzer</li>
+      </ul>
+      <button class="btn-white-inv" onclick="showApp()">Jetzt starten</button>
+    </div>
+
+    <div class="pricing-card reveal reveal-delay-3">
+      <div class="pricing-name">Pro</div>
+      <div class="pricing-price">
+        <span class="pricing-amount">599</span>
+        <span class="pricing-period">€/Monat</span>
+      </div>
+      <div class="pricing-docs">10.000 Dokumente/Monat</div>
+      <div class="pricing-divider"></div>
+      <ul class="pricing-features">
+        <li><span class="pricing-check">✓</span>+ Alle Konnektoren</li>
+        <li><span class="pricing-check">✓</span>+ Public REST API</li>
+        <li><span class="pricing-check">✓</span>+ Webhooks</li>
+        <li><span class="pricing-check">✓</span>15 Nutzer</li>
+      </ul>
+      <button class="btn btn-navy btn-block" onclick="showApp()">Demo buchen</button>
+    </div>
+  </div>
+</section>
+
+<!-- ERP CONNECTORS -->
+<section id="erp">
+  <div class="erp-header">
+    <div class="reveal">
+      <span class="section-label">Konnektoren</span>
+    </div>
+    <h2 class="section-title reveal reveal-delay-1">Verbindet sich mit<br /><em>jedem System.</em></h2>
+  </div>
+
+  <div class="erp-grid">
+    <div class="erp-card reveal reveal-scale reveal-delay-1">
+      <div class="erp-icon">⚙️</div>
+      <div class="erp-name">SAP S/4HANA</div>
+      <div class="erp-method">RFC / IDoc / REST API</div>
+      <span class="erp-tag">Verfügbar</span>
+    </div>
+    <div class="erp-card reveal reveal-scale reveal-delay-2">
+      <div class="erp-icon">⚙️</div>
+      <div class="erp-name">SAP ECC</div>
+      <div class="erp-method">RFC / IDoc Classic</div>
+      <span class="erp-tag">Verfügbar</span>
+    </div>
+    <div class="erp-card reveal reveal-scale reveal-delay-3">
+      <div class="erp-icon">📊</div>
+      <div class="erp-name">DATEV</div>
+      <div class="erp-method">Connect Online API</div>
+      <span class="erp-tag">Verfügbar</span>
+    </div>
+    <div class="erp-card reveal reveal-scale reveal-delay-1">
+      <div class="erp-icon">📋</div>
+      <div class="erp-name">Lexware</div>
+      <div class="erp-method">XML-Export / SFTP</div>
+      <span class="erp-tag">Verfügbar</span>
+    </div>
+    <div class="erp-card reveal reveal-scale reveal-delay-2">
+      <div class="erp-icon">🔷</div>
+      <div class="erp-name">MS Dynamics 365</div>
+      <div class="erp-method">Dataverse REST API</div>
+      <span class="erp-tag">Verfügbar</span>
+    </div>
+    <div class="erp-card reveal reveal-scale reveal-delay-3">
+      <div class="erp-icon">📘</div>
+      <div class="erp-name">Sage</div>
+      <div class="erp-method">Sage API v2</div>
+      <span class="erp-tag soon">Demnächst</span>
+    </div>
+    <div class="erp-card reveal reveal-scale reveal-delay-1">
+      <div class="erp-icon">🔌</div>
+      <div class="erp-name">REST API</div>
+      <div class="erp-method">Generische Integration</div>
+      <span class="erp-tag">Verfügbar</span>
+    </div>
+    <div class="erp-card reveal reveal-scale reveal-delay-2">
+      <div class="erp-icon">📁</div>
+      <div class="erp-name">SFTP / E-Mail</div>
+      <div class="erp-method">Dateibasiert</div>
+      <span class="erp-tag">Verfügbar</span>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<div class="cta-band">
+  <div class="reveal">
+    <div class="cta-label">E-Rechnungspflicht 2027</div>
+  </div>
+  <h2 class="reveal reveal-delay-1">Bereit vor dem Stichtag.</h2>
+  <p class="reveal reveal-delay-2">In 48 Stunden gesetzeskonform — für jedes ERP-System.</p>
+  <div class="reveal reveal-delay-3">
+    <button class="btn-white-inv" style="display:inline-flex;padding:15px 40px;font-size:16px;border-radius:12px;gap:8px;" onclick="showApp()">Kostenlos starten →</button>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <a href="#" class="logo" aria-label="invoiq">
+    <div class="logo-mark" style="width:26px;height:26px;border-radius:7px;" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="8" width="3.5" height="9" rx="1.75" fill="#93C5FD"/>
+        <rect x="2" y="2" width="3.5" height="4" rx="1.75" fill="#fff"/>
+        <circle cx="13.5" cy="12" r="4.5" stroke="#fff" stroke-width="2.2" fill="none"/>
+        <rect x="15.8" y="7" width="2.5" height="10" rx="1.25" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="logo-word" style="font-size:18px;">inv<span>o</span>iq</div>
+  </a>
+  <div class="footer-copy">© 2025 invoiq · invoiq.io · EN 16931 · GoBD · DSGVO</div>
+  <nav class="footer-links" aria-label="Footer Navigation">
+    <a href="#">Impressum</a>
+    <a href="#">Datenschutz</a>
+    <a href="#">AGB</a>
+  </nav>
+</footer>
+
+<script>
+// ── SCROLL REVEAL ──────────────────────────────────────────
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale')
+  .forEach(el => observer.observe(el));
+
+// ── NAVBAR SCROLL ──────────────────────────────────────────
+const navbar = document.getElementById('navbar');
+let lastY = 0;
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  navbar.classList.toggle('scrolled', y > 30);
+  lastY = y;
+}, { passive: true });
+
+// ── HAMBURGER ──────────────────────────────────────────────
+const hamburger = document.getElementById('hamburger');
+const mobileMenu = document.getElementById('mobileMenu');
+hamburger.addEventListener('click', () => {
+  const open = hamburger.classList.toggle('open');
+  mobileMenu.classList.toggle('open', open);
+  hamburger.setAttribute('aria-expanded', open);
+});
+
+// Close mobile menu on link click
+document.querySelectorAll('.mobile-link').forEach(link => {
+  link.addEventListener('click', () => {
+    hamburger.classList.remove('open');
+    mobileMenu.classList.remove('open');
+    hamburger.setAttribute('aria-expanded', false);
+  });
+});
+
+// ── SMOOTH ANCHOR SCROLL ───────────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      const offset = 72;
+      const top = target.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  });
+});
+
+// ── CARD TILT (subtle) ─────────────────────────────────────
+document.querySelectorAll('.feature-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const rect = card.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width  - 0.5;
+    const y = (e.clientY - rect.top)  / rect.height - 0.5;
+    card.style.transform = `translateY(-4px) rotateX(${-y * 4}deg) rotateY(${x * 4}deg)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = '';
+    card.style.transition = 'transform 0.5s cubic-bezier(0.22,1,0.36,1), border-color 0.25s, box-shadow 0.25s';
+  });
+  card.addEventListener('mouseenter', () => {
+    card.style.transition = 'transform 0.1s, border-color 0.25s, box-shadow 0.25s';
+  });
+});
+
+// ── STAT COUNTER ANIMATION ─────────────────────────────────
+function animateCount(el, target, suffix, duration = 1200) {
+  const start = performance.now();
+  const update = now => {
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const val = typeof target === 'number' ? Math.round(target * eased) : target;
+    el.textContent = typeof target === 'number' ? val + suffix : target;
+    if (progress < 1) requestAnimationFrame(update);
+  };
+  requestAnimationFrame(update);
+}
+
+// Animate stats when stats-bar enters viewport
+const statsBar = document.querySelector('.stats-bar');
+const statsObserver = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) {
+    const cells = statsBar.querySelectorAll('.stat-val');
+    setTimeout(() => animateCount(cells[0], 48, 'h'), 0);
+    setTimeout(() => animateCount(cells[1], 100, '%'), 100);
+    statsObserver.disconnect();
+  }
+}, { threshold: 0.5 });
+statsObserver.observe(statsBar);
+
+// ── SHOW APP (placeholder) ─────────────────────────────────
+function showApp() {
+  alert('App-Login wird hier geöffnet.\n\nIntegriere hier deinen React-Router-Link zur /login Route.');
+}
+</script>
+
+</body>
+</html>
