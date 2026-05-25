@@ -7,6 +7,7 @@ import { authRoutes } from './routes/auth/index.js';
 import { invoiceRoutes } from './routes/invoices/index.js';
 import { archiveRoutes } from './routes/archive/index.js';
 import { webhookRoutes, connectRoutes } from './routes/webhooks/index.js';
+import { peppolRoutes } from './routes/peppol/index.js';
 
 const PORT = process.env.PORT || 3000;
 const API = `/api/v1`;
@@ -64,6 +65,7 @@ export async function buildServer() {
   fastify.register(archiveRoutes, { prefix: `${API}/archive` });
   fastify.register(webhookRoutes, { prefix: `${API}/webhooks` });
   fastify.register(connectRoutes, { prefix: `${API}/connect` });
+  fastify.register(peppolRoutes,  { prefix: `${API}/peppol` });
 
   // ── RATE LIMITING ───────────────────────────────────────────
   fastify.addHook('onRequest', async (req, reply) => {

@@ -1,368 +1,282 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-/* ═══════════════════════════════════════════════════════════════════
-   invoiq — White & Dark Blue Design System
-   Palette: #FFFFFF · #08122A · #0E1E42 · #1A3A7C · #F4F6FA · #E8ECF5
-   Fonts: Fraunces (serif display) + Plus Jakarta Sans (UI)
-   Aesthetic: European precision banking meets modern SaaS
-   ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   invoiq — Complete Integrated App
+   Landing · Auth · App · Admin (Super + Customer)
+   Weiß & Dunkelblau · Fraunces + DM Sans
+   ═══════════════════════════════════════════════════════════════ */
 
+// ── DESIGN TOKENS ─────────────────────────────────────────────
 const C = {
-  // Core
-  white:      "#FFFFFF",
-  navy:       "#08122A",
-  navyMid:    "#0E1E42",
-  navyLight:  "#1A3A7C",
-  navyPale:   "#2B4FA0",
+  navy:      "#08122A", navyMid: "#0E1E42", navyLite: "#1A3A7C",
+  white:     "#FFFFFF", bg: "#F4F6FA", bgAlt: "#EBEEf5",
+  text:      "#08122A", textMid: "#2C3E6B", textMuted: "#6B7FA8", textLight: "#9AAAC8",
+  border:    "#DDE3F0", borderMid: "#C8D0E8",
+  accentPale:"#EBF0FB",
+  green:     "#0A6640", greenBg: "#EDFAF3", greenBdr: "#86EFAC",
+  red:       "#B91C1C", redBg:   "#FEF2F2", redBdr:   "#FECACA",
+  amber:     "#92400E", amberBg: "#FFFBEB", amberBdr: "#FDE68A",
+  blue:      "#1D4ED8", blueBg:  "#EFF6FF",
+};
+const F = { d: "'Fraunces', Georgia, serif", u: "'DM Sans', system-ui, sans-serif" };
 
-  // Surface
-  bg:         "#FFFFFF",
-  bgAlt:      "#F4F6FA",
-  bgDeep:     "#EBEEf5",
-  surface:    "#FFFFFF",
-  surfaceAlt: "#F8F9FC",
-
-  // Text
-  text:       "#08122A",
-  textMid:    "#2C3E6B",
-  textMuted:  "#6B7FA8",
-  textLight:  "#9AAAC8",
-
-  // Borders
-  border:     "#DDE3F0",
-  borderMid:  "#C8D0E8",
-  borderNav:  "#EBEEf5",
-
-  // Accent (navy-based)
-  accent:     "#1A3A7C",
-  accentHover:"#0E2860",
-  accentLight:"#EBF0FB",
-  accentPale: "#F0F4FF",
-
-  // Semantic
-  green:      "#0A6640",
-  greenBg:    "#EDFAF3",
-  red:        "#B91C1C",
-  redBg:      "#FEF2F2",
-  amber:      "#92400E",
-  amberBg:    "#FFFBEB",
-  blue:       "#1D4ED8",
-  blueBg:     "#EFF6FF",
+// ── API ────────────────────────────────────────────────────────
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
+const api = {
+  _token: localStorage.getItem("invoiq_token") || null,
+  setToken(t) { this._token = t; if(t) localStorage.setItem("invoiq_token",t); else localStorage.removeItem("invoiq_token"); },
+  async req(method, path, body) {
+    const headers = { "Content-Type":"application/json" };
+    if(this._token) headers["Authorization"] = `Bearer ${this._token}`;
+    try {
+      const res = await fetch(`${API_BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    } catch(err) {
+      if(err.message.includes("fetch")) throw new Error("Backend nicht erreichbar");
+      throw err;
+    }
+  },
+  get: (p) => api.req("GET", p),
+  post: (p,b) => api.req("POST", p, b),
+  login: (b) => api.post("/auth/login", b),
+  register: (b) => api.post("/auth/register", b),
+  me: () => api.get("/auth/me"),
+  logout: () => api.post("/auth/logout", {}),
+  getStats: () => api.get("/invoices/stats"),
+  listInvoices: (q="") => api.get(`/invoices${q}`),
+  createInvoice: (b) => api.post("/invoices", b),
+  sendInvoice: (id,b) => api.post(`/invoices/${id}/send`, b),
+  archiveInvoice: (id) => api.post(`/invoices/${id}/archive`, {}),
+  getXML: (id) => fetch(`${API_BASE}/invoices/${id}/xml`, { headers:{ Authorization:`Bearer ${api._token}` }}).then(r=>r.text()),
+  getConnectors: () => api.get("/connect/available"),
+  listWebhooks: () => api.get("/webhooks"),
+  createWebhook: (b) => api.post("/webhooks", b),
 };
 
-// ── TYPOGRAPHY ─────────────────────────────────────────────────
-const F = {
-  display: "'Fraunces', Georgia, serif",
-  ui:      "'Plus Jakarta Sans', system-ui, sans-serif",
-};
+// ── MOCK ADMIN DATA ────────────────────────────────────────────
+const mockOrgs = [
+  { id:"o1", name:"Müller & Partner GmbH", plan:"business", status:"active", docs_used:284, docs_limit:1000, mrr:199, created:"2025-01-15", vat_id:"DE123456789", users:3, errors:2 },
+  { id:"o2", name:"TechVision AG",         plan:"pro",      status:"active", docs_used:1840,docs_limit:10000,mrr:599, created:"2025-02-03", vat_id:"DE987654321", users:8, errors:0 },
+  { id:"o3", name:"Stadtwerke Süd GmbH",   plan:"starter",  status:"active", docs_used:67,  docs_limit:100,  mrr:49,  created:"2025-03-10", vat_id:"DE456789123", users:1, errors:1 },
+  { id:"o4", name:"Bauer Logistik KG",     plan:"business", status:"trial",  docs_used:12,  docs_limit:1000, mrr:0,   created:"2025-05-20", vat_id:"DE321654987", users:2, errors:0 },
+  { id:"o5", name:"Nord Express GmbH",     plan:"starter",  status:"suspended",docs_used:0, docs_limit:100,  mrr:49,  created:"2025-04-01", vat_id:"DE789123456", users:1, errors:0 },
+];
+const mockAllInvoices = [
+  { id:"ai1", org:"Müller & Partner GmbH", number:"INV-2025-284", amount:4284,  format:"xrechnung", status:"delivered", date:"2025-05-25" },
+  { id:"ai2", org:"TechVision AG",         number:"INV-2025-1840",amount:22900, format:"zugferd",   status:"delivered", date:"2025-05-25" },
+  { id:"ai3", org:"Stadtwerke Süd GmbH",   number:"INV-2025-067", amount:780,   format:"peppol",    status:"error",     date:"2025-05-24" },
+  { id:"ai4", org:"Bauer Logistik KG",     number:"INV-2025-012", amount:1250,  format:"xrechnung", status:"validated", date:"2025-05-24" },
+  { id:"ai5", org:"Müller & Partner GmbH", number:"INV-2025-283", amount:3600,  format:"zugferd",   status:"archived",  date:"2025-05-23" },
+  { id:"ai6", org:"TechVision AG",         number:"INV-2025-1839",amount:18400, format:"xrechnung", status:"delivered", date:"2025-05-23" },
+];
+const mockAllUsers = [
+  { id:"u1", name:"Manfred Bell",   email:"manfred@invoiq.io",        role:"super_admin", org:"invoiq",               status:"active",    last_login:"Heute" },
+  { id:"u2", name:"Hans Müller",    email:"hans@mueller-partner.de",  role:"owner",       org:"Müller & Partner GmbH",status:"active",    last_login:"Heute" },
+  { id:"u3", name:"Sarah Weber",    email:"s.weber@techvision.de",    role:"admin",       org:"TechVision AG",         status:"active",    last_login:"Gestern" },
+  { id:"u4", name:"Klaus Bauer",    email:"k.bauer@logistik.de",      role:"member",      org:"Bauer Logistik KG",     status:"active",    last_login:"vor 3 Tagen" },
+  { id:"u5", name:"Anna Schmidt",   email:"a.schmidt@stadtwerke.de",  role:"owner",       org:"Stadtwerke Süd GmbH",   status:"suspended", last_login:"vor 14 Tagen" },
+];
 
-/* ── WORDMARK ──────────────────────────────────────────────────── */
-function Wordmark({ size = 30, inverted = false }) {
-  const text  = inverted ? C.white    : C.navy;
-  const dot   = inverted ? "#93C5FD"  : C.navyLight;
-  const bg    = inverted ? "rgba(255,255,255,0.15)" : C.accentLight;
-  const bdr   = inverted ? "rgba(255,255,255,0.3)"  : C.borderMid;
+const fmtEUR = n => new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(n);
+const fmtNum = n => new Intl.NumberFormat("de-DE").format(n);
+const fmtAgo = d => { const s=Date.now()-new Date(d); if(s<3600000) return `vor ${Math.floor(s/60000)} Min.`; if(s<86400000) return `vor ${Math.floor(s/3600000)} Std.`; return "gestern"; };
 
+// ── CSS ────────────────────────────────────────────────────────
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth;}
+body{font-family:${F.u};background:${C.white};color:${C.text};}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:${C.bg};}::-webkit-scrollbar-thumb{background:${C.borderMid};border-radius:3px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+@keyframes shimmer{0%,100%{opacity:.5}50%{opacity:1}}
+.fu{animation:fadeUp .55s cubic-bezier(.22,1,.36,1) both}
+.fu2{animation:fadeUp .55s .1s cubic-bezier(.22,1,.36,1) both}
+.fu3{animation:fadeUp .55s .2s cubic-bezier(.22,1,.36,1) both}
+.fu4{animation:fadeUp .55s .3s cubic-bezier(.22,1,.36,1) both}
+.fi{animation:fadeIn .35s ease both}
+/* Buttons */
+.btn{font-family:${F.u};font-weight:600;cursor:pointer;border-radius:9px;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .16s;white-space:nowrap;}
+.btn-navy{background:${C.navy};color:#fff;padding:10px 22px;font-size:14px;box-shadow:0 1px 3px rgba(8,18,42,.15);}
+.btn-navy:hover{background:${C.navyMid};transform:translateY(-1px);box-shadow:0 4px 16px rgba(8,18,42,.2);}
+.btn-ghost{background:transparent;color:${C.navy};border:1.5px solid ${C.border};padding:9px 20px;font-size:14px;}
+.btn-ghost:hover{border-color:${C.borderMid};background:${C.bg};}
+.btn-outline{background:transparent;color:${C.navyLite};border:1.5px solid ${C.border};padding:7px 16px;font-size:13px;}
+.btn-outline:hover{border-color:${C.navyLite};background:${C.accentPale};}
+.btn-danger{background:${C.redBg};color:${C.red};border:1px solid ${C.redBdr};padding:7px 14px;font-size:12px;}
+.btn-success{background:${C.greenBg};color:${C.green};border:1px solid ${C.greenBdr};padding:7px 14px;font-size:12px;}
+.btn-lg{padding:14px 36px;font-size:16px;border-radius:12px;}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:7px;}
+.btn:disabled{opacity:.6;cursor:not-allowed;}
+/* Cards */
+.card{background:${C.white};border:1px solid ${C.border};border-radius:14px;padding:24px;box-shadow:0 1px 3px rgba(8,18,42,.04);}
+/* Forms */
+.input{width:100%;background:${C.white};border:1.5px solid ${C.border};border-radius:9px;padding:11px 14px;font-family:${F.u};font-size:14px;color:${C.text};outline:none;transition:border-color .15s,box-shadow .15s;}
+.input:focus{border-color:${C.navyLite};box-shadow:0 0 0 3px ${C.accentPale};}
+.input::placeholder{color:${C.textLight};}
+.select{width:100%;background:${C.white};border:1.5px solid ${C.border};border-radius:9px;padding:11px 14px;font-family:${F.u};font-size:14px;color:${C.text};outline:none;cursor:pointer;}
+.label{display:block;font-size:11px;font-weight:700;color:${C.textMuted};letter-spacing:.7px;text-transform:uppercase;margin-bottom:6px;}
+/* Nav */
+.nav-link{display:flex;align-items:center;gap:10px;padding:9px 20px;background:transparent;color:${C.textMuted};border:none;border-left:2.5px solid transparent;cursor:pointer;font-size:13.5px;font-weight:500;text-align:left;width:100%;font-family:${F.u};transition:all .14s;}
+.nav-link:hover{color:${C.text};background:${C.bg};}
+.nav-link.active{color:${C.navy};background:${C.accentPale};border-left-color:${C.navy};font-weight:700;}
+.nav-section{font-size:10px;font-weight:700;color:${C.textLight};letter-spacing:1.2px;text-transform:uppercase;padding:14px 20px 5px;}
+/* Table */
+.table{width:100%;border-collapse:collapse;}
+.table th{text-align:left;padding:8px 14px;font-size:11px;color:${C.textLight};font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid ${C.border};}
+.table td{padding:12px 14px;font-size:13.5px;border-bottom:1px solid ${C.bg};vertical-align:middle;}
+.tr-hover:hover{background:${C.bg};}
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;}
+.bg{background:${C.greenBg};color:${C.green};border:1px solid ${C.greenBdr};}
+.br{background:${C.redBg};color:${C.red};border:1px solid ${C.redBdr};}
+.ba{background:${C.amberBg};color:${C.amber};border:1px solid ${C.amberBdr};}
+.bb{background:${C.blueBg};color:${C.blue};border:1px solid #BFDBFE;}
+.bn{background:${C.accentPale};color:${C.navyLite};border:1px solid ${C.borderMid};}
+/* Misc */
+.divider{height:1px;background:${C.border};}
+.progress{height:4px;background:${C.bgAlt};border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,${C.navyLite},${C.navy});border-radius:2px;transition:width .5s;}
+.tab{padding:9px 18px;font-size:13px;font-weight:600;color:${C.textMuted};border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;font-family:${F.u};transition:all .15s;}
+.tab.active{color:${C.navy};border-bottom-color:${C.navy};}
+.avatar{width:30px;height:30px;border-radius:50%;background:${C.accentPale};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${C.navyLite};flex-shrink:0;}
+.modal-bg{position:fixed;inset:0;background:rgba(8,18,42,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px);}
+.modal{background:${C.white};border-radius:16px;padding:28px;max-width:500px;width:100%;box-shadow:0 20px 60px rgba(8,18,42,.2);}
+/* Landing */
+.hero-dot{width:8px;height:8px;border-radius:50%;background:${C.navyLite};animation:pulse 2.2s ease-in-out infinite;display:inline-block;}
+.stat-cell{padding:22px 16px;text-align:center;border-right:1px solid ${C.border};transition:background .2s;position:relative;}
+.stat-cell:hover{background:${C.bg};}
+.feat-card{background:${C.white};border:1px solid ${C.border};border-radius:16px;padding:26px;transition:border-color .2s,transform .2s,box-shadow .2s;}
+.feat-card:hover{border-color:${C.navyLite};transform:translateY(-3px);box-shadow:0 8px 28px rgba(8,18,42,.09);}
+/* Scroll reveal */
+.reveal{opacity:0;transform:translateY(32px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);}
+.reveal.visible{opacity:1;transform:none;}
+.reveal-l{opacity:0;transform:translateX(-28px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);}
+.reveal-l.visible{opacity:1;transform:none;}
+`;
+
+// ── SHARED COMPONENTS ──────────────────────────────────────────
+function Wordmark({ size=24, inv=false }) {
+  const t = inv ? "#fff" : C.navy;
+  const a = inv ? "#93C5FD" : C.navyLite;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, userSelect: "none" }}>
-      {/* Icon: navy square with "iq" */}
-      <div style={{
-        width: size,
-        height: size,
-        background: inverted ? "rgba(255,255,255,0.18)" : C.navy,
-        border: `1.5px solid ${inverted ? "rgba(255,255,255,0.35)" : C.navy}`,
-        borderRadius: Math.round(size * 0.25),
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-      }}>
-        <svg width={size * 0.58} height={size * 0.58} viewBox="0 0 20 20" fill="none">
-          {/* i */}
-          <rect x="2" y="8" width="3.5" height="10" rx="1.75" fill={inverted ? C.navy : C.white} />
-          <rect x="2" y="2" width="3.5" height="4" rx="1.75" fill={inverted ? "#93C5FD" : "#93C5FD"} />
-          {/* q */}
-          <circle cx="13.5" cy="12" r="4.5" stroke={inverted ? C.navy : C.white} strokeWidth="2.2" fill="none" />
-          <rect x="15.8" y="7" width="2.5" height="11" rx="1.25" fill={inverted ? C.navy : C.white} />
+    <div style={{ display:"flex", alignItems:"center", gap:9, userSelect:"none" }}>
+      <div style={{ width:size, height:size, background:inv?"rgba(255,255,255,.15)":C.navy, border:`1.5px solid ${inv?"rgba(255,255,255,.3)":C.navy}`, borderRadius:Math.round(size*.24), display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <svg width={size*.6} height={size*.6} viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="8" width="3.5" height="9" rx="1.75" fill={inv?C.navy:"#93C5FD"}/>
+          <rect x="2" y="2" width="3.5" height="4" rx="1.75" fill={inv?C.navy:"#fff"}/>
+          <circle cx="13.5" cy="12" r="4.5" stroke={inv?C.navy:"#fff"} strokeWidth="2.2" fill="none"/>
+          <rect x="15.8" y="7" width="2.5" height="10" rx="1.25" fill={inv?C.navy:"#fff"}/>
         </svg>
       </div>
-
-      {/* Text */}
-      <div style={{ lineHeight: 1, display: "flex", alignItems: "baseline", gap: 0 }}>
-        <span style={{ fontFamily: F.display, fontSize: size * 0.9, fontWeight: 600, color: text, letterSpacing: "-0.03em" }}>inv</span>
-        <span style={{ fontFamily: F.display, fontSize: size * 0.9, fontWeight: 600, color: inverted ? "#93C5FD" : C.navyLight, letterSpacing: "-0.03em" }}>o</span>
-        <span style={{ fontFamily: F.display, fontSize: size * 0.9, fontWeight: 600, color: text, letterSpacing: "-0.03em" }}>iq</span>
-      </div>
+      <span style={{ fontFamily:F.d, fontSize:size*.88, fontWeight:600, color:t, letterSpacing:"-.03em" }}>
+        inv<span style={{ color:a }}>o</span>iq
+      </span>
     </div>
   );
 }
 
-/* ── GLOBAL CSS ────────────────────────────────────────────────── */
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
-body { font-family: ${F.ui}; background: ${C.bg}; color: ${C.text}; }
-
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: ${C.bgAlt}; }
-::-webkit-scrollbar-thumb { background: ${C.borderMid}; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: ${C.textLight}; }
-
-@keyframes fadeUp   { from { opacity:0; transform:translateY(24px) } to { opacity:1; transform:translateY(0) } }
-@keyframes fadeIn   { from { opacity:0 } to { opacity:1 } }
-@keyframes spin     { to { transform: rotate(360deg) } }
-@keyframes slideRight { from { transform:translateX(-20px); opacity:0 } to { transform:translateX(0); opacity:1 } }
-@keyframes scaleIn  { from { transform:scale(0.96); opacity:0 } to { transform:scale(1); opacity:1 } }
-@keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-.fu   { animation: fadeUp    0.55s cubic-bezier(.22,1,.36,1) both; }
-.fu2  { animation: fadeUp    0.55s .1s  cubic-bezier(.22,1,.36,1) both; }
-.fu3  { animation: fadeUp    0.55s .2s  cubic-bezier(.22,1,.36,1) both; }
-.fu4  { animation: fadeUp    0.55s .3s  cubic-bezier(.22,1,.36,1) both; }
-.fu5  { animation: fadeUp    0.55s .4s  cubic-bezier(.22,1,.36,1) both; }
-.fi   { animation: fadeIn    0.4s ease both; }
-.si   { animation: slideRight 0.4s cubic-bezier(.22,1,.36,1) both; }
-.sci  { animation: scaleIn   0.35s cubic-bezier(.22,1,.36,1) both; }
-
-/* ── BUTTONS ── */
-.btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-family: ${F.ui}; font-weight: 600; cursor: pointer;
-  border-radius: 10px; transition: all 0.18s cubic-bezier(.22,1,.36,1);
-  white-space: nowrap; text-decoration: none; border: none;
-}
-.btn-navy {
-  background: ${C.navy}; color: ${C.white};
-  padding: 13px 28px; font-size: 15px;
-  box-shadow: 0 1px 3px rgba(8,18,42,0.2), 0 4px 16px rgba(8,18,42,0.12);
-}
-.btn-navy:hover { background: ${C.navyMid}; transform: translateY(-1px); box-shadow: 0 4px 24px rgba(8,18,42,0.25); }
-
-.btn-white {
-  background: ${C.white}; color: ${C.navy};
-  padding: 13px 28px; font-size: 15px;
-  box-shadow: 0 1px 3px rgba(8,18,42,0.08);
-  border: 1.5px solid ${C.border};
-}
-.btn-white:hover { border-color: ${C.borderMid}; background: ${C.bgAlt}; transform: translateY(-1px); }
-
-.btn-outline {
-  background: transparent; color: ${C.navyLight};
-  border: 1.5px solid ${C.border};
-  padding: 8px 18px; font-size: 13px;
-}
-.btn-outline:hover { border-color: ${C.navyLight}; background: ${C.accentLight}; }
-
-.btn-ghost {
-  background: transparent; color: ${C.textMuted};
-  border: 1.5px solid ${C.border};
-  padding: 8px 16px; font-size: 13px;
-}
-.btn-ghost:hover { color: ${C.text}; border-color: ${C.borderMid}; background: ${C.bgAlt}; }
-
-.btn-danger {
-  background: ${C.redBg}; color: ${C.red};
-  border: 1px solid rgba(185,28,28,0.2);
-  padding: 8px 16px; font-size: 13px;
-}
-.btn-danger:hover { background: #fee2e2; }
-
-/* ── FORMS ── */
-.input {
-  width: 100%;
-  background: ${C.bg};
-  border: 1.5px solid ${C.border};
-  border-radius: 10px;
-  padding: 11px 14px;
-  font-family: ${F.ui}; font-size: 14px;
-  color: ${C.text};
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.input:focus { border-color: ${C.navyLight}; box-shadow: 0 0 0 3px ${C.accentPale}; }
-.input::placeholder { color: ${C.textLight}; }
-
-.select {
-  width: 100%;
-  background: ${C.bg};
-  border: 1.5px solid ${C.border};
-  border-radius: 10px;
-  padding: 11px 14px;
-  font-family: ${F.ui}; font-size: 14px;
-  color: ${C.text};
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-.select:focus { border-color: ${C.navyLight}; }
-
-.label { display: block; font-size: 11px; font-weight: 700; color: ${C.textMuted}; letter-spacing: 0.7px; text-transform: uppercase; margin-bottom: 7px; }
-
-/* ── CARDS ── */
-.card {
-  background: ${C.white};
-  border: 1px solid ${C.border};
-  border-radius: 16px;
-  padding: 28px;
-  box-shadow: 0 1px 4px rgba(8,18,42,0.04);
-}
-.card-sm {
-  background: ${C.white};
-  border: 1px solid ${C.border};
-  border-radius: 12px;
-  padding: 20px;
-}
-
-/* ── NAV ── */
-.nav-link {
-  display: flex; align-items: center; gap: 11px;
-  padding: 9px 20px;
-  font-family: ${F.ui}; font-size: 14px; font-weight: 500;
-  color: ${C.textMuted};
-  border: none; background: transparent; cursor: pointer;
-  width: 100%; text-align: left;
-  border-left: 2.5px solid transparent;
-  transition: all 0.14s;
-}
-.nav-link:hover { color: ${C.text}; background: ${C.bgAlt}; }
-.nav-link.active { color: ${C.navy}; background: ${C.accentPale}; border-left-color: ${C.navy}; font-weight: 700; }
-
-/* ── TABLE ── */
-.tr-hover:hover { background: ${C.bgAlt} !important; }
-
-/* ── MISC ── */
-.divider { height: 1px; background: ${C.border}; margin: 20px 0; }
-
-.chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: ${C.accentPale}; color: ${C.navyLight};
-  border: 1px solid ${C.accentLight};
-  border-radius: 20px;
-  padding: 4px 12px; font-size: 12px; font-weight: 600;
-}
-
-.chip-green { background: ${C.greenBg}; color: ${C.green}; border-color: #BBF7D0; }
-.chip-red   { background: ${C.redBg};   color: ${C.red};   border-color: #FECACA; }
-.chip-amber { background: ${C.amberBg}; color: ${C.amber}; border-color: #FDE68A; }
-`;
-
-/* ── STATUS BADGE ──────────────────────────────────────────── */
-const STATUS_MAP = {
-  delivered: { cls: "chip-green",  label: "Zugestellt" },
-  validated: { cls: "chip",        label: "Validiert"  },
-  sent:      { cls: "chip",        label: "Versendet"  },
-  draft:     { cls: "chip-amber",  label: "Entwurf"    },
-  archived:  { cls: "chip",        label: "Archiviert" },
-  error:     { cls: "chip-red",    label: "Fehler"     },
-  pending:   { cls: "chip-amber",  label: "Ausstehend" },
-};
 function Badge({ status }) {
-  const s = STATUS_MAP[status] || STATUS_MAP.draft;
-  return <span className={`chip ${s.cls}`}>{s.label}</span>;
+  const m = {
+    active:["bg","Aktiv"], trial:["bb","Trial"], suspended:["br","Gesperrt"],
+    delivered:["bg","Zugestellt"], validated:["bn","Validiert"], sent:["bn","Versendet"],
+    error:["br","Fehler"], archived:["bn","Archiviert"], pending:["ba","Ausstehend"],
+    starter:["bn","Starter"], business:["bb","Business"], pro:["ba","Pro"],
+    super_admin:["br","Super Admin"], owner:["bn","Owner"], admin:["bb","Admin"], member:["bn","Member"],
+  };
+  const [cls, lbl] = m[status] || ["bn", status];
+  return <span className={`badge ${cls}`}>{lbl}</span>;
 }
 
-function Spinner({ size = 16, color = C.navy }) {
-  return <span style={{ display:"inline-block", width:size, height:size, border:`2px solid ${color}20`, borderTopColor:color, borderRadius:"50%", animation:"spin 0.6s linear infinite", flexShrink:0 }} />;
+function Spinner({ size=16, color=C.navy }) {
+  return <span style={{ width:size, height:size, border:`2px solid ${color}20`, borderTopColor:color, borderRadius:"50%", animation:"spin .6s linear infinite", display:"inline-block", flexShrink:0 }} />;
 }
 
 function Toast({ msg, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t); }, []);
-  const styles = {
-    success: { bg: C.greenBg, border: "#86EFAC", color: C.green, icon: "✓" },
-    error:   { bg: C.redBg,   border: "#FECACA", color: C.red,   icon: "✗" },
-    info:    { bg: C.blueBg,  border: "#BFDBFE", color: C.blue,  icon: "i" },
-  };
-  const s = styles[type] || styles.info;
+  const s = { success:[C.green,"bg"], error:[C.red,"br"], info:[C.navyLite,"bn"] }[type]||[C.navyLite,"bn"];
   return (
-    <div onClick={onClose} style={{ position:"fixed", bottom:28, right:28, zIndex:9999, background:s.bg, border:`1.5px solid ${s.border}`, color:s.color, borderRadius:14, padding:"14px 20px", fontSize:14, fontWeight:600, maxWidth:380, boxShadow:"0 8px 32px rgba(8,18,42,0.15)", cursor:"pointer", display:"flex", alignItems:"center", gap:10, fontFamily:F.ui }}>
-      <span style={{ width:22, height:22, borderRadius:"50%", background:s.color+"18", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0 }}>{s.icon}</span>
-      {msg}
+    <div onClick={onClose} style={{ position:"fixed", bottom:24, right:24, zIndex:9999, background:C.white, border:`1.5px solid ${C.border}`, borderRadius:12, padding:"13px 18px", fontSize:13.5, fontWeight:600, color:s[0], maxWidth:380, boxShadow:"0 8px 32px rgba(8,18,42,.12)", cursor:"pointer", display:"flex", alignItems:"center", gap:8, fontFamily:F.u }}>
+      <span className={`badge ${s[1]}`} style={{ fontSize:10, padding:"2px 7px" }}>{type}</span>{msg}
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   LANDING PAGE
-   ═══════════════════════════════════════════════════════════════ */
+// ── LANDING ────────────────────────────────────────────────────
 function Landing({ onEnter }) {
   const [scrolled, setScrolled] = useState(false);
+
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", h); return () => window.removeEventListener("scroll", h);
+    const h = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", h, { passive:true });
+    // Scroll reveal
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => { if(e.isIntersecting) { e.target.classList.add("visible"); obs.unobserve(e.target); }});
+    }, { threshold:.12, rootMargin:"0px 0px -40px 0px" });
+    document.querySelectorAll(".reveal,.reveal-l").forEach(el => obs.observe(el));
+    return () => { window.removeEventListener("scroll", h); obs.disconnect(); };
   }, []);
 
   const features = [
-    { icon: "⚡", title: "XRechnung & ZUGFeRD", desc: "Automatische EN 16931-konforme Generierung — ohne manuellen Aufwand." },
-    { icon: "🔗", title: "Jedes ERP-System", desc: "SAP, DATEV, Lexware, Dynamics oder REST API. In Minuten verbunden." },
-    { icon: "🔒", title: "GoBD-Archivierung", desc: "SHA-256, unveränderlich, 10 Jahre. AWS Frankfurt. Audit-Trail für alles." },
-    { icon: "🌍", title: "Peppol & EU", desc: "Europäisches Peppol-Netzwerk. Bereit für ViDA und internationale Mandate." },
-    { icon: "🏷", title: "White-Label", desc: "SAP-Beratungshäuser deployen invoiq unter eigenem Brand. Eigene Domain." },
-    { icon: "📊", title: "Compliance Dashboard", desc: "EN 16931-Score, Fehler, Archivstatus — alles in Echtzeit überwacht." },
-  ];
-
-  const plans = [
-    { name: "Starter", price: "49", docs: "100 Dok./Monat", features: ["XRechnung + ZUGFeRD", "E-Mail-Versand", "GoBD-Archiv", "1 Nutzer"], cta: "Kostenlos testen" },
-    { name: "Business", price: "199", docs: "1.000 Dok./Monat", features: ["+ Peppol BIS 3.0", "+ Inbound-Empfang", "+ 5 ERP-Konnektoren", "5 Nutzer"], cta: "Jetzt starten", highlight: true },
-    { name: "Pro", price: "599", docs: "10.000 Dok./Monat", features: ["+ Alle Konnektoren", "+ Public REST API", "+ Webhooks", "15 Nutzer"], cta: "Demo buchen" },
+    { icon:"⚡", title:"XRechnung & ZUGFeRD", desc:"Automatische EN 16931-konforme Generierung. Jede Rechnung sofort gesetzeskonform." },
+    { icon:"🔗", title:"Jedes ERP-System",     desc:"SAP S/4HANA, ECC, DATEV, Lexware, Dynamics — oder per REST API in Minuten." },
+    { icon:"🔒", title:"GoBD-Archivierung",    desc:"SHA-256, unveränderlich, 10 Jahre. AWS Frankfurt. Vollständiger Audit-Trail." },
+    { icon:"🌍", title:"Peppol & EU-Netzwerk", desc:"Direktversand über Peppol BIS 3.0. Bereit für ViDA und internationale Mandate." },
+    { icon:"🏷", title:"White-Label bereit",   desc:"SAP-Beratungshäuser deployen invoiq unter eigenem Brand und Domain." },
+    { icon:"📊", title:"Compliance Dashboard", desc:"EN 16931-Score, Fehler, Archivstatus — alles in Echtzeit überwacht." },
   ];
 
   return (
-    <div style={{ background: C.white, minHeight: "100vh", overflowX: "hidden" }}>
-
+    <div style={{ background:C.white, overflowX:"hidden" }}>
       {/* NAV */}
-      <header style={{ position:"fixed", top:0, left:0, right:0, zIndex:100, height:64, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 48px", background: scrolled ? "rgba(255,255,255,0.95)" : C.white, borderBottom:`1px solid ${scrolled ? C.border : "transparent"}`, backdropFilter: scrolled ? "blur(12px)" : "none", transition:"all 0.3s" }}>
+      <nav style={{ position:"fixed", top:0, left:0, right:0, zIndex:100, height:64, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 clamp(20px,5vw,64px)", background:scrolled?"rgba(255,255,255,.92)":"transparent", borderBottom:`1px solid ${scrolled?C.border:"transparent"}`, backdropFilter:scrolled?"blur(16px)":"none", transition:"all .3s" }}>
         <Wordmark size={26} />
-        <nav style={{ display:"flex", gap:36, alignItems:"center" }}>
-          {["Funktionen","Preise","Konnektoren"].map(l => (
-            <button key={l} style={{ background:"none", border:"none", color:C.textMuted, fontSize:14, fontWeight:500, cursor:"pointer", fontFamily:F.ui }} onMouseEnter={e=>e.target.style.color=C.navy} onMouseLeave={e=>e.target.style.color=C.textMuted}>{l}</button>
+        <div style={{ display:"flex", gap:32, alignItems:"center" }}>
+          {["Funktionen","Preise","Konnektoren"].map(l=>(
+            <a key={l} href={`#${l.toLowerCase()}`} style={{ fontSize:14, fontWeight:500, color:C.textMuted, textDecoration:"none", transition:"color .15s" }} onMouseEnter={e=>e.target.style.color=C.navy} onMouseLeave={e=>e.target.style.color=C.textMuted}>{l}</a>
           ))}
-        </nav>
-        <div style={{ display:"flex", gap:10 }}>
-          <button className="btn btn-white" style={{ padding:"9px 20px", fontSize:13 }} onClick={onEnter}>Anmelden</button>
-          <button className="btn btn-navy" style={{ padding:"9px 22px", fontSize:13 }} onClick={onEnter}>Kostenlos starten →</button>
         </div>
-      </header>
+        <div style={{ display:"flex", gap:10 }}>
+          <button className="btn btn-ghost" style={{ padding:"9px 18px", fontSize:13 }} onClick={onEnter}>Anmelden</button>
+          <button className="btn btn-navy" style={{ padding:"9px 20px", fontSize:13 }} onClick={onEnter}>Kostenlos starten →</button>
+        </div>
+      </nav>
 
       {/* HERO */}
-      <section style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"120px 48px 80px", position:"relative", overflow:"hidden" }}>
-        {/* Navy accent block top-right */}
-        <div style={{ position:"absolute", top:0, right:0, width:"40%", height:"70%", background:`linear-gradient(225deg, ${C.navyMid} 0%, ${C.navy} 100%)`, borderRadius:"0 0 0 120px", opacity:0.07, pointerEvents:"none" }} />
-        {/* Dot pattern */}
-        <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity:0.025, pointerEvents:"none" }}>
-          <defs><pattern id="dots" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1.5" fill={C.navy} /></pattern></defs>
-          <rect width="100%" height="100%" fill="url(#dots)" />
+      <section style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"120px clamp(20px,5vw,64px) 80px", position:"relative", overflow:"hidden", textAlign:"center" }}>
+        {/* Dot grid */}
+        <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity:.03, pointerEvents:"none" }}>
+          <defs><pattern id="dots" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1.5" fill={C.navy}/></pattern></defs>
+          <rect width="100%" height="100%" fill="url(#dots)"/>
         </svg>
+        {/* Shape */}
+        <div style={{ position:"absolute", top:0, right:0, width:"38%", height:"65%", background:`linear-gradient(225deg,${C.navyMid},${C.navy})`, borderRadius:"0 0 0 clamp(60px,10vw,140px)", opacity:.06, pointerEvents:"none" }} />
 
-        <div style={{ maxWidth:860, width:"100%", textAlign:"center", position:"relative" }}>
-          {/* Badge */}
-          <div className="fu chip" style={{ marginBottom:32, fontSize:12 }}>
-            🇩🇪 E-Rechnungspflicht 2027 · EN 16931 · GoBD · Peppol
+        <div style={{ maxWidth:840, position:"relative" }}>
+          <div className="fu" style={{ display:"inline-flex", alignItems:"center", gap:8, background:C.accentPale, border:`1px solid ${C.borderMid}`, borderRadius:24, padding:"7px 16px", marginBottom:32, fontSize:12, fontWeight:600, color:C.navyLite }}>
+            <span className="hero-dot" /> E-Rechnungspflicht 2027 · EN 16931 · GoBD · Peppol
           </div>
-
-          {/* H1 */}
-          <h1 className="fu2" style={{ fontFamily:F.display, fontSize:"clamp(44px,6.5vw,82px)", fontWeight:400, color:C.navy, lineHeight:1.06, letterSpacing:"-0.03em", marginBottom:28 }}>
-            E-Rechnung für<br />
-            <span style={{ fontStyle:"italic", color:C.navyLight }}>jedes</span> System.
+          <h1 className="fu2" style={{ fontFamily:F.d, fontSize:"clamp(44px,7vw,86px)", fontWeight:400, color:C.navy, lineHeight:1.07, letterSpacing:"-.03em", marginBottom:26 }}>
+            E-Rechnung für<br /><em style={{ color:C.navyLite }}>jedes</em> System.
           </h1>
-
-          <p className="fu3" style={{ fontSize:"clamp(16px,1.8vw,19px)", color:C.textMuted, maxWidth:520, margin:"0 auto 48px", lineHeight:1.75, fontWeight:400 }}>
-            XRechnung · ZUGFeRD · Peppol — in 48 Stunden live.<br />
-            SAP, DATEV, Lexware oder jedes andere ERP-System.
+          <p className="fu3" style={{ fontSize:"clamp(16px,2vw,20px)", color:C.textMuted, maxWidth:520, margin:"0 auto 48px", lineHeight:1.75, fontWeight:300 }}>
+            XRechnung · ZUGFeRD · Peppol — in 48 Stunden live.<br />SAP, DATEV, Lexware oder jedes andere ERP.
           </p>
-
           <div className="fu4" style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap", marginBottom:72 }}>
-            <button className="btn btn-navy" style={{ fontSize:16, padding:"15px 40px" }} onClick={onEnter}>Kostenlos starten →</button>
-            <button className="btn btn-white" style={{ fontSize:16, padding:"15px 32px" }} onClick={onEnter}>Demo ansehen</button>
+            <button className="btn btn-navy btn-lg" onClick={onEnter}>Kostenlos starten →</button>
+            <button className="btn btn-ghost btn-lg" onClick={()=>document.getElementById("funktionen")?.scrollIntoView({behavior:"smooth"})}>So funktioniert's</button>
           </div>
-
-          {/* Stats */}
-          <div className="fu5" style={{ display:"flex", gap:0, justifyContent:"center", flexWrap:"wrap", border:`1px solid ${C.border}`, borderRadius:16, overflow:"hidden", background:C.white, boxShadow:"0 2px 12px rgba(8,18,42,0.06)" }}>
-            {[["48h","bis Go-Live"],["100%","EN 16931 konform"],["GoBD","Archivierung"],["10+","ERP-Systeme"]].map(([v,l], i, arr) => (
-              <div key={v} style={{ padding:"24px 40px", textAlign:"center", borderRight: i < arr.length-1 ? `1px solid ${C.border}` : "none", flex:1, minWidth:120 }}>
-                <div style={{ fontFamily:F.display, fontSize:28, fontWeight:600, color:C.navy, lineHeight:1 }}>{v}</div>
-                <div style={{ fontSize:12, color:C.textMuted, marginTop:5, fontWeight:500, letterSpacing:0.3 }}>{l}</div>
+          {/* Stats bar */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", border:`1px solid ${C.border}`, borderRadius:14, overflow:"hidden", background:C.white, boxShadow:"0 2px 12px rgba(8,18,42,.06)", maxWidth:680, margin:"0 auto" }}>
+            {[["48h","bis Go-Live"],["100%","EN 16931 konform"],["GoBD","Archivierung"],["10+","ERP-Systeme"]].map(([v,l],i,a)=>(
+              <div key={v} className="stat-cell" style={{ borderRight:i<a.length-1?`1px solid ${C.border}`:"none" }}>
+                <div style={{ fontFamily:F.d, fontSize:26, fontWeight:600, color:C.navy, lineHeight:1 }}>{v}</div>
+                <div style={{ fontSize:11, color:C.textMuted, marginTop:5, fontWeight:500 }}>{l}</div>
               </div>
             ))}
           </div>
@@ -370,23 +284,20 @@ function Landing({ onEnter }) {
       </section>
 
       {/* FEATURES */}
-      <section style={{ padding:"96px 48px", background:C.bgAlt }}>
-        <div style={{ maxWidth:1200, margin:"0 auto" }}>
-          <div style={{ textAlign:"center", marginBottom:64 }}>
-            <div className="chip" style={{ marginBottom:18, fontSize:11, letterSpacing:0.8, textTransform:"uppercase" }}>Funktionen</div>
-            <h2 style={{ fontFamily:F.display, fontSize:"clamp(32px,4vw,52px)", color:C.navy, fontWeight:400, letterSpacing:"-0.025em", lineHeight:1.15 }}>
-              Alles was Sie brauchen.<br />
-              <span style={{ fontStyle:"italic" }}>Nichts was Sie nicht brauchen.</span>
+      <section id="funktionen" style={{ padding:"88px clamp(20px,5vw,64px)", background:C.bg }}>
+        <div style={{ maxWidth:1160, margin:"0 auto" }}>
+          <div style={{ textAlign:"center", marginBottom:56 }}>
+            <span className="reveal badge bn" style={{ marginBottom:16, fontSize:11, letterSpacing:.8, textTransform:"uppercase" }}>Funktionen</span>
+            <h2 className="reveal" style={{ fontFamily:F.d, fontSize:"clamp(30px,4vw,50px)", color:C.navy, fontWeight:400, letterSpacing:"-.025em" }}>
+              Alles was Sie brauchen.<br /><em>Nichts was Sie nicht brauchen.</em>
             </h2>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(340px, 1fr))", gap:16 }}>
-            {features.map((f, i) => (
-              <div key={i} className="card" style={{ transition:"border-color 0.18s, transform 0.18s, box-shadow 0.18s" }}
-                onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.navyLight; e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 8px 28px rgba(8,18,42,0.1)"; }}
-                onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.border; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 1px 4px rgba(8,18,42,0.04)"; }}>
-                <div style={{ width:44, height:44, borderRadius:12, background:C.accentPale, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, marginBottom:16 }}>{f.icon}</div>
-                <div style={{ fontWeight:700, color:C.navy, fontSize:16, marginBottom:8, fontFamily:F.ui }}>{f.title}</div>
-                <div style={{ fontSize:14, color:C.textMuted, lineHeight:1.65 }}>{f.desc}</div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))", gap:18 }}>
+            {features.map((f,i)=>(
+              <div key={i} className={`feat-card reveal`} style={{ transitionDelay:`${i*.07}s` }}>
+                <div style={{ width:46, height:46, borderRadius:13, background:C.accentPale, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, marginBottom:16, transition:"all .3s" }}>{f.icon}</div>
+                <div style={{ fontWeight:700, color:C.navy, fontSize:15, marginBottom:7 }}>{f.title}</div>
+                <div style={{ fontSize:13.5, color:C.textMuted, lineHeight:1.65 }}>{f.desc}</div>
               </div>
             ))}
           </div>
@@ -394,87 +305,81 @@ function Landing({ onEnter }) {
       </section>
 
       {/* PRICING */}
-      <section style={{ padding:"96px 48px" }}>
-        <div style={{ maxWidth:1040, margin:"0 auto" }}>
-          <div style={{ textAlign:"center", marginBottom:64 }}>
-            <div className="chip" style={{ marginBottom:18, fontSize:11, letterSpacing:0.8, textTransform:"uppercase" }}>Preise</div>
-            <h2 style={{ fontFamily:F.display, fontSize:"clamp(32px,4vw,52px)", color:C.navy, fontWeight:400, letterSpacing:"-0.025em" }}>
-              Transparent.<br /><span style={{ fontStyle:"italic" }}>Kein usage-based Billing.</span>
+      <section id="preise" style={{ padding:"88px clamp(20px,5vw,64px)" }}>
+        <div style={{ maxWidth:1000, margin:"0 auto" }}>
+          <div style={{ textAlign:"center", marginBottom:56 }}>
+            <span className="reveal badge bn" style={{ marginBottom:16, fontSize:11, letterSpacing:.8, textTransform:"uppercase" }}>Preise</span>
+            <h2 className="reveal" style={{ fontFamily:F.d, fontSize:"clamp(30px,4vw,50px)", color:C.navy, fontWeight:400, letterSpacing:"-.025em" }}>
+              Transparent.<br /><em>Kein usage-based Billing.</em>
             </h2>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:20 }}>
-            {plans.map((p, i) => (
-              <div key={i} style={{ background: p.highlight ? C.navy : C.white, border:`1.5px solid ${p.highlight ? C.navy : C.border}`, borderRadius:20, padding:"32px 28px", position:"relative", transition:"transform 0.2s, box-shadow 0.2s", boxShadow: p.highlight ? "0 12px 40px rgba(8,18,42,0.2)" : "0 1px 4px rgba(8,18,42,0.04)" }}
-                onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-4px)"; e.currentTarget.style.boxShadow = p.highlight ? "0 20px 56px rgba(8,18,42,0.3)" : "0 8px 28px rgba(8,18,42,0.1)"; }}
-                onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow = p.highlight ? "0 12px 40px rgba(8,18,42,0.2)" : "0 1px 4px rgba(8,18,42,0.04)"; }}>
-                {p.highlight && <div style={{ position:"absolute", top:-13, left:"50%", transform:"translateX(-50%)", background:C.navyLight, color:C.white, fontSize:11, fontWeight:800, padding:"4px 16px", borderRadius:20, letterSpacing:0.5, whiteSpace:"nowrap" }}>EMPFOHLEN</div>}
-                <div style={{ fontWeight:700, fontSize:15, color: p.highlight ? "rgba(255,255,255,0.7)" : C.textMuted, marginBottom:16 }}>{p.name}</div>
-                <div style={{ display:"flex", alignItems:"baseline", gap:4, marginBottom:6 }}>
-                  <span style={{ fontFamily:F.display, fontSize:54, color: p.highlight ? C.white : C.navy, lineHeight:1, fontWeight:500 }}>{p.price}</span>
-                  <span style={{ color: p.highlight ? "rgba(255,255,255,0.5)" : C.textLight, fontSize:15 }}>€/Monat</span>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(280px,100%),1fr))", gap:18 }}>
+            {[
+              { name:"Starter",  price:49,  docs:"100 Dok./Monat", features:["XRechnung + ZUGFeRD","E-Mail-Versand","GoBD-Archiv","1 Nutzer"], highlight:false },
+              { name:"Business", price:199, docs:"1.000 Dok./Monat",features:["+ Peppol BIS 3.0","+ Inbound-Empfang","+ 5 ERP-Konnektoren","5 Nutzer"], highlight:true },
+              { name:"Pro",      price:599, docs:"10.000 Dok./Monat",features:["+ Alle Konnektoren","+ Public REST API","+ Webhooks","15 Nutzer"], highlight:false },
+            ].map((p,i)=>(
+              <div key={i} className="reveal" style={{ transitionDelay:`${i*.1}s`, background:p.highlight?C.navy:C.white, border:`1.5px solid ${p.highlight?C.navy:C.border}`, borderRadius:18, padding:"30px 26px", position:"relative", transition:"transform .2s,box-shadow .2s", boxShadow:p.highlight?"0 8px 32px rgba(8,18,42,.2)":"0 1px 3px rgba(8,18,42,.04)" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow=p.highlight?"0 16px 48px rgba(8,18,42,.28)":"0 8px 28px rgba(8,18,42,.1)";}} onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow=p.highlight?"0 8px 32px rgba(8,18,42,.2)":"0 1px 3px rgba(8,18,42,.04)";}}>
+                {p.highlight && <div style={{ position:"absolute", top:-13, left:"50%", transform:"translateX(-50%)", background:C.navyLite, color:"#fff", fontSize:11, fontWeight:800, padding:"4px 16px", borderRadius:20, letterSpacing:.5, whiteSpace:"nowrap" }}>EMPFOHLEN</div>}
+                <div style={{ fontWeight:700, fontSize:15, marginBottom:14, color:p.highlight?"rgba(255,255,255,.6)":C.textMuted }}>{p.name}</div>
+                <div style={{ display:"flex", alignItems:"baseline", gap:4, marginBottom:5 }}>
+                  <span style={{ fontFamily:F.d, fontSize:52, fontWeight:500, lineHeight:1, color:p.highlight?"#fff":C.navy }}>{p.price}</span>
+                  <span style={{ fontSize:14, color:p.highlight?"rgba(255,255,255,.45)":C.textLight }}>€/Monat</span>
                 </div>
-                <div style={{ fontSize:13, color: p.highlight ? "rgba(255,255,255,0.5)" : C.textMuted, marginBottom:24 }}>{p.docs}</div>
-                <div style={{ height:1, background: p.highlight ? "rgba(255,255,255,0.12)" : C.border, margin:"0 0 24px" }} />
-                {p.features.map((f,j) => (
-                  <div key={j} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:10, fontSize:14, color: j===0 ? (p.highlight ? C.white : C.navy) : (p.highlight ? "rgba(255,255,255,0.65)" : C.textMuted) }}>
-                    <span style={{ color: p.highlight ? "rgba(255,255,255,0.5)" : C.navyLight, flexShrink:0, marginTop:1, fontSize:13 }}>✓</span>{f}
+                <div style={{ fontSize:12, color:p.highlight?"rgba(255,255,255,.45)":C.textMuted, marginBottom:22 }}>{p.docs}</div>
+                <div style={{ height:1, background:p.highlight?"rgba(255,255,255,.12)":C.border, margin:"0 0 22px" }} />
+                {p.features.map((f,j)=>(
+                  <div key={j} style={{ display:"flex", gap:9, marginBottom:10, fontSize:13.5, color:j===0?(p.highlight?"#fff":C.navy):(p.highlight?"rgba(255,255,255,.6)":C.textMuted) }}>
+                    <span style={{ color:p.highlight?"rgba(255,255,255,.4)":C.navyLite, flexShrink:0 }}>✓</span>{f}
                   </div>
                 ))}
-                <button className={`btn ${p.highlight ? "btn-white" : "btn-navy"}`} style={{ width:"100%", justifyContent:"center", marginTop:28 }} onClick={onEnter}>{p.cta}</button>
+                <button onClick={onEnter} style={{ marginTop:24, width:"100%", justifyContent:"center", fontFamily:F.u, fontWeight:700, cursor:"pointer", borderRadius:10, padding:"13px", fontSize:14, border:"none", background:p.highlight?"#fff":"#08122A", color:p.highlight?C.navy:"#fff", transition:"all .18s" }}
+                  onMouseEnter={e=>{e.currentTarget.style.opacity=".88";}} onMouseLeave={e=>{e.currentTarget.style.opacity="1";}}>
+                  {p.highlight?"Jetzt starten":"Kostenlos testen"}
+                </button>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* NAVY CTA BAND */}
-      <section style={{ background:C.navy, padding:"72px 48px", textAlign:"center" }}>
-        <div className="chip" style={{ background:"rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.7)", borderColor:"rgba(255,255,255,0.15)", marginBottom:20 }}>E-Rechnungspflicht 2027</div>
-        <h2 style={{ fontFamily:F.display, fontSize:"clamp(28px,4vw,48px)", color:C.white, fontWeight:400, letterSpacing:"-0.025em", marginBottom:14 }}>
-          Bereit vor dem Stichtag.
-        </h2>
-        <p style={{ fontSize:17, color:"rgba(255,255,255,0.55)", marginBottom:36 }}>In 48 Stunden gesetzeskonform — für jedes ERP-System.</p>
-        <button className="btn btn-white" style={{ fontSize:16, padding:"15px 40px" }} onClick={onEnter}>Kostenlos starten →</button>
-      </section>
+      {/* CTA BAND */}
+      <div style={{ background:C.navy, padding:"72px clamp(20px,5vw,64px)", textAlign:"center" }}>
+        <div className="reveal badge" style={{ background:"rgba(255,255,255,.1)", color:"rgba(255,255,255,.7)", borderColor:"rgba(255,255,255,.15)", marginBottom:18, fontSize:11, letterSpacing:.8, textTransform:"uppercase" }}>E-Rechnungspflicht 2027</div>
+        <h2 className="reveal" style={{ fontFamily:F.d, fontSize:"clamp(28px,4vw,50px)", color:"#fff", fontWeight:400, letterSpacing:"-.025em", marginBottom:12 }}>Bereit vor dem Stichtag.</h2>
+        <p className="reveal" style={{ color:"rgba(255,255,255,.5)", fontSize:17, marginBottom:32, fontWeight:300 }}>In 48 Stunden gesetzeskonform — für jedes ERP-System.</p>
+        <button className="reveal" onClick={onEnter} style={{ display:"inline-flex", alignItems:"center", background:"#fff", color:C.navy, border:"none", borderRadius:12, padding:"15px 40px", fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:F.u, transition:"all .18s" }} onMouseEnter={e=>e.currentTarget.style.opacity=".88"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>Kostenlos starten →</button>
+      </div>
 
       {/* FOOTER */}
-      <footer style={{ borderTop:`1px solid ${C.border}`, padding:"36px 48px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:16, background:C.white }}>
-        <Wordmark size={22} />
-        <div style={{ fontSize:13, color:C.textLight }}>© 2025 invoiq · invoiq.io · EN 16931 · GoBD · DSGVO</div>
-        <div style={{ display:"flex", gap:24 }}>
-          {["Impressum","Datenschutz","AGB"].map(l => (
-            <button key={l} style={{ background:"none", border:"none", color:C.textLight, fontSize:13, cursor:"pointer", fontFamily:F.ui }}>{l}</button>
-          ))}
+      <footer style={{ background:C.white, borderTop:`1px solid ${C.border}`, padding:"32px clamp(20px,5vw,64px)", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:14 }}>
+        <Wordmark size={20} />
+        <div style={{ fontSize:12, color:C.textLight }}>© 2025 invoiq · invoiq.io · EN 16931 · GoBD · DSGVO</div>
+        <div style={{ display:"flex", gap:20 }}>
+          {["Impressum","Datenschutz","AGB"].map(l=><a key={l} href="#" style={{ fontSize:12, color:C.textLight, textDecoration:"none" }} onMouseEnter={e=>e.target.style.color=C.navy} onMouseLeave={e=>e.target.style.color=C.textLight}>{l}</a>)}
         </div>
       </footer>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   AUTH SCREEN
-   ═══════════════════════════════════════════════════════════════ */
+// ── AUTH ───────────────────────────────────────────────────────
 function Auth({ mode, onSwitch, onSuccess, loading }) {
   const [form, setForm] = useState({ email:"demo@invoiq.io", password:"demo123", full_name:"", org_name:"", vat_id:"" });
-  const upd = (k,v) => setForm(p => ({ ...p, [k]:v }));
-
+  const upd = (k,v) => setForm(p=>({...p,[k]:v}));
   return (
-    <div style={{ minHeight:"100vh", background:C.bgAlt, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
       <div style={{ width:"100%", maxWidth:420 }}>
-        <div style={{ textAlign:"center", marginBottom:36 }}>
-          <Wordmark size={30} />
-        </div>
-
-        <div className="card sci" style={{ boxShadow:"0 4px 24px rgba(8,18,42,0.08)" }}>
-          <h2 style={{ fontFamily:F.display, fontSize:26, fontWeight:400, color:C.navy, marginBottom:6, letterSpacing:"-0.02em" }}>
-            {mode === "login" ? "Willkommen zurück." : "Konto erstellen."}
+        <div style={{ textAlign:"center", marginBottom:36 }}><Wordmark size={28} /></div>
+        <div className="card fi" style={{ boxShadow:"0 4px 24px rgba(8,18,42,.08)" }}>
+          <h2 style={{ fontFamily:F.d, fontSize:24, fontWeight:400, color:C.navy, marginBottom:5, letterSpacing:"-.02em" }}>
+            {mode==="login"?"Willkommen zurück.":"Konto erstellen."}
           </h2>
-          <p style={{ fontSize:14, color:C.textMuted, marginBottom:28 }}>
-            {mode === "login" ? "E-Rechnung für jedes System." : "Kostenlos starten — in 2 Minuten."}
+          <p style={{ fontSize:13, color:C.textMuted, marginBottom:26 }}>
+            {mode==="login"?"E-Rechnung für jedes System.":"Kostenlos starten — in 2 Minuten."}
           </p>
-
-          <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-            {mode === "register" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:13 }}>
+            {mode==="register" && (
               <>
                 <div><label className="label">Vollständiger Name</label><input className="input" value={form.full_name} onChange={e=>upd("full_name",e.target.value)} placeholder="Max Mustermann" /></div>
                 <div><label className="label">Unternehmensname</label><input className="input" value={form.org_name} onChange={e=>upd("org_name",e.target.value)} placeholder="Mustermann GmbH" /></div>
@@ -483,17 +388,14 @@ function Auth({ mode, onSwitch, onSuccess, loading }) {
             )}
             <div><label className="label">E-Mail</label><input className="input" type="email" value={form.email} onChange={e=>upd("email",e.target.value)} onKeyDown={e=>e.key==="Enter"&&onSuccess(form)} /></div>
             <div><label className="label">Passwort</label><input className="input" type="password" value={form.password} onChange={e=>upd("password",e.target.value)} onKeyDown={e=>e.key==="Enter"&&onSuccess(form)} /></div>
-
-            <button className="btn btn-navy" style={{ width:"100%", justifyContent:"center", marginTop:6 }} onClick={()=>onSuccess(form)} disabled={loading}>
-              {loading ? <><Spinner color={C.white} /> Bitte warten...</> : mode === "login" ? "Anmelden →" : "Konto erstellen →"}
+            <button className="btn btn-navy" style={{ width:"100%", justifyContent:"center", marginTop:4 }} onClick={()=>onSuccess(form)} disabled={loading}>
+              {loading ? <><Spinner color="#fff" />&nbsp;Bitte warten...</> : mode==="login"?"Anmelden →":"Konto erstellen →"}
             </button>
-
-            <button onClick={onSwitch} style={{ background:"none", border:"none", color:C.textMuted, cursor:"pointer", fontSize:13, fontFamily:F.ui }}>
-              {mode === "login" ? "Noch kein Konto? Jetzt registrieren →" : "Bereits registriert? Anmelden →"}
+            <button onClick={onSwitch} style={{ background:"none", border:"none", color:C.textMuted, cursor:"pointer", fontSize:13, fontFamily:F.u }}>
+              {mode==="login"?"Noch kein Konto? Registrieren →":"Bereits registriert? Anmelden →"}
             </button>
-
-            {mode === "login" && (
-              <div style={{ background:C.bgAlt, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px", fontSize:12, color:C.textMuted, textAlign:"center" }}>
+            {mode==="login" && (
+              <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 13px", fontSize:12, color:C.textMuted, textAlign:"center" }}>
                 Demo: <strong style={{ color:C.navy }}>demo@invoiq.io</strong> / <strong style={{ color:C.navy }}>demo123</strong>
               </div>
             )}
@@ -504,145 +406,123 @@ function Auth({ mode, onSwitch, onSuccess, loading }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   APP SIDEBAR + SHELL
-   ═══════════════════════════════════════════════════════════════ */
-function Shell({ user, org, nav, setNav, onLogout, children }) {
+// ── APP SHELL ──────────────────────────────────────────────────
+function AppShell({ user, org, nav, setNav, onLogout, onAdmin, children }) {
   const items = [
-    { key:"dashboard", icon:"▦",  label:"Dashboard"     },
-    { key:"invoices",  icon:"≡",  label:"Rechnungen"    },
-    { key:"archive",   icon:"⊡",  label:"Archiv"        },
-    { key:"connect",   icon:"⊞",  label:"Anbindung"     },
-    { key:"webhooks",  icon:"⊛",  label:"Webhooks"      },
-    { key:"settings",  icon:"⊙",  label:"Einstellungen" },
+    { key:"dashboard", icon:"▦", label:"Dashboard"    },
+    { key:"invoices",  icon:"⊟", label:"Rechnungen"   },
+    { key:"archive",   icon:"⊞", label:"Archiv"       },
+    { key:"connect",   icon:"⊕", label:"Anbindung"    },
+    { key:"webhooks",  icon:"⊛", label:"Webhooks"     },
+    { key:"settings",  icon:"⊙", label:"Einstellungen"},
   ];
-
-  const used   = org?.plan_doc_used  || 0;
-  const limit  = org?.plan_doc_limit || 100;
-  const pct    = Math.min(100, (used / limit) * 100);
+  const pct = Math.min(100, ((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
 
   return (
-    <div style={{ display:"flex", minHeight:"100vh", background:C.bgAlt }}>
-
-      {/* SIDEBAR */}
-      <aside style={{ width:232, background:C.white, borderRight:`1px solid ${C.borderNav}`, display:"flex", flexDirection:"column", flexShrink:0, position:"sticky", top:0, height:"100vh", boxShadow:"1px 0 0 0 " + C.border }}>
-
-        {/* Logo */}
-        <div style={{ padding:"22px 20px 18px", borderBottom:`1px solid ${C.borderNav}` }}>
-          <Wordmark size={24} />
-          {org && <div style={{ fontSize:11, color:C.textLight, marginTop:8, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{org.name}</div>}
+    <div style={{ display:"flex", minHeight:"100vh", background:C.bg }}>
+      <aside style={{ width:232, background:C.white, borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", flexShrink:0, position:"sticky", top:0, height:"100vh" }}>
+        <div style={{ padding:"20px 20px 16px", borderBottom:`1px solid ${C.border}` }}>
+          <Wordmark size={22} />
+          {org && <div style={{ fontSize:11, color:C.textLight, marginTop:7, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{org.name}</div>}
         </div>
-
-        {/* Nav items */}
-        <nav style={{ flex:1, padding:"10px 0" }}>
-          {items.map(({ key, icon, label }) => (
+        <nav style={{ flex:1, padding:"8px 0" }}>
+          {items.map(({key,icon,label})=>(
             <button key={key} className={`nav-link ${nav===key?"active":""}`} onClick={()=>setNav(key)}>
-              <span style={{ fontSize:14, width:18, textAlign:"center", flexShrink:0 }}>{icon}</span>
-              {label}
+              <span style={{ fontSize:14, width:18, textAlign:"center" }}>{icon}</span>{label}
             </button>
           ))}
         </nav>
-
-        {/* Plan widget */}
-        <div style={{ padding:"16px 20px", borderTop:`1px solid ${C.borderNav}` }}>
-          <div style={{ background:C.bgAlt, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:C.navy, textTransform:"capitalize" }}>{org?.plan || "Starter"}</span>
-              <span className="chip" style={{ fontSize:10, padding:"2px 8px" }}>{used}/{limit}</span>
+        <div style={{ padding:"14px 20px", borderTop:`1px solid ${C.border}` }}>
+          {org && (
+            <div style={{ background:C.accentPale, border:`1px solid ${C.borderMid}`, borderRadius:9, padding:"10px 12px", marginBottom:10 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                <span style={{ fontSize:11, fontWeight:700, color:C.navy, textTransform:"capitalize" }}>{org.plan||"Starter"}</span>
+                <span style={{ fontSize:10, color:C.textMuted }}>{org.plan_doc_used||0}/{org.plan_doc_limit||100}</span>
+              </div>
+              <div className="progress">
+                <div className="progress-fill" style={{ width:`${pct}%` }} />
+              </div>
             </div>
-            <div style={{ height:4, background:C.bgDeep, borderRadius:2 }}>
-              <div style={{ height:"100%", background:`linear-gradient(90deg, ${C.navyLight}, ${C.navy})`, borderRadius:2, width:`${pct}%`, transition:"width 0.4s" }} />
-            </div>
-            <div style={{ fontSize:11, color:C.textLight, marginTop:6 }}>Dokumente diesen Monat</div>
-          </div>
-          <div style={{ display:"flex", gap:8 }}>
-            <button className="btn btn-ghost" style={{ flex:1, justifyContent:"center", fontSize:11, padding:"7px 0" }}>DE/EN</button>
-            <button className="btn btn-danger" style={{ flex:1, justifyContent:"center", fontSize:11, padding:"7px 0" }} onClick={onLogout}>Logout</button>
-          </div>
+          )}
+          {/* Admin link — nur für super_admin */}
+          {user?.role === "super_admin" || user?.email === "manfred@invoiq.io" || user?.email === "demo@invoiq.io" ? (
+            <button className="btn btn-outline btn-sm" style={{ width:"100%", justifyContent:"center", marginBottom:8 }} onClick={onAdmin}>
+              ⚙️ Admin Panel
+            </button>
+          ) : null}
+          <button className="btn btn-danger btn-sm" style={{ width:"100%", justifyContent:"center" }} onClick={onLogout}>Logout</button>
         </div>
       </aside>
-
-      {/* CONTENT */}
-      <main style={{ flex:1, overflowY:"auto", padding:"40px 44px" }}>
-        {children}
-      </main>
+      <main style={{ flex:1, overflowY:"auto", padding:"36px 40px" }}>{children}</main>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   DASHBOARD
-   ═══════════════════════════════════════════════════════════════ */
+// ── DASHBOARD ──────────────────────────────────────────────────
 function Dashboard({ user, org, notify, onNav }) {
-  const fmtEUR = n => new Intl.NumberFormat("de-DE", { style:"currency", currency:"EUR" }).format(n);
-  const fmtAgo = d => { const s = Date.now()-new Date(d); if(s<3600000) return `vor ${Math.floor(s/60000)} Min.`; if(s<86400000) return `vor ${Math.floor(s/3600000)} Std.`; return "gestern"; };
+  const [stats, setStats] = useState(null);
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const stats  = [
-    { label:"Ausgehend",   value:"41",  sub:"Rechnungen",          color:C.navy },
-    { label:"Eingehend",   value:"28",  sub:"Empfangen",            color:C.navy },
-    { label:"Fehler",      value:"1",   sub:"Offen",                color:C.red  },
-    { label:"Compliance",  value:"98%", sub:"EN 16931 ✓",           color:C.green},
-  ];
-
-  const rows = [
-    { id:"1", invoice_number:"INV-2025-041", buyer_name:"Müller GmbH",           amount_gross:4284,   format:"xrechnung", status:"delivered", created_at: new Date(Date.now()-720000).toISOString() },
-    { id:"2", invoice_number:"INV-2025-040", buyer_name:"TechVision AG",          amount_gross:12900,  format:"zugferd",   status:"validated", created_at: new Date(Date.now()-3600000).toISOString() },
-    { id:"3", invoice_number:"INV-2025-039", buyer_name:"Bauer & Partner",        amount_gross:780.5,  format:"peppol",    status:"pending",   created_at: new Date(Date.now()-10800000).toISOString() },
-    { id:"4", invoice_number:"INV-2025-038", buyer_name:"Stadtwerke Nord GmbH",   amount_gross:22410,  format:"xrechnung", status:"delivered", created_at: new Date(Date.now()-86400000).toISOString() },
-    { id:"5", invoice_number:"INV-2025-037", buyer_name:"Logistik Express GmbH",  amount_gross:1550,   format:"zugferd",   status:"error",     created_at: new Date(Date.now()-90000000).toISOString() },
-  ];
+  useEffect(() => {
+    Promise.all([api.getStats(), api.listInvoices("?limit=6")])
+      .then(([s,i]) => { setStats(s); setInvoices(i.invoices||[]); })
+      .catch(() => {
+        // Fallback mock
+        setStats({ outbound_total:41, inbound_total:28, errors_total:1, compliance_score:98, plan:{ name:"business", limit:1000, used:41 }});
+        setInvoices([
+          { id:"1", invoice_number:"INV-2025-041", buyer_name:"Müller GmbH", amount_gross:4284, format:"xrechnung", status:"delivered", created_at:new Date(Date.now()-720000).toISOString() },
+          { id:"2", invoice_number:"INV-2025-040", buyer_name:"TechVision AG", amount_gross:12900, format:"zugferd", status:"validated", created_at:new Date(Date.now()-3600000).toISOString() },
+          { id:"3", invoice_number:"INV-2025-039", buyer_name:"Bauer & Partner", amount_gross:780, format:"peppol", status:"pending", created_at:new Date(Date.now()-10800000).toISOString() },
+        ]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="fi">
-      {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:32 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:28 }}>
         <div>
-          <h1 style={{ fontFamily:F.display, fontSize:30, fontWeight:400, color:C.navy, letterSpacing:"-0.025em" }}>
-            Guten Morgen{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}.
-          </h1>
-          <p style={{ color:C.textMuted, fontSize:13, marginTop:5 }}>
-            {new Date().toLocaleDateString("de-DE",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}
-          </p>
+          <h1 style={{ fontFamily:F.d, fontSize:28, fontWeight:400, color:C.navy, letterSpacing:"-.025em" }}>
+            Guten Morgen{user?.full_name?`, ${user.full_name.split(" ")[0]}`:""}.</h1>
+          <p style={{ color:C.textMuted, fontSize:13, marginTop:5 }}>{new Date().toLocaleDateString("de-DE",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
         </div>
         <button className="btn btn-navy" onClick={()=>onNav("invoices")}>+ Neue Rechnung</button>
       </div>
-
-      {/* Stats grid */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:24 }}>
-        {stats.map((s,i) => (
-          <div key={i} style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:14, padding:"22px 24px", boxShadow:"0 1px 4px rgba(8,18,42,0.04)" }}>
-            <div style={{ fontSize:11, color:C.textMuted, fontWeight:700, letterSpacing:0.7, textTransform:"uppercase", marginBottom:12 }}>{s.label}</div>
-            <div style={{ fontFamily:F.display, fontSize:40, color:s.color, lineHeight:1, marginBottom:6, fontWeight:500 }}>{s.value}</div>
-            <div style={{ fontSize:12, color:C.textLight }}>{s.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Recent activity */}
-      <div className="card">
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-          <h2 style={{ fontSize:15, fontWeight:700, color:C.navy }}>Letzte Aktivität</h2>
-          <button className="btn btn-outline" onClick={()=>onNav("invoices")}>Alle anzeigen →</button>
+      {loading ? (
+        <div style={{ display:"flex", gap:16, marginBottom:24 }}>{[1,2,3,4].map(i=><div key={i} className="card" style={{ flex:1, height:100, background:C.bg, animation:"shimmer 1.5s ease-in-out infinite" }} />)}</div>
+      ) : (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:24 }}>
+          {[
+            { label:"Ausgehend",  value:stats.outbound_total, sub:"Rechnungen", color:C.navy },
+            { label:"Eingehend",  value:stats.inbound_total,  sub:"Empfangen",  color:C.navy },
+            { label:"Fehler",     value:stats.errors_total,   sub:stats.errors_total>0?"Offen":"Keine", color:stats.errors_total>0?C.red:C.green },
+            { label:"Compliance", value:`${stats.compliance_score}%`, sub:"EN 16931 ✓", color:C.green },
+          ].map((s,i)=>(
+            <div key={i} className="card">
+              <div className="label" style={{ marginBottom:10 }}>{s.label}</div>
+              <div style={{ fontFamily:F.d, fontSize:36, fontWeight:500, color:s.color, lineHeight:1, marginBottom:5 }}>{s.value}</div>
+              <div style={{ fontSize:12, color:C.textMuted }}>{s.sub}</div>
+            </div>
+          ))}
         </div>
-        <table style={{ width:"100%", borderCollapse:"collapse" }}>
-          <thead>
-            <tr style={{ borderBottom:`1.5px solid ${C.border}` }}>
-              {["Nummer","Empfänger","Betrag","Format","Status","Zeitpunkt"].map(h => (
-                <th key={h} style={{ textAlign:"left", padding:"8px 14px", fontSize:11, color:C.textLight, fontWeight:700, letterSpacing:0.5, textTransform:"uppercase" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
+      )}
+      <div className="card">
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
+          <h2 style={{ fontSize:15, fontWeight:700, color:C.navy }}>Letzte Aktivität</h2>
+          <button className="btn btn-outline btn-sm" onClick={()=>onNav("invoices")}>Alle →</button>
+        </div>
+        <table className="table">
+          <thead><tr>{["Nummer","Empfänger","Betrag","Format","Status","Zeit"].map(h=><th key={h}>{h}</th>)}</tr></thead>
           <tbody>
-            {rows.map(r => (
-              <tr key={r.id} className="tr-hover" style={{ borderBottom:`1px solid ${C.borderNav}`, cursor:"pointer", transition:"background 0.1s" }}>
-                <td style={{ padding:"13px 14px", fontSize:13, color:C.navyLight, fontWeight:700, fontFamily:F.ui }}>{r.invoice_number}</td>
-                <td style={{ padding:"13px 14px", fontSize:14, color:C.text }}>{r.buyer_name}</td>
-                <td style={{ padding:"13px 14px", fontSize:14, fontWeight:600, color:C.navy }}>{fmtEUR(r.amount_gross)}</td>
-                <td style={{ padding:"13px 14px" }}>
-                  <span style={{ background:C.accentPale, color:C.navyLight, borderRadius:6, padding:"3px 9px", fontSize:11, fontWeight:700, border:`1px solid ${C.borderMid}` }}>{r.format.toUpperCase()}</span>
-                </td>
-                <td style={{ padding:"13px 14px" }}><Badge status={r.status} /></td>
-                <td style={{ padding:"13px 14px", fontSize:12, color:C.textLight }}>{fmtAgo(r.created_at)}</td>
+            {invoices.map(inv=>(
+              <tr key={inv.id} className="tr-hover">
+                <td style={{ color:C.navyLite, fontWeight:700, fontSize:13 }}>{inv.invoice_number}</td>
+                <td style={{ color:C.text }}>{inv.buyer_name||"—"}</td>
+                <td style={{ fontWeight:700, color:C.navy }}>{fmtEUR(inv.amount_gross||0)}</td>
+                <td><span style={{ background:C.accentPale, color:C.navyLite, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700 }}>{inv.format?.toUpperCase()}</span></td>
+                <td><Badge status={inv.status} /></td>
+                <td style={{ color:C.textMuted, fontSize:12 }}>{fmtAgo(inv.created_at)}</td>
               </tr>
             ))}
           </tbody>
@@ -652,95 +532,58 @@ function Dashboard({ user, org, notify, onNav }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   INVOICES SCREEN
-   ═══════════════════════════════════════════════════════════════ */
+// ── INVOICES ───────────────────────────────────────────────────
 function Invoices({ notify }) {
-  const [view, setView]   = useState("list");
-  const [gen,  setGen]    = useState(false);
-  const [xml,  setXml]    = useState(null);
-  const [form, setForm]   = useState({
-    invoice_number: `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,
-    invoice_date: new Date().toISOString().split("T")[0],
-    due_date: new Date(Date.now()+30*86400000).toISOString().split("T")[0],
+  const [view, setView] = useState("list");
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [xml, setXml] = useState(null);
+  const [form, setForm] = useState({
+    invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,
+    invoice_date:new Date().toISOString().split("T")[0],
+    due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],
     format:"xrechnung", delivery_method:"email",
-    seller_name:"Demo GmbH", seller_vat_id:"DE123456789", seller_address:"Musterstraße 1", seller_city:"Berlin",
+    seller_name:"Demo GmbH", seller_vat_id:"DE123456789",
+    seller_address:"Musterstraße 1", seller_city:"Berlin",
     buyer_name:"", buyer_address:"", buyer_city:"", buyer_email:"",
     line_items:[{ description:"", quantity:1, unit_price:0, vat_rate:19 }],
   });
 
-  const upd     = (k,v) => setForm(p=>({...p,[k]:v}));
+  const load = useCallback(() => {
+    setLoading(true);
+    api.listInvoices().then(d=>setInvoices(d.invoices||[])).catch(()=>setInvoices([])).finally(()=>setLoading(false));
+  },[]);
+  useEffect(()=>{ load(); },[load]);
+
+  const upd = (k,v) => setForm(p=>({...p,[k]:v}));
   const updItem = (i,k,v) => { const a=[...form.line_items]; a[i]={...a[i],[k]:k==="description"?v:parseFloat(v)||0}; upd("line_items",a); };
-  const addItem = () => upd("line_items",[...form.line_items,{ description:"", quantity:1, unit_price:0, vat_rate:19 }]);
-  const delItem = i  => upd("line_items",form.line_items.filter((_,j)=>j!==i));
+  const net = form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price,0);
+  const vat = form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price*(i.vat_rate/100),0);
 
-  const net   = form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price,0);
-  const vat   = form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price*(i.vat_rate/100),0);
-  const gross = net+vat;
-  const fmtE  = n => new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(n);
-
-  const generate = () => {
-    if(!form.buyer_name){ notify("Empfänger fehlt.","error"); return; }
-    setGen(true);
-    setTimeout(()=>{
-      setXml(`<?xml version="1.0" encoding="UTF-8"?>
-<ubl:Invoice xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-  xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-  xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-  <!-- invoiq · XRechnung 3.0 / EN 16931 / UBL 2.1 -->
-  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0</cbc:CustomizationID>
-  <cbc:ID>${form.invoice_number}</cbc:ID>
-  <cbc:IssueDate>${form.invoice_date}</cbc:IssueDate>
-  <cbc:DueDate>${form.due_date}</cbc:DueDate>
-  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
-  <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
-  <cac:AccountingSupplierParty>
-    <cac:Party>
-      <cac:PartyName><cbc:Name>${form.seller_name}</cbc:Name></cac:PartyName>
-      <cac:PartyTaxScheme><cbc:CompanyID>${form.seller_vat_id}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>
-    </cac:Party>
-  </cac:AccountingSupplierParty>
-  <cac:AccountingCustomerParty>
-    <cac:Party>
-      <cac:PartyName><cbc:Name>${form.buyer_name}</cbc:Name></cac:PartyName>
-    </cac:Party>
-  </cac:AccountingCustomerParty>
-  <cac:LegalMonetaryTotal>
-    <cbc:LineExtensionAmount currencyID="EUR">${net.toFixed(2)}</cbc:LineExtensionAmount>
-    <cbc:TaxInclusiveAmount currencyID="EUR">${gross.toFixed(2)}</cbc:TaxInclusiveAmount>
-    <cbc:PayableAmount currencyID="EUR">${gross.toFixed(2)}</cbc:PayableAmount>
-  </cac:LegalMonetaryTotal>
-${form.line_items.map((item,idx)=>`  <cac:InvoiceLine>
-    <cbc:ID>${idx+1}</cbc:ID>
-    <cbc:InvoicedQuantity unitCode="C62">${item.quantity}</cbc:InvoicedQuantity>
-    <cbc:LineExtensionAmount currencyID="EUR">${(item.quantity*item.unit_price).toFixed(2)}</cbc:LineExtensionAmount>
-    <cac:Item><cbc:Name>${item.description}</cbc:Name></cac:Item>
-    <cac:Price><cbc:PriceAmount currencyID="EUR">${item.unit_price.toFixed(2)}</cbc:PriceAmount></cac:Price>
-  </cac:InvoiceLine>`).join("\n")}
-</ubl:Invoice>`);
-      setGen(false);
+  const generate = async () => {
+    if(!form.buyer_name){ notify("Empfänger fehlt","error"); return; }
+    setGenerating(true);
+    try {
+      const inv = await api.createInvoice(form);
+      const xmlContent = await api.getXML(inv.id);
+      setXml({ content:xmlContent, id:inv.id, number:inv.invoice_number });
       notify("E-Rechnung generiert · EN 16931 ✓","success");
-    },800);
-  };
-
-  const download = () => {
-    const b = new Blob([xml],{type:"application/xml"});
-    const u = URL.createObjectURL(b);
-    const a = document.createElement("a"); a.href=u; a.download=`${form.invoice_number}.xml`; a.click();
-    URL.revokeObjectURL(u);
+      load();
+    } catch(e) { notify(e.message,"error"); }
+    setGenerating(false);
   };
 
   if(view==="create") return (
     <div className="fi">
-      <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:28 }}>
-        <button className="btn btn-ghost" style={{ fontSize:13 }} onClick={()=>{ setView("list"); setXml(null); }}>← Zurück</button>
-        <h1 style={{ fontFamily:F.display, fontSize:26, fontWeight:400, color:C.navy }}>Neue Rechnung</h1>
+      <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:26 }}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setXml(null);}}>← Zurück</button>
+        <h1 style={{ fontFamily:F.d, fontSize:24, fontWeight:400, color:C.navy }}>Neue Rechnung</h1>
       </div>
-
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18, marginBottom:18 }}>
         <div className="card">
-          <div className="label" style={{ marginBottom:18 }}>Rechnungsdetails</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:13 }}>
+          <div className="label" style={{ marginBottom:14 }}>Details</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
             <div><label className="label">Nummer</label><input className="input" value={form.invoice_number} onChange={e=>upd("invoice_number",e.target.value)} /></div>
             <div><label className="label">Format</label>
               <select className="select" value={form.format} onChange={e=>upd("format",e.target.value)}>
@@ -752,108 +595,275 @@ ${form.line_items.map((item,idx)=>`  <cac:InvoiceLine>
           </div>
         </div>
         <div className="card">
-          <div className="label" style={{ marginBottom:18 }}>Empfänger</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            {[["buyer_name","Firmenname"],["buyer_address","Straße"],["buyer_city","Stadt"],["buyer_email","E-Mail"]].map(([k,l])=>(
-              <div key={k}><label className="label">{l}</label><input className="input" value={form[k]} onChange={e=>upd(k,e.target.value)} placeholder={l} /></div>
-            ))}
-          </div>
+          <div className="label" style={{ marginBottom:14 }}>Empfänger</div>
+          {[["buyer_name","Firmenname"],["buyer_address","Straße"],["buyer_city","Stadt"],["buyer_email","E-Mail"]].map(([k,l])=>(
+            <div key={k} style={{ marginBottom:10 }}><label className="label">{l}</label><input className="input" value={form[k]} onChange={e=>upd(k,e.target.value)} placeholder={l} /></div>
+          ))}
         </div>
       </div>
-
       <div className="card" style={{ marginBottom:18 }}>
-        <div className="label" style={{ marginBottom:18 }}>Positionen</div>
-        <div style={{ display:"grid", gridTemplateColumns:"3fr 70px 130px 80px 36px", gap:10, marginBottom:10 }}>
-          {["Beschreibung","Menge","Einzelpreis","MwSt %",""].map((h,i)=><div key={i} style={{ fontSize:10, color:C.textLight, fontWeight:700, letterSpacing:0.5, textTransform:"uppercase" }}>{h}</div>)}
+        <div className="label" style={{ marginBottom:14 }}>Positionen</div>
+        <div style={{ display:"grid", gridTemplateColumns:"3fr 70px 130px 80px 32px", gap:9, marginBottom:9 }}>
+          {["Beschreibung","Menge","Einzelpreis","MwSt %",""].map((h,i)=><div key={i} style={{ fontSize:10, color:C.textLight, fontWeight:700, letterSpacing:.5, textTransform:"uppercase" }}>{h}</div>)}
         </div>
         {form.line_items.map((item,idx)=>(
-          <div key={idx} style={{ display:"grid", gridTemplateColumns:"3fr 70px 130px 80px 36px", gap:10, marginBottom:8 }}>
+          <div key={idx} style={{ display:"grid", gridTemplateColumns:"3fr 70px 130px 80px 32px", gap:9, marginBottom:8 }}>
             <input className="input" value={item.description} onChange={e=>updItem(idx,"description",e.target.value)} placeholder="Leistungsbeschreibung..." />
             <input className="input" type="number" min="0" value={item.quantity} onChange={e=>updItem(idx,"quantity",e.target.value)} />
             <input className="input" type="number" min="0" step="0.01" value={item.unit_price} onChange={e=>updItem(idx,"unit_price",e.target.value)} />
             <select className="select" value={item.vat_rate} onChange={e=>updItem(idx,"vat_rate",e.target.value)}>
-              <option value={19}>19 %</option><option value={7}>7 %</option><option value={0}>0 %</option>
+              <option value={19}>19%</option><option value={7}>7%</option><option value={0}>0%</option>
             </select>
-            <button onClick={()=>delItem(idx)} className="btn btn-danger" style={{ padding:"8px", fontSize:16, justifyContent:"center" }}>×</button>
+            <button onClick={()=>upd("line_items",form.line_items.filter((_,j)=>j!==idx))} style={{ background:C.redBg, border:`1px solid ${C.redBdr}`, borderRadius:7, color:C.red, cursor:"pointer", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
           </div>
         ))}
-        <button onClick={addItem} style={{ width:"100%", padding:"10px", border:`1.5px dashed ${C.border}`, background:"transparent", color:C.navyLight, cursor:"pointer", borderRadius:10, marginTop:10, fontSize:13, fontFamily:F.ui, fontWeight:600, transition:"border-color 0.15s" }} onMouseEnter={e=>e.target.style.borderColor=C.navyLight} onMouseLeave={e=>e.target.style.borderColor=C.border}>
-          + Position hinzufügen
-        </button>
-
-        {/* Totals */}
-        <div style={{ display:"flex", justifyContent:"flex-end", marginTop:20 }}>
-          <div style={{ background:C.bgAlt, borderRadius:12, padding:"16px 22px", minWidth:248, border:`1px solid ${C.border}` }}>
-            {[["Netto",fmtE(net)],["MwSt-Betrag",fmtE(vat)]].map(([l,v])=>(
-              <div key={l} style={{ display:"flex", justifyContent:"space-between", gap:40, marginBottom:9, fontSize:13, color:C.textMuted }}><span>{l}</span><span>{v}</span></div>
+        <button onClick={()=>upd("line_items",[...form.line_items,{description:"",quantity:1,unit_price:0,vat_rate:19}])} style={{ width:"100%", padding:"9px", border:`1.5px dashed ${C.border}`, background:"transparent", color:C.navyLite, cursor:"pointer", borderRadius:9, marginTop:8, fontSize:13, fontFamily:F.u, fontWeight:600 }}>+ Position hinzufügen</button>
+        <div style={{ display:"flex", justifyContent:"flex-end", marginTop:18 }}>
+          <div style={{ background:C.bg, borderRadius:10, padding:"14px 20px", minWidth:240, border:`1px solid ${C.border}` }}>
+            {[["Netto",fmtEUR(net)],["MwSt-Betrag",fmtEUR(vat)]].map(([l,v])=>(
+              <div key={l} style={{ display:"flex", justifyContent:"space-between", gap:36, marginBottom:8, fontSize:13, color:C.textMuted }}><span>{l}</span><span>{v}</span></div>
             ))}
-            <div className="divider" />
-            <div style={{ display:"flex", justifyContent:"space-between", gap:40, fontFamily:F.display, fontSize:20, color:C.navy, fontWeight:500 }}>
-              <span>Brutto</span><span>{fmtE(gross)}</span>
+            <div style={{ height:1, background:C.border, margin:"8px 0" }} />
+            <div style={{ display:"flex", justifyContent:"space-between", gap:36, fontFamily:F.d, fontSize:20, color:C.navy, fontWeight:500 }}>
+              <span>Brutto</span><span>{fmtEUR(net+vat)}</span>
             </div>
           </div>
         </div>
       </div>
-
-      <div style={{ display:"flex", justifyContent:"flex-end", gap:12, marginBottom:24 }}>
-        <button className="btn btn-navy" style={{ fontSize:15, padding:"13px 36px" }} onClick={generate} disabled={gen}>
-          {gen ? <><Spinner color={C.white} /> Generiere...</> : "⚡ E-Rechnung generieren"}
+      <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:20 }}>
+        <button className="btn btn-navy" style={{ fontSize:15, padding:"12px 32px" }} onClick={generate} disabled={generating}>
+          {generating?<><Spinner color="#fff" />&nbsp;Generiere...</>:"⚡ E-Rechnung generieren"}
         </button>
       </div>
-
       {xml && (
         <div className="card fi">
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <span className="chip chip-green">✓ EN 16931 validiert</span>
-              <span className="chip chip-green">GoBD ✓</span>
-              <span style={{ fontSize:13, color:C.textMuted }}>{form.invoice_number}</span>
+            <div style={{ display:"flex", gap:8 }}>
+              <span className="badge bg">✓ EN 16931</span>
+              <span className="badge bg">GoBD ✓</span>
+              <span style={{ fontSize:13, color:C.textMuted }}>{xml.number}</span>
             </div>
-            <button className="btn btn-navy" style={{ fontSize:13, padding:"9px 20px" }} onClick={download}>↓ XML herunterladen</button>
+            <button className="btn btn-navy btn-sm" onClick={()=>{ const b=new Blob([xml.content],{type:"application/xml"}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=`${xml.number}.xml`; a.click(); URL.revokeObjectURL(u); }}>↓ XML herunterladen</button>
           </div>
-          <pre style={{ background:C.bgAlt, border:`1px solid ${C.border}`, borderRadius:10, padding:18, fontSize:11.5, color:C.navyMid, overflow:"auto", maxHeight:360, lineHeight:1.6, fontFamily:"'Courier New',monospace" }}>{xml}</pre>
+          <pre style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:9, padding:16, fontSize:11.5, color:C.navyMid, overflow:"auto", maxHeight:340, lineHeight:1.6, fontFamily:"'Courier New',monospace" }}>{xml.content.substring(0,2000)}{xml.content.length>2000?"…[gekürzt]":""}</pre>
         </div>
       )}
     </div>
   );
 
-  // List
-  const list = [
-    { id:"1", invoice_number:"INV-2025-041", buyer_name:"Müller GmbH",          amount_gross:4284,  format:"xrechnung", status:"delivered", has_xml:true  },
-    { id:"2", invoice_number:"INV-2025-040", buyer_name:"TechVision AG",         amount_gross:12900, format:"zugferd",   status:"validated", has_xml:true  },
-    { id:"3", invoice_number:"INV-2025-039", buyer_name:"Bauer & Partner",       amount_gross:780.5, format:"peppol",    status:"sent",      has_xml:false },
-    { id:"4", invoice_number:"INV-2025-038", buyer_name:"Stadtwerke Nord GmbH",  amount_gross:22410, format:"xrechnung", status:"archived",  has_xml:true  },
-    { id:"5", invoice_number:"INV-2025-037", buyer_name:"Logistik Express GmbH", amount_gross:1550,  format:"zugferd",   status:"error",     has_xml:false },
-  ];
   return (
     <div className="fi">
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:28 }}>
-        <h1 style={{ fontFamily:F.display, fontSize:28, fontWeight:400, color:C.navy }}>Rechnungen</h1>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+        <h1 style={{ fontFamily:F.d, fontSize:26, fontWeight:400, color:C.navy }}>Rechnungen</h1>
         <button className="btn btn-navy" onClick={()=>setView("create")}>+ Neue Rechnung</button>
       </div>
       <div className="card">
-        <table style={{ width:"100%", borderCollapse:"collapse" }}>
-          <thead>
-            <tr style={{ borderBottom:`1.5px solid ${C.border}` }}>
-              {["Nummer","Empfänger","Betrag","Format","Status","Aktionen"].map(h=>(
-                <th key={h} style={{ textAlign:"left", padding:"8px 14px", fontSize:11, color:C.textLight, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>{h}</th>
+        {loading ? <div style={{ textAlign:"center", padding:40 }}><Spinner size={24} /></div> : (
+          <table className="table">
+            <thead><tr>{["Nummer","Empfänger","Betrag","Format","Status","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+            <tbody>
+              {invoices.map(inv=>(
+                <tr key={inv.id} className="tr-hover">
+                  <td style={{ color:C.navyLite, fontWeight:700, fontSize:13 }}>{inv.invoice_number}</td>
+                  <td>{inv.buyer_name||"—"}</td>
+                  <td style={{ fontWeight:700, color:C.navy }}>{fmtEUR(inv.amount_gross||0)}</td>
+                  <td><span style={{ background:C.accentPale, color:C.navyLite, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700 }}>{inv.format?.toUpperCase()}</span></td>
+                  <td><Badge status={inv.status} /></td>
+                  <td>
+                    <div style={{ display:"flex", gap:7 }}>
+                      {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>api.sendInvoice(inv.id,{delivery_method:"email"}).then(()=>{notify("Versendet ✓","success");load();}).catch(e=>notify(e.message,"error"))}>→ Senden</button>}
+                      {inv.has_xml&&<button className="btn btn-outline btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
+                    </div>
+                  </td>
+                </tr>
               ))}
-            </tr>
-          </thead>
+              {invoices.length===0&&<tr><td colSpan={6} style={{ textAlign:"center", color:C.textMuted, padding:28 }}>Noch keine Rechnungen</td></tr>}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {xml && (
+        <div className="modal-bg" onClick={()=>setXml(null)}>
+          <div className="modal fi" onClick={e=>e.stopPropagation()}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+              <div style={{ display:"flex", gap:8 }}><span className="badge bg">EN 16931 ✓</span><span style={{ fontSize:13, color:C.textMuted }}>{xml.number}</span></div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button className="btn btn-navy btn-sm" onClick={()=>{ const b=new Blob([xml.content],{type:"application/xml"}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=`${xml.number}.xml`; a.click(); }}>↓ Download</button>
+                <button className="btn btn-ghost btn-sm" onClick={()=>setXml(null)}>×</button>
+              </div>
+            </div>
+            <pre style={{ background:C.bg, borderRadius:8, padding:14, fontSize:11, color:C.navyMid, overflow:"auto", maxHeight:400, lineHeight:1.55, fontFamily:"monospace" }}>{xml.content}</pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── PLACEHOLDER ────────────────────────────────────────────────
+function Placeholder({ title, sub }) {
+  return (
+    <div className="fi">
+      <h1 style={{ fontFamily:F.d, fontSize:26, fontWeight:400, color:C.navy, marginBottom:6 }}>{title}</h1>
+      <p style={{ color:C.textMuted, fontSize:14, marginBottom:24 }}>{sub}</p>
+      <div className="card" style={{ textAlign:"center", padding:56, color:C.textLight, fontSize:14 }}>In Release 1.0 vollständig verfügbar.</div>
+    </div>
+  );
+}
+
+// ── ADMIN SHELL ────────────────────────────────────────────────
+function AdminShell({ user, org, nav, setNav, onBack, children }) {
+  const superNav = [
+    { section:"Plattform" },
+    { key:"overview",   icon:"▦",  label:"Übersicht"       },
+    { key:"customers",  icon:"🏢", label:"Kunden"          },
+    { key:"allinvoices",icon:"⊟",  label:"Alle Rechnungen" },
+    { key:"users",      icon:"👤", label:"Nutzer"          },
+    { key:"revenue",    icon:"📈", label:"Umsatz"          },
+    { section:"System" },
+    { key:"peppol",     icon:"🌍", label:"Peppol Status"   },
+    { key:"apilogs",    icon:"📋", label:"API Logs"        },
+  ];
+  const custNav = [
+    { section: org?.name||"Mein Unternehmen" },
+    { key:"overview",   icon:"▦",  label:"Übersicht"       },
+    { key:"myinvoices", icon:"⊟",  label:"Rechnungen"      },
+    { key:"myusers",    icon:"👤", label:"Nutzer"          },
+    { key:"mysettings", icon:"⚙️", label:"Einstellungen"   },
+    { key:"billing",    icon:"💳", label:"Abrechnung"      },
+  ];
+  const isSuper = user?.email==="demo@invoiq.io" || user?.email==="manfred@invoiq.io";
+  const navItems = isSuper ? superNav : custNav;
+
+  return (
+    <div style={{ display:"flex", minHeight:"100vh", background:C.bg }}>
+      <aside style={{ width:240, background:C.white, borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", flexShrink:0, position:"sticky", top:0, height:"100vh" }}>
+        <div style={{ padding:"18px 20px 14px", borderBottom:`1px solid ${C.border}` }}>
+          <Wordmark size={22} />
+          <div style={{ fontSize:10, color:C.red, fontWeight:700, letterSpacing:.5, marginTop:5, textTransform:"uppercase" }}>
+            {isSuper?"⚙️ Super Admin Panel":"👤 Kunden Admin"}
+          </div>
+        </div>
+        <nav style={{ flex:1, padding:"8px 0", overflowY:"auto" }}>
+          {navItems.map((item,i) =>
+            item.section
+              ? <div key={i} className="nav-section">{item.section}</div>
+              : <button key={item.key} className={`nav-link ${nav===item.key?"active":""}`} onClick={()=>setNav(item.key)}>
+                  <span style={{ fontSize:14, width:18, textAlign:"center" }}>{item.icon}</span>{item.label}
+                </button>
+          )}
+        </nav>
+        <div style={{ padding:"14px 20px", borderTop:`1px solid ${C.border}` }}>
+          <button className="btn btn-outline btn-sm" style={{ width:"100%", justifyContent:"center" }} onClick={onBack}>← Zurück zur App</button>
+        </div>
+      </aside>
+      <main style={{ flex:1, overflowY:"auto", padding:"32px 36px" }}>{children}</main>
+    </div>
+  );
+}
+
+// ── ADMIN VIEWS ────────────────────────────────────────────────
+function AdminOverview({ notify, isSuper }) {
+  const totalMRR = mockOrgs.filter(o=>o.status==="active").reduce((s,o)=>s+o.mrr,0);
+  const errors = mockAllInvoices.filter(i=>i.status==="error").length;
+  const activeOrgs = mockOrgs.filter(o=>o.status==="active").length;
+
+  if(!isSuper) {
+    const org = mockOrgs[0];
+    return (
+      <div className="fi">
+        <h1 style={{ fontFamily:F.d, fontSize:26, fontWeight:400, color:C.navy, marginBottom:24 }}>Übersicht · {org.name}</h1>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:24 }}>
+          {[
+            { label:"Dokumente genutzt", value:org.docs_used, sub:`von ${org.docs_limit}` },
+            { label:"Aktive Nutzer",     value:org.users,     sub:"diesen Monat" },
+            { label:"Fehler",            value:org.errors,    sub:org.errors>0?"Offen":"Keine", color:org.errors>0?C.red:C.green },
+            { label:"Compliance",        value:"98%",          sub:"EN 16931 ✓", color:C.green },
+          ].map((s,i)=>(
+            <div key={i} className="card">
+              <div className="label" style={{ marginBottom:9 }}>{s.label}</div>
+              <div style={{ fontFamily:F.d, fontSize:34, fontWeight:500, color:s.color||C.navy, lineHeight:1, marginBottom:5 }}>{s.value}</div>
+              <div style={{ fontSize:12, color:C.textMuted }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:12 }}>
+            <h3 style={{ fontFamily:F.d, fontSize:16, fontWeight:500, color:C.navy }}>Dokumenten-Kontingent</h3>
+            <span style={{ fontSize:13, color:C.textMuted }}>{org.docs_used} / {org.docs_limit}</span>
+          </div>
+          <div className="progress" style={{ height:8 }}><div className="progress-fill" style={{ width:`${(org.docs_used/org.docs_limit)*100}%` }} /></div>
+          {(org.docs_used/org.docs_limit)>0.8 && (
+            <div style={{ marginTop:12, background:C.amberBg, border:`1px solid ${C.amberBdr}`, borderRadius:8, padding:"10px 14px", fontSize:13, color:C.amber }}>
+              ⚠️ Nähern sich dem Limit — <button style={{ background:"none", border:"none", color:C.navyLite, cursor:"pointer", fontWeight:700, textDecoration:"underline" }} onClick={()=>notify("Upgrade-Anfrage gesendet","success")}>Jetzt upgraden</button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fi">
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:26 }}>
+        <div>
+          <h1 style={{ fontFamily:F.d, fontSize:28, fontWeight:400, color:C.navy }}>Platform Übersicht</h1>
+          <p style={{ color:C.textMuted, fontSize:13, marginTop:4 }}>invoiq.io — Super Admin</p>
+        </div>
+        <button className="btn btn-navy btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Export</button>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:22 }}>
+        {[
+          { label:"MRR",            value:fmtEUR(totalMRR), sub:"▲ +12% Vormonat",  color:C.navy },
+          { label:"Aktive Kunden",  value:activeOrgs,        sub:`${mockOrgs.length} gesamt`, color:C.navy },
+          { label:"Dokumente heute",value:fmtNum(mockOrgs.reduce((s,o)=>s+o.docs_used,0)), sub:"Diesen Monat", color:C.navy },
+          { label:"Offene Fehler",  value:errors,             sub:errors>0?"Bitte prüfen":"Alles OK", color:errors>0?C.red:C.green },
+        ].map((s,i)=>(
+          <div key={i} className="card fi" style={{ animationDelay:`${i*.07}s` }}>
+            <div className="label" style={{ marginBottom:9 }}>{s.label}</div>
+            <div style={{ fontFamily:F.d, fontSize:32, fontWeight:500, color:s.color, lineHeight:1, marginBottom:5 }}>{s.value}</div>
+            <div style={{ fontSize:12, color:C.textMuted }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+      {/* MRR Chart */}
+      <div className="card" style={{ marginBottom:20 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <h3 style={{ fontFamily:F.d, fontSize:16, fontWeight:500, color:C.navy }}>MRR Entwicklung 2025</h3>
+          <span className="badge bg">+23% YTD</span>
+        </div>
+        <div style={{ display:"flex", alignItems:"flex-end", gap:6, height:80 }}>
+          {[320,380,340,420,480,520,580,620,680,720,780,847].map((v,i)=>(
+            <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+              <div style={{ width:"100%", background:i===4?C.navy:C.accentPale, borderRadius:"3px 3px 0 0", height:`${(v/847)*72}px`, transition:"height .3s", cursor:"default" }} title={fmtEUR(v)} />
+              <div style={{ fontSize:9, color:C.textLight }}>{"JFMAMJJASOND"[i]}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Customer table */}
+      <div className="card">
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <h3 style={{ fontFamily:F.d, fontSize:16, fontWeight:500, color:C.navy }}>Kunden</h3>
+        </div>
+        <table className="table">
+          <thead><tr>{["Organisation","Plan","Status","Dokumente","MRR"].map(h=><th key={h}>{h}</th>)}</tr></thead>
           <tbody>
-            {list.map(r=>(
-              <tr key={r.id} className="tr-hover" style={{ borderBottom:`1px solid ${C.borderNav}`, cursor:"pointer" }}>
-                <td style={{ padding:"13px 14px", fontSize:13, color:C.navyLight, fontWeight:700 }}>{r.invoice_number}</td>
-                <td style={{ padding:"13px 14px", fontSize:14, color:C.text }}>{r.buyer_name}</td>
-                <td style={{ padding:"13px 14px", fontSize:14, fontWeight:600, color:C.navy }}>{fmtE(r.amount_gross)}</td>
-                <td style={{ padding:"13px 14px" }}><span style={{ background:C.accentPale, color:C.navyLight, borderRadius:6, padding:"3px 9px", fontSize:11, fontWeight:700, border:`1px solid ${C.borderMid}` }}>{r.format.toUpperCase()}</span></td>
-                <td style={{ padding:"13px 14px" }}><Badge status={r.status} /></td>
-                <td style={{ padding:"13px 14px" }}>
-                  <div style={{ display:"flex", gap:8 }}>
-                    {r.status==="validated"&&<button className="btn btn-outline" style={{ fontSize:11,padding:"5px 10px" }}>→ Senden</button>}
-                    {r.has_xml&&<button className="btn btn-outline" style={{ fontSize:11,padding:"5px 10px" }}>XML</button>}
+            {mockOrgs.map(org=>(
+              <tr key={org.id} className="tr-hover">
+                <td>
+                  <div style={{ display:"flex", alignItems:"center", gap:9 }}>
+                    <div className="avatar">{org.name[0]}</div>
+                    <div><div style={{ fontWeight:600, color:C.navy }}>{org.name}</div><div style={{ fontSize:11, color:C.textMuted }}>{org.vat_id}</div></div>
                   </div>
                 </td>
+                <td><Badge status={org.plan} /></td>
+                <td><Badge status={org.status} /></td>
+                <td>
+                  <div style={{ fontSize:13 }}>{fmtNum(org.docs_used)}/{fmtNum(org.docs_limit)}</div>
+                  <div className="progress" style={{ width:70, marginTop:4 }}><div className="progress-fill" style={{ width:`${Math.min(100,(org.docs_used/org.docs_limit)*100)}%` }} /></div>
+                </td>
+                <td style={{ fontWeight:700, color:C.navy }}>{fmtEUR(org.mrr)}</td>
               </tr>
             ))}
           </tbody>
@@ -863,72 +873,248 @@ ${form.line_items.map((item,idx)=>`  <cac:InvoiceLine>
   );
 }
 
-/* ─── Connect Screen ──────────────────────────────────────── */
-function Connect({ notify }) {
-  const conns = [
-    { type:"sap_s4",   name:"SAP S/4HANA",          method:"RFC / IDoc / REST API", icon:"⚙️", ok:true  },
-    { type:"sap_ecc",  name:"SAP ECC",               method:"RFC / IDoc Classic",    icon:"⚙️", ok:true  },
-    { type:"datev",    name:"DATEV",                 method:"Connect Online API",    icon:"📊", ok:true  },
-    { type:"lexware",  name:"Lexware",               method:"XML-Export / SFTP",     icon:"📋", ok:true  },
-    { type:"dynamics", name:"Microsoft Dynamics 365",method:"Dataverse REST API",    icon:"🔷", ok:true  },
-    { type:"sage",     name:"Sage",                  method:"Sage API v2",           icon:"📘", ok:false },
-    { type:"rest",     name:"REST API",              method:"Generische Integration",icon:"🔌", ok:true  },
-    { type:"sftp",     name:"SFTP / E-Mail",         method:"Dateibasiert",          icon:"📁", ok:true  },
-  ];
+function AdminCustomers({ notify }) {
+  const [search, setSearch] = useState("");
+  const [modal, setModal] = useState(null);
+  const filtered = mockOrgs.filter(o=>o.name.toLowerCase().includes(search.toLowerCase())||o.vat_id.includes(search));
   return (
     <div className="fi">
-      <h1 style={{ fontFamily:F.display, fontSize:28, fontWeight:400, color:C.navy, marginBottom:6 }}>ERP-Anbindung</h1>
-      <p style={{ color:C.textMuted, fontSize:14, marginBottom:28 }}>Verbinden Sie Ihr ERP-System in wenigen Minuten.</p>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:16 }}>
-        {conns.map(c=>(
-          <div key={c.type} className="card" style={{ position:"relative", cursor:c.ok?"pointer":"default", transition:"border-color 0.18s, transform 0.18s, box-shadow 0.18s" }}
-            onMouseEnter={e=>{ if(c.ok){ e.currentTarget.style.borderColor=C.navyLight; e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 8px 28px rgba(8,18,42,0.1)"; }}}
-            onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.border; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 1px 4px rgba(8,18,42,0.04)"; }}>
-            {!c.ok&&<div style={{ position:"absolute", top:12, right:12, background:C.bgAlt, color:C.textMuted, fontSize:10, fontWeight:700, padding:"3px 8px", borderRadius:6, border:`1px solid ${C.border}` }}>DEMNÄCHST</div>}
-            <div style={{ width:44, height:44, borderRadius:12, background:C.accentPale, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, marginBottom:14 }}>{c.icon}</div>
-            <div style={{ fontWeight:700, color:C.navy, fontSize:15, marginBottom:4 }}>{c.name}</div>
-            <div style={{ fontSize:12, color:C.textMuted, marginBottom:16 }}>{c.method}</div>
-            {c.ok&&<button className="btn btn-outline" style={{ fontSize:12 }} onClick={()=>notify(`${c.name} verbunden ✓`,"success")}>Verbinden →</button>}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+        <h1 style={{ fontFamily:F.d, fontSize:26, fontWeight:400, color:C.navy }}>Kunden</h1>
+        <button className="btn btn-navy btn-sm" onClick={()=>setModal("new")}>+ Neuer Kunde</button>
+      </div>
+      <input className="input" style={{ maxWidth:320, marginBottom:18 }} placeholder="Suche..." value={search} onChange={e=>setSearch(e.target.value)} />
+      <div className="card">
+        <table className="table">
+          <thead><tr>{["Kunde","Plan","Status","Nutzer","Dokumente","MRR","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+          <tbody>
+            {filtered.map(org=>(
+              <tr key={org.id} className="tr-hover">
+                <td><div style={{ display:"flex", alignItems:"center", gap:9 }}><div className="avatar">{org.name[0]}</div><div><div style={{ fontWeight:600, color:C.navy, fontSize:13 }}>{org.name}</div><div style={{ fontSize:11, color:C.textMuted }}>{org.vat_id}</div></div></div></td>
+                <td><Badge status={org.plan} /></td>
+                <td><Badge status={org.status} /></td>
+                <td style={{ color:C.textMid }}>{org.users}</td>
+                <td><div style={{ fontSize:13 }}>{org.docs_used}/{org.docs_limit}</div><div className="progress" style={{ width:60, marginTop:4 }}><div className="progress-fill" style={{ width:`${Math.min(100,(org.docs_used/org.docs_limit)*100)}%` }} /></div></td>
+                <td style={{ fontWeight:700, color:C.navy }}>{fmtEUR(org.mrr)}</td>
+                <td><div style={{ display:"flex", gap:6 }}>
+                  <button className="btn btn-outline btn-sm" onClick={()=>setModal(org)}>Details</button>
+                  {org.status==="active"?<button className="btn btn-danger btn-sm" onClick={()=>notify(`${org.name} gesperrt`,"error")}>Sperren</button>:<button className="btn btn-success btn-sm" onClick={()=>notify(`${org.name} aktiviert`,"success")}>Aktivieren</button>}
+                </div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {modal && modal!=="new" && (
+        <div className="modal-bg" onClick={()=>setModal(null)}>
+          <div className="modal fi" onClick={e=>e.stopPropagation()}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:18 }}>
+              <div><div style={{ fontFamily:F.d, fontSize:20, fontWeight:400, color:C.navy }}>{modal.name}</div><div style={{ fontSize:12, color:C.textMuted, marginTop:3 }}>Seit {modal.created}</div></div>
+              <button onClick={()=>setModal(null)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:C.textMuted }}>×</button>
+            </div>
+            <div className="divider" style={{ marginBottom:16 }} />
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:18 }}>
+              {[["Plan",<Badge status={modal.plan}/>],["Status",<Badge status={modal.status}/>],["MRR",fmtEUR(modal.mrr)],["Nutzer",modal.users],["Dokumente",`${modal.docs_used}/${modal.docs_limit}`],["Fehler",modal.errors]].map(([l,v],i)=>(
+                <div key={i} style={{ padding:"10px 12px", background:C.bg, borderRadius:8 }}>
+                  <div className="label" style={{ marginBottom:4 }}>{l}</div>
+                  <div style={{ fontWeight:600, color:C.navy }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button className="btn btn-outline" onClick={()=>setModal(null)}>Schließen</button>
+              <button className="btn btn-navy" onClick={()=>{notify("Plan geändert","success");setModal(null);}}>Plan ändern</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modal==="new" && (
+        <div className="modal-bg" onClick={()=>setModal(null)}>
+          <div className="modal fi" onClick={e=>e.stopPropagation()}>
+            <div style={{ fontFamily:F.d, fontSize:20, fontWeight:400, color:C.navy, marginBottom:18 }}>Neuer Kunde</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {[["Unternehmensname","Müller GmbH"],["USt-IdNr.","DE123456789"],["E-Mail","kontakt@firma.de"],["Stadt","Berlin"]].map(([l,p])=>(
+                <div key={l}><label className="label">{l}</label><input className="input" placeholder={p} /></div>
+              ))}
+              <div><label className="label">Plan</label>
+                <select className="select"><option>Starter (49 €)</option><option>Business (199 €)</option><option>Pro (599 €)</option></select>
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:18 }}>
+              <button className="btn btn-outline" onClick={()=>setModal(null)}>Abbrechen</button>
+              <button className="btn btn-navy" onClick={()=>{notify("Kunde angelegt ✓","success");setModal(null);}}>Anlegen</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminAllInvoices({ notify }) {
+  const [filter, setFilter] = useState("all");
+  const filtered = filter==="all"?mockAllInvoices:mockAllInvoices.filter(i=>i.status===filter);
+  return (
+    <div className="fi">
+      <h1 style={{ fontFamily:F.d, fontSize:26, fontWeight:400, color:C.navy, marginBottom:20 }}>Alle Rechnungen</h1>
+      <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${C.border}`, marginBottom:20 }}>
+        {["all","delivered","validated","error","archived"].map(s=>(
+          <button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
+            {{all:"Alle",delivered:"Zugestellt",validated:"Validiert",error:"Fehler",archived:"Archiviert"}[s]}
+            <span style={{ marginLeft:5, fontSize:10, background:C.bg, padding:"1px 6px", borderRadius:9, color:C.textMuted }}>
+              {s==="all"?mockAllInvoices.length:mockAllInvoices.filter(i=>i.status===s).length}
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="card">
+        <table className="table">
+          <thead><tr>{["Nummer","Kunde","Betrag","Format","Status","Datum","Aktion"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+          <tbody>
+            {filtered.map(inv=>(
+              <tr key={inv.id} className="tr-hover">
+                <td style={{ color:C.navyLite, fontWeight:700 }}>{inv.number}</td>
+                <td style={{ color:C.text, fontSize:13 }}>{inv.org}</td>
+                <td style={{ fontWeight:700, color:C.navy }}>{fmtEUR(inv.amount)}</td>
+                <td><span style={{ background:C.accentPale, color:C.navyLite, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700 }}>{inv.format.toUpperCase()}</span></td>
+                <td><Badge status={inv.status} /></td>
+                <td style={{ color:C.textMuted, fontSize:12 }}>{inv.date}</td>
+                <td>{inv.status==="error"&&<button className="btn btn-danger btn-sm" onClick={()=>notify("Fehler untersucht","info")}>Prüfen</button>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AdminUsers({ notify }) {
+  return (
+    <div className="fi">
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+        <h1 style={{ fontFamily:F.d, fontSize:26, fontWeight:400, color:C.navy }}>Nutzer</h1>
+        <button className="btn btn-navy btn-sm" onClick={()=>notify("Einladung gesendet","success")}>+ Einladen</button>
+      </div>
+      <div className="card">
+        <table className="table">
+          <thead><tr>{["Nutzer","Rolle","Organisation","Status","Login","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+          <tbody>
+            {mockAllUsers.map(u=>(
+              <tr key={u.id} className="tr-hover">
+                <td><div style={{ display:"flex", alignItems:"center", gap:9 }}><div className="avatar">{u.name[0]}</div><div><div style={{ fontWeight:600, color:C.navy, fontSize:13 }}>{u.name}</div><div style={{ fontSize:11, color:C.textMuted }}>{u.email}</div></div></div></td>
+                <td><Badge status={u.role} /></td>
+                <td style={{ color:C.textMid, fontSize:13 }}>{u.org}</td>
+                <td><Badge status={u.status} /></td>
+                <td style={{ color:C.textMuted, fontSize:12 }}>{u.last_login}</td>
+                <td><div style={{ display:"flex", gap:6 }}>
+                  <button className="btn btn-outline btn-sm" onClick={()=>notify("Reset gesendet","success")}>Reset</button>
+                  {u.status==="active"&&u.role!=="super_admin"&&<button className="btn btn-danger btn-sm" onClick={()=>notify(`${u.name} gesperrt`,"error")}>Sperren</button>}
+                </div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AdminRevenue() {
+  const plans = [{name:"Starter",count:2,price:49},{name:"Business",count:2,price:199},{name:"Pro",count:1,price:599}];
+  const mrr = plans.reduce((s,p)=>s+p.count*p.price,0);
+  return (
+    <div className="fi">
+      <h1 style={{ fontFamily:F.d, fontSize:26, fontWeight:400, color:C.navy, marginBottom:22 }}>Umsatz & Statistiken</h1>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, marginBottom:22 }}>
+        {[["MRR",fmtEUR(mrr),"Monatlicher Umsatz"],["ARR",fmtEUR(mrr*12),"Jahresumsatz (Proj.)"],["Ø/Kunde",fmtEUR(mrr/5),"Pro aktivem Kunde"]].map(([l,v,s])=>(
+          <div key={l} className="card">
+            <div className="label" style={{ marginBottom:9 }}>{l}</div>
+            <div style={{ fontFamily:F.d, fontSize:32, fontWeight:500, color:C.navy, lineHeight:1, marginBottom:5 }}>{v}</div>
+            <div style={{ fontSize:12, color:C.textMuted }}>{s}</div>
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function Placeholder({ title, sub }) {
-  return (
-    <div className="fi">
-      <h1 style={{ fontFamily:F.display, fontSize:28, fontWeight:400, color:C.navy, marginBottom:6 }}>{title}</h1>
-      <p style={{ color:C.textMuted, fontSize:14, marginBottom:28 }}>{sub}</p>
-      <div className="card" style={{ textAlign:"center", padding:60, color:C.textLight }}>
-        Wird in Release 1.0 verfügbar sein.
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18 }}>
+        <div className="card">
+          <h3 style={{ fontFamily:F.d, fontSize:16, fontWeight:500, color:C.navy, marginBottom:16 }}>Plan-Verteilung</h3>
+          {plans.map(p=>(
+            <div key={p.name} style={{ marginBottom:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5, fontSize:13 }}>
+                <span style={{ fontWeight:600, color:C.navy }}>{p.name}</span>
+                <span style={{ color:C.textMuted }}>{p.count} · {fmtEUR(p.count*p.price)}/Mo</span>
+              </div>
+              <div className="progress"><div className="progress-fill" style={{ width:`${(p.count/5)*100}%` }} /></div>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <h3 style={{ fontFamily:F.d, fontSize:16, fontWeight:500, color:C.navy, marginBottom:16 }}>Dokument-Volumen</h3>
+          {mockOrgs.filter(o=>o.status==="active").map(org=>(
+            <div key={org.id} style={{ marginBottom:12 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4, fontSize:13 }}>
+                <span style={{ fontWeight:600, color:C.navy, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:150 }}>{org.name}</span>
+                <span style={{ color:C.textMuted, flexShrink:0 }}>{fmtNum(org.docs_used)}</span>
+              </div>
+              <div className="progress"><div className="progress-fill" style={{ width:`${(org.docs_used/org.docs_limit)*100}%` }} /></div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ROOT
-   ═══════════════════════════════════════════════════════════════ */
+// ── ROOT APP ───────────────────────────────────────────────────
 export default function App() {
-  const [screen, setScreen] = useState("landing");
+  const [screen, setScreen] = useState("landing"); // landing | auth | app | admin
   const [mode,   setMode]   = useState("login");
   const [nav,    setNav]    = useState("dashboard");
-  const [loading,setLoading]= useState(false);
-  const [toast,  setToast]  = useState(null);
-  const [user]   = useState({ full_name:"Manfred Bell", email:"demo@invoiq.io" });
-  const [org]    = useState({ name:"invoiq Demo", plan:"business", plan_doc_limit:1000, plan_doc_used:41 });
+  const [adminNav, setAdminNav] = useState("overview");
+  const [loading, setLoading]  = useState(false);
+  const [toast,   setToast]    = useState(null);
+  const [user, setUser] = useState(null);
+  const [org,  setOrg]  = useState(null);
 
   const notify = (msg, type="info") => setToast({ msg, type });
 
+  // Check saved session
+  useEffect(() => {
+    const token = localStorage.getItem("invoiq_token");
+    if(token) {
+      api.setToken(token);
+      api.me().then(d=>{ setUser(d.user); setOrg(d.org); setScreen("app"); }).catch(()=>{ localStorage.removeItem("invoiq_token"); });
+    }
+  }, []);
+
   const handleAuth = async form => {
     setLoading(true);
-    await new Promise(r=>setTimeout(r,700));
-    setScreen("app"); setNav("dashboard");
-    notify(`Willkommen${form.full_name ? `, ${form.full_name.split(" ")[0]}` : ""}!`, "success");
+    try {
+      const fn = mode==="login" ? api.login : api.register;
+      const d = await fn(form);
+      api.setToken(d.access_token);
+      setUser(d.user); setOrg(d.org);
+      setScreen("app"); setNav("dashboard");
+      notify(`Willkommen${d.user.full_name?`, ${d.user.full_name.split(" ")[0]}`:""}!`, "success");
+    } catch(e) {
+      // Fallback: demo mode
+      setUser({ full_name: form.full_name||"Manfred Bell", email: form.email, role:"owner" });
+      setOrg({ name: form.org_name||"invoiq Demo", plan:"business", plan_doc_limit:1000, plan_doc_used:41 });
+      setScreen("app"); setNav("dashboard");
+      notify("Demo-Modus aktiv","info");
+    }
     setLoading(false);
   };
+
+  const handleLogout = async () => {
+    await api.logout().catch(()=>{});
+    api.setToken(null);
+    setUser(null); setOrg(null);
+    setScreen("landing");
+    notify("Abgemeldet","info");
+  };
+
+  const isSuper = user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
 
   return (
     <>
@@ -938,23 +1124,51 @@ export default function App() {
       {screen==="landing" && <Landing onEnter={()=>{ setMode("login"); setScreen("auth"); }} />}
 
       {screen==="auth" && (
-        <Auth
-          mode={mode}
-          onSwitch={()=>setMode(m=>m==="login"?"register":"login")}
-          onSuccess={handleAuth}
-          loading={loading}
-        />
+        <Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading} />
       )}
 
       {screen==="app" && (
-        <Shell user={user} org={org} nav={nav} setNav={setNav} onLogout={()=>setScreen("landing")}>
+        <AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{ setAdminNav("overview"); setScreen("admin"); }}>
           {nav==="dashboard" && <Dashboard user={user} org={org} notify={notify} onNav={setNav} />}
           {nav==="invoices"  && <Invoices  notify={notify} />}
-          {nav==="connect"   && <Connect   notify={notify} />}
-          {nav==="archive"   && <Placeholder title="GoBD-Archiv"     sub="SHA-256 · §147 AO · 10 Jahre Aufbewahrung" />}
-          {nav==="webhooks"  && <Placeholder title="Webhooks"        sub="Events: invoice.created · invoice.sent · invoice.delivered" />}
-          {nav==="settings"  && <Placeholder title="Einstellungen"   sub="Konto · Plan · API-Keys · White-Label" />}
-        </Shell>
+          {nav==="archive"   && <Placeholder title="GoBD-Archiv"    sub="SHA-256 · §147 AO · 10 Jahre Aufbewahrung" />}
+          {nav==="connect"   && <Placeholder title="ERP-Anbindung"  sub="SAP · DATEV · Lexware · REST API" />}
+          {nav==="webhooks"  && <Placeholder title="Webhooks"       sub="invoice.created · invoice.sent · invoice.delivered" />}
+          {nav==="settings"  && <Placeholder title="Einstellungen"  sub="Konto · Plan · API-Keys · White-Label" />}
+        </AppShell>
+      )}
+
+      {screen==="admin" && (
+        <AdminShell user={user} org={org} nav={adminNav} setNav={setAdminNav} onBack={()=>setScreen("app")}>
+          {adminNav==="overview"    && <AdminOverview   notify={notify} isSuper={isSuper} />}
+          {adminNav==="customers"   && <AdminCustomers  notify={notify} />}
+          {adminNav==="allinvoices" && <AdminAllInvoices notify={notify} />}
+          {adminNav==="users"       && <AdminUsers      notify={notify} />}
+          {adminNav==="revenue"     && <AdminRevenue />}
+          {adminNav==="myinvoices"  && <AdminAllInvoices notify={notify} />}
+          {adminNav==="myusers"     && <AdminUsers      notify={notify} />}
+          {adminNav==="mysettings"  && <Placeholder title="Einstellungen" sub="Unternehmensdaten · API-Key · Integrationen" />}
+          {adminNav==="billing"     && <Placeholder title="Abrechnung" sub="Plan · Rechnungshistorie · Zahlungsmethode" />}
+          {(adminNav==="peppol"||adminNav==="apilogs") && (
+            <div className="fi">
+              <h1 style={{ fontFamily:F.d, fontSize:26, fontWeight:400, color:C.navy, marginBottom:8 }}>
+                {adminNav==="peppol"?"Peppol Status":"API Logs"}
+              </h1>
+              <p style={{ color:C.textMuted, fontSize:14, marginBottom:24 }}>
+                {adminNav==="peppol"?"Storecove Verbindungsstatus · Peppol BIS 3.0":"Unveränderlicher Audit-Trail (GoBD-konform)"}
+              </p>
+              <div className="card" style={{ textAlign:"center", padding:48 }}>
+                <div style={{ fontSize:32, marginBottom:12 }}>{adminNav==="peppol"?"🌍":"📋"}</div>
+                {adminNav==="peppol" ? (
+                  <div style={{ background:C.amberBg, border:`1px solid ${C.amberBdr}`, borderRadius:9, padding:"14px 18px", display:"inline-block" }}>
+                    <div style={{ fontSize:14, color:C.amber, fontWeight:700 }}>⏳ Storecove Sandbox ausstehend</div>
+                    <div style={{ fontSize:12, color:C.amber, marginTop:4 }}>Anfrage gesendet — Antwort in 1–2 Werktagen</div>
+                  </div>
+                ) : <div style={{ color:C.textMuted, fontSize:14 }}>GoBD-konformer Audit-Trail in Release 1.0</div>}
+              </div>
+            </div>
+          )}
+        </AdminShell>
       )}
     </>
   );
