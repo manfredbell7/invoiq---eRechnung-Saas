@@ -921,54 +921,145 @@ function Landing({onEnter}){
       </div>
     </section>
 
-    {/* PRICING — new 4-tier with Freemium */}
+    {/* PRICING */}
     <section id="preise" style={{padding:'88px clamp(16px,4vw,56px)'}}>
-      <div style={{maxWidth:1080,margin:'0 auto'}}>
+      <div style={{maxWidth:1100,margin:'0 auto'}}>
         <div style={{textAlign:'center',marginBottom:48}}>
           <span className="reveal badge badge-gray" style={{marginBottom:14,fontSize:11}}>Preise</span>
           <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em'}}>Transparent. Kein usage-based Billing.</h2>
-          <p className="reveal" style={{fontSize:14,color:T.textSecondary,marginTop:10,marginBottom:20}}>Fester Monatspreis — keine Überraschungen. Jederzeit kündbar.</p>
-          {/* Billing toggle */}
-          <div className="reveal" style={{display:'inline-flex',alignItems:'center',gap:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'6px 8px'}}>
-            <button onClick={()=>setBillingYearly(false)} style={{padding:'5px 14px',borderRadius:6,border:'none',fontSize:12.5,fontWeight:600,cursor:'pointer',background:!billingYearly?T.bg:T.bgSubtle,color:!billingYearly?T.textPrimary:T.textMuted,boxShadow:!billingYearly?T.shadow1:'none',transition:'all .15s'}}>Monatlich</button>
-            <button onClick={()=>setBillingYearly(true)} style={{padding:'5px 14px',borderRadius:6,border:'none',fontSize:12.5,fontWeight:600,cursor:'pointer',background:billingYearly?T.bg:T.bgSubtle,color:billingYearly?T.textPrimary:T.textMuted,boxShadow:billingYearly?T.shadow1:'none',transition:'all .15s'}}>
-              Jährlich <span style={{fontSize:10.5,fontWeight:700,color:T.green,marginLeft:4}}>-20%</span>
+          <p className="reveal" style={{fontSize:14,color:T.textSecondary,marginTop:10,marginBottom:24}}>Fester Monatspreis — keine Überraschungen. Jederzeit kündbar, keine Mindestlaufzeit.</p>
+
+          {/* Billing toggle — default yearly */}
+          <div className="reveal" style={{display:'inline-flex',alignItems:'center',gap:8,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'5px 6px'}}>
+            <button onClick={()=>setBillingYearly(false)} style={{padding:'6px 16px',borderRadius:6,border:'none',fontSize:13,fontWeight:600,cursor:'pointer',background:!billingYearly?T.bg:T.bgSubtle,color:!billingYearly?T.textPrimary:T.textMuted,boxShadow:!billingYearly?T.shadow1:'none',transition:'all .15s',fontFamily:F.ui}}>Monatlich</button>
+            <button onClick={()=>setBillingYearly(true)} style={{padding:'6px 16px',borderRadius:6,border:'none',fontSize:13,fontWeight:600,cursor:'pointer',background:billingYearly?T.bg:T.bgSubtle,color:billingYearly?T.textPrimary:T.textMuted,boxShadow:billingYearly?T.shadow1:'none',transition:'all .15s',fontFamily:F.ui,display:'flex',alignItems:'center',gap:6}}>
+              Jährlich
+              <span style={{fontSize:10.5,fontWeight:700,color:'#fff',background:T.green,padding:'1px 7px',borderRadius:10}}>-20%</span>
             </button>
           </div>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(220px,100%),1fr))',gap:10}}>
-          {PLANS.map((p,i)=>{
-            const price=billingYearly?p.yearlyPrice:p.price;
-            const bg=p.ctaStyle==='primary'?T.brand:T.bg;
-            const bd=p.ctaStyle==='primary'?T.brand:T.bgBorder;
+
+        {/* Plan cards */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
+          {[
+            {
+              name:'FREE',price:0,yearly:0,docs:'10 Rechnungen/Monat',
+              tag:null,tagColor:null,
+              sub:'Kein Login, keine Kreditkarte',
+              features:['XRechnung & ZUGFeRD Basic','Manueller Generator','Inbound-Empfang','1 Jahr Archiv','1 Benutzer'],
+              cta:'Kostenlos starten',ctaPrimary:false,
+              roi:null,
+            },
+            {
+              name:'STARTER',price:29,yearly:25,docs:'100 Rechnungen/Monat',
+              tag:'AM BELIEBTESTEN',tagColor:T.accent,
+              sub:'300€/Jahr bei Jahreszahlung',
+              features:['Alle Formate (XR, ZUGFeRD, Peppol)','Automatischer Inbound','API-Zugang Basic','10 Jahre GoBD-Archiv','3 Benutzer','E-Mail-Support'],
+              cta:'Jetzt starten',ctaPrimary:true,
+              roi:'Spart Ø 15 Std./Monat Verwaltung',
+            },
+            {
+              name:'BUSINESS',price:99,yearly:85,docs:'500 Rechnungen/Monat',
+              tag:null,tagColor:null,
+              sub:'1.020€/Jahr bei Jahreszahlung',
+              features:['Alles in STARTER','ERP-Integration (SAP, DATEV)','Workflow-Automatisierung','Batch-Verarbeitung','10 Benutzer','Priorisierter Support'],
+              cta:'Jetzt starten',ctaPrimary:false,
+              roi:'Verhindert Ø 2.400€/Jahr Bußgelder',
+            },
+            {
+              name:'ENTERPRISE',price:299,yearly:250,docs:'Unbegrenzte Rechnungen',
+              tag:null,tagColor:null,
+              sub:'3.000€/Jahr bei Jahreszahlung',
+              features:['Alles in BUSINESS','Multi-Mandanten-Portal','Dedizierter Account Manager','SLA-Garantie','Telefon-Support','Onboarding-Service'],
+              cta:'Kontakt aufnehmen',ctaPrimary:false,
+              roi:null,
+            },
+          ].map((p,i)=>{
+            const price=billingYearly?p.yearly:p.price;
+            const isFeatured=p.ctaPrimary;
+            const bg=isFeatured?T.brand:T.bg;
+            const bd=isFeatured?T.brand:T.bgBorder;
             return(
-            <div key={i} className="pricing-card reveal" style={{transitionDelay:`${i*.08}s`,position:'relative',background:bg,border:`1.5px solid ${bd}`}}>
-              {p.badge&&<div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:T.accent,color:'#fff',fontSize:10,fontWeight:700,padding:'3px 12px',borderRadius:10,whiteSpace:'nowrap',zIndex:2}}>{p.badge}</div>}
-              <div style={{fontWeight:700,fontSize:12,marginBottom:8,color:p.ctaStyle==='primary'?'rgba(255,255,255,.5)':T.textMuted,textTransform:'uppercase',letterSpacing:.5}}>{p.name}</div>
-              <div style={{display:'flex',alignItems:'baseline',gap:3,marginBottom:2}}>
-                {price===0
-                  ? <span style={{fontSize:36,fontWeight:800,lineHeight:1,color:p.ctaStyle==='primary'?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>Gratis</span>
-                  : <><span style={{fontSize:40,fontWeight:800,lineHeight:1,color:p.ctaStyle==='primary'?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>{price}</span><span style={{fontSize:13,color:p.ctaStyle==='primary'?'rgba(255,255,255,.4)':T.textMuted}}>€/Mo</span></>
-                }
-              </div>
-              <div style={{fontSize:11.5,color:p.ctaStyle==='primary'?'rgba(255,255,255,.4)':T.textMuted,marginBottom:4}}>{p.docs}</div>
-              <div style={{fontSize:11,color:p.ctaStyle==='primary'?'rgba(255,255,255,.3)':T.textMuted,marginBottom:16}}>{p.sub}</div>
-              <div style={{height:1,background:p.ctaStyle==='primary'?'rgba(255,255,255,.1)':T.bgBorder,margin:'0 0 14px'}}/>
-              {p.features.map((f,j)=>(
-                <div key={j} style={{display:'flex',gap:7,marginBottom:7,fontSize:13,color:j===0?(p.ctaStyle==='primary'?'#fff':T.textPrimary):(p.ctaStyle==='primary'?'rgba(255,255,255,.55)':T.textSecondary),alignItems:'center'}}>
-                  <span style={{fontSize:9,color:p.ctaStyle==='primary'?'rgba(255,255,255,.4)':'#635BFF',flexShrink:0,fontWeight:700}}>✓</span>{f}
+              <div key={i} className="pricing-card reveal" style={{transitionDelay:`${i*.07}s`,position:'relative',background:bg,border:`1.5px solid ${bd}`,display:'flex',flexDirection:'column'}}>
+                {p.tag&&<div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:p.tagColor,color:'#fff',fontSize:9.5,fontWeight:800,padding:'3px 12px',borderRadius:10,whiteSpace:'nowrap',zIndex:2,letterSpacing:.5}}>{p.tag}</div>}
+
+                {/* Plan name */}
+                <div style={{fontWeight:800,fontSize:11,marginBottom:10,color:isFeatured?'rgba(255,255,255,.45)':T.textMuted,letterSpacing:1,textTransform:'uppercase'}}>{p.name}</div>
+
+                {/* Price */}
+                <div style={{display:'flex',alignItems:'baseline',gap:3,marginBottom:3}}>
+                  {price===0
+                    ? <span style={{fontSize:34,fontWeight:800,lineHeight:1,color:isFeatured?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>Gratis</span>
+                    : <><span style={{fontSize:34,fontWeight:800,lineHeight:1,color:isFeatured?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>{price}€</span><span style={{fontSize:12.5,color:isFeatured?'rgba(255,255,255,.4)':T.textMuted}}>/Mo</span></>
+                  }
                 </div>
-              ))}
-              <button onClick={onEnter} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',background:p.ctaStyle==='primary'?'rgba(255,255,255,.12)':T.accent==='primary'?'transparent':'transparent',color:p.ctaStyle==='primary'?'#fff':'#635BFF',border:p.ctaStyle==='primary'?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:13,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.opacity='.8';}} onMouseLeave={e=>{e.currentTarget.style.opacity='1';}}>{p.cta} →</button>
-            </div>
+                <div style={{fontSize:11.5,color:isFeatured?'rgba(255,255,255,.45)':T.textMuted,marginBottom:3}}>{p.docs}</div>
+                <div style={{fontSize:11,color:isFeatured?'rgba(255,255,255,.3)':T.textMuted,marginBottom:14}}>{billingYearly&&p.yearly>0?`${p.yearly*12}€/Jahr`:p.sub}</div>
+
+                {/* ROI badge */}
+                {p.roi&&(
+                  <div style={{background:isFeatured?'rgba(255,255,255,.1)':T.greenBg,border:`1px solid ${isFeatured?'rgba(255,255,255,.15)':T.greenBdr}`,borderRadius:5,padding:'6px 10px',fontSize:11,color:isFeatured?'rgba(255,255,255,.7)':T.green,fontWeight:500,marginBottom:14,lineHeight:1.4}}>
+                    💡 {p.roi}
+                  </div>
+                )}
+
+                <div style={{height:1,background:isFeatured?'rgba(255,255,255,.1)':T.bgBorder,margin:'0 0 14px'}}/>
+
+                {/* Features */}
+                <div style={{flex:1}}>
+                  {p.features.map((f,j)=>(
+                    <div key={j} style={{display:'flex',gap:7,marginBottom:7,fontSize:12.5,color:j===0?(isFeatured?'#fff':T.textPrimary):(isFeatured?'rgba(255,255,255,.55)':T.textSecondary),alignItems:'flex-start'}}>
+                      <span style={{fontSize:8,color:isFeatured?'rgba(255,255,255,.4)':'#635BFF',flexShrink:0,fontWeight:700,marginTop:3}}>✓</span>{f}
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA */}
+                <button onClick={onEnter} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',gap:5,background:isFeatured?'rgba(255,255,255,.12)':'transparent',color:isFeatured?'#fff':'#635BFF',border:isFeatured?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:12.5,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.opacity='.8';}} onMouseLeave={e=>{e.currentTarget.style.opacity='1';}}>
+                  {p.cta} →
+                </button>
+              </div>
             );
           })}
         </div>
 
-        {/* Note on inbound */}
-        <div className="reveal" style={{marginTop:20,padding:'14px 20px',background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,display:'flex',alignItems:'center',gap:12}}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke={T.accent} strokeWidth="1.5"/><path d="M8 5v3.5M8 11v.5" stroke={T.accent} strokeWidth="1.5" strokeLinecap="round"/></svg>
-          <span style={{fontSize:13,color:T.textSecondary}}><strong style={{color:T.textPrimary}}>Inbound-Empfang ist in allen Tarifen inklusive</strong> — auch im kostenlosen Plan. Seit Januar 2025 gesetzlich verpflichtend für alle Unternehmen.</span>
+        {/* Add-ons row */}
+        <div className="reveal" style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'18px 24px',marginBottom:16}}>
+          <div style={{fontSize:12,fontWeight:700,color:T.textMuted,letterSpacing:.6,textTransform:'uppercase',marginBottom:12}}>Add-ons — Flexibel zubuchbar</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}}>
+            {[
+              {name:'Zusätzlicher Nutzer',price:'+9€/Monat'},
+              {name:'API-Erweiterung',price:'+29€/Monat',sub:'10.000 zusätzliche API-Calls'},
+              {name:'Premium-Onboarding',price:'499€ einmalig',sub:'48h-Setup durch Experten'},
+              {name:'White-Label',price:'+99€/Monat',sub:'Für Steuerberater & Partner'},
+            ].map((a,i)=>(
+              <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,padding:'10px 14px',background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:6}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>{a.name}</div>
+                  {a.sub&&<div style={{fontSize:11,color:T.textMuted,marginTop:1}}>{a.sub}</div>}
+                </div>
+                <div style={{fontSize:13,fontWeight:700,color:T.accent,flexShrink:0}}>{a.price}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Overage note */}
+        <div className="reveal" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div style={{padding:'13px 18px',background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,display:'flex',alignItems:'flex-start',gap:10}}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{flexShrink:0,marginTop:1}}><circle cx="8" cy="8" r="7" stroke={T.accent} strokeWidth="1.5"/><path d="M8 5v3.5M8 11v.5" stroke={T.accent} strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:T.textPrimary,marginBottom:3}}>Kein Zwangsupgrade bei Überschreitung</div>
+              <div style={{fontSize:12.5,color:T.textSecondary}}>Zusätzliche Rechnungen werden flexibel mit <strong>0,50€/Rechnung</strong> berechnet — kein sofortiger Plan-Wechsel nötig.</div>
+            </div>
+          </div>
+          <div style={{padding:'13px 18px',background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,display:'flex',alignItems:'flex-start',gap:10}}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{flexShrink:0,marginTop:1}}><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:T.textPrimary,marginBottom:3}}>Inbound-Empfang in allen Tarifen</div>
+              <div style={{fontSize:12.5,color:T.textSecondary}}>Seit Januar 2025 gesetzlich verpflichtend für alle Unternehmen — deshalb in jedem Plan kostenlos inklusive.</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
