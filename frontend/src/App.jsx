@@ -424,31 +424,23 @@ function Landing({onEnter}){
   const[tick,setTick]=useState(0);
   const[activeStep,setActiveStep]=useState(-1);
   const[heroTab,setHeroTab]=useState(0);
-  const heroRef=useRef(null);
+  const[billingYearly,setBillingYearly]=useState(false);
 
-  // Ticker for live dashboard animation
   useEffect(()=>{
     const id=setInterval(()=>setTick(t=>t+1),2200);
     return()=>clearInterval(id);
   },[]);
-
-  // Auto-cycle hero tabs
   useEffect(()=>{
     const id=setInterval(()=>setHeroTab(t=>(t+1)%3),3500);
     return()=>clearInterval(id);
   },[]);
-
   useEffect(()=>{
     const h=()=>setScrolled(window.scrollY>40);
     window.addEventListener('scroll',h,{passive:true});
-
-    // Scroll reveal
     const obs=new IntersectionObserver(entries=>entries.forEach(e=>{
       if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}
     }),{threshold:.1,rootMargin:'0px 0px -30px 0px'});
     document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
-
-    // Step reveal
     const sobs=new IntersectionObserver(entries=>entries.forEach(e=>{
       if(e.isIntersecting){
         const idx=parseInt(e.target.dataset.step||0);
@@ -457,11 +449,9 @@ function Landing({onEnter}){
       }
     }),{threshold:.2});
     document.querySelectorAll('.flow-step').forEach(el=>sobs.observe(el));
-
     return()=>{window.removeEventListener('scroll',h);obs.disconnect();sobs.disconnect();};
   },[]);
 
-  // Animated invoice rows cycling
   const liveRows=[
     {num:'INV-2025-041',co:'Müller GmbH',amt:'4.284 €',st:'delivered'},
     {num:'INV-2025-040',co:'TechVision AG',amt:'12.900 €',st:'validated'},
@@ -470,109 +460,7 @@ function Landing({onEnter}){
     {num:'INV-2025-037',co:'Nord Express',amt:'8.440 €',st:'delivered'},
   ];
   const visibleRows=liveRows.slice(tick%5,(tick%5)+3).concat(liveRows).slice(0,3);
-
   const integrations=['SAP S/4HANA','SAP ECC','DATEV','Lexware','MS Dynamics','Odoo','Xero','QuickBooks','NetSuite','sevDesk','lexoffice','Weclapp'];
-
-  // Process steps
-  const STEPS=[
-    {
-      n:1,
-      title:'ERP verbinden',
-      desc:'Einmalige Konfiguration in unter 2 Stunden. SAP, DATEV oder REST API — danach läuft alles automatisch.',
-      tags:['SAP S/4HANA','SAP ECC','DATEV','Lexware','REST API'],
-      preview:(
-        <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-          {[['SAP S/4HANA','Connected'],['DATEV Connect','Connected'],['Lexware Office','Configure →']].map(([n,s],i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgBorder}`:'none'}}>
-              <div style={{width:7,height:7,borderRadius:'50%',background:s==='Connected'?T.green:T.bgBorder,flexShrink:0}}/>
-              <span style={{fontSize:12.5,color:T.textPrimary,flex:1}}>{n}</span>
-              <span style={{fontSize:11,fontWeight:600,color:s==='Connected'?T.green:T.accent}}>{s}</span>
-            </div>
-          ))}
-        </div>
-      )
-    },
-    {
-      n:2,
-      title:'Rechnungsdaten empfangen',
-      desc:'Jede gebuchte Faktura landet in Echtzeit bei invoiq. Alle Felder automatisch gemappt — keine doppelte Datenpflege.',
-      tags:['IDoc INVOIC02','REST JSON','SFTP XML'],
-      preview:(
-        <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-          {[['Empfang','84%',T.accent],['Verarbeitung','93%',T.green],['Fehlerrate','2%',T.red]].map(([l,p,c],i)=>(
-            <div key={i} style={{marginBottom:i<2?10:0}}>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:11.5,marginBottom:4}}>
-                <span style={{color:T.textSecondary}}>{l}</span>
-                <span style={{fontWeight:600,color:T.textPrimary}}>{p}</span>
-              </div>
-              <div style={{height:3,background:T.bgBorder,borderRadius:2,overflow:'hidden'}}>
-                <div style={{height:'100%',width:p,background:c,borderRadius:2,transition:'width 1s ease'}}/>
-              </div>
-            </div>
-          ))}
-        </div>
-      )
-    },
-    {
-      n:3,
-      title:'EN 16931 Validierung & XML',
-      desc:'invoiq generiert XRechnung UBL 2.1 oder ZUGFeRD CII und validiert sofort gegen den europäischen Standard.',
-      tags:['XRechnung 3.0','ZUGFeRD 2.4','Peppol BIS 3.0'],
-      preview:(
-        <div style={{marginTop:12,background:T.brand,borderRadius:6,padding:'12px 14px',fontFamily:F.mono,fontSize:10.5,lineHeight:1.7,color:'rgba(255,255,255,.5)',overflow:'hidden',maxHeight:110}}>
-          <span style={{color:'#818CF8'}}>&lt;ubl:Invoice&gt;</span><br/>
-          {'  '}<span style={{color:'#818CF8'}}>&lt;cbc:ID&gt;</span><span style={{color:'#6EE7B7'}}>INV-2025-041</span><span style={{color:'#818CF8'}}>&lt;/&gt;</span><br/>
-          {'  '}<span style={{color:'#818CF8'}}>&lt;cbc:IssueDate&gt;</span><span style={{color:'#6EE7B7'}}>2025-05-27</span><span style={{color:'#818CF8'}}>&lt;/&gt;</span><br/>
-          {'  '}<span style={{color:'#818CF8'}}>&lt;cbc:PayableAmount&gt;</span><span style={{color:'#6EE7B7'}}>4284.00</span><span style={{color:'#818CF8'}}>&lt;/&gt;</span><br/>
-          <span style={{color:'#818CF8'}}>&lt;/ubl:Invoice&gt;</span>
-        </div>
-      )
-    },
-    {
-      n:4,
-      title:'Versand & Zustellung',
-      desc:'Per E-Mail, Peppol-Netzwerk oder API-Webhook. Status-Tracking in Echtzeit für jede einzelne Rechnung.',
-      tags:['E-Mail','Peppol','Webhook','Download'],
-      preview:(
-        <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-          {[['INV-2025-041','Delivered',T.green],['INV-2025-040','Validated',T.accent],['INV-2025-039','Sending…',T.amber]].map(([n,s,c],i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgBorder}`:'none'}}>
-              <div style={{width:7,height:7,borderRadius:'50%',background:c,flexShrink:0}}/>
-              <span style={{fontFamily:F.mono,fontSize:11,color:T.textPrimary,flex:1}}>{n}</span>
-              <span style={{fontSize:11,fontWeight:600,color:c}}>{s}</span>
-            </div>
-          ))}
-        </div>
-      )
-    },
-    {
-      n:5,
-      title:'GoBD-konforme Archivierung',
-      desc:'SHA-256-gesichert, unveränderlich in AWS Frankfurt gespeichert und 10 Jahre aufbewahrt — §147 AO konform.',
-      tags:['SHA-256','AWS Frankfurt','§147 AO','10 Jahre'],
-      preview:(
-        <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-            <div style={{width:28,height:28,borderRadius:6,background:T.green,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="8" rx="1.5" stroke="#fff" strokeWidth="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            </div>
-            <div style={{fontFamily:F.mono,fontSize:10,color:T.textSecondary,lineHeight:1.5}}>
-              <div style={{color:T.textMuted,fontSize:9,marginBottom:1}}>SHA-256</div>
-              a7f3d9c2b1e8f4...4d2a9c1b3e7f
-            </div>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
-            {[['12.441','Archiviert'],['10J','Aufbewahrung'],['98%','Compliance']].map(([v,l])=>(
-              <div key={l} style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:5,padding:'8px 10px',textAlign:'center'}}>
-                <div style={{fontSize:16,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em'}}>{v}</div>
-                <div style={{fontSize:9.5,color:T.textMuted,marginTop:2}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    },
-  ];
 
   const stBadge=(s)=>{
     const m={delivered:[T.green,'#ECFDF5','#A7F3D0','Delivered'],validated:[T.accent,'#EEF2FF','#C7D2FE','Validated'],error:[T.red,'#FEF2F2','#FECACA','Error'],pending:[T.amber,'#FFFBEB','#FDE68A','Pending']};
@@ -580,7 +468,6 @@ function Landing({onEnter}){
     return <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:4,background:bg,color:c,border:`1px solid ${bd}`}}>{lbl}</span>;
   };
 
-  // Hero tabs content
   const heroTabs=[
     {label:'Overview',content:(
       <div style={{padding:16}}>
@@ -595,11 +482,11 @@ function Landing({onEnter}){
         </div>
         <div style={{display:'flex',alignItems:'flex-end',gap:3,height:44,padding:'0 2px',marginBottom:10}}>
           {[22,28,24,36,31,40,41].map((v,i)=>(
-            <div key={i} style={{flex:1,background:i===6?T.accent:`${T.accent}28`,borderRadius:'2px 2px 0 0',height:`${(v/41)*100}%`,minHeight:3,transition:'height .4s'}}/>
+            <div key={i} style={{flex:1,background:i===6?T.accent:`${T.accent}28`,borderRadius:'2px 2px 0 0',height:`${(v/41)*100}%`,minHeight:3}}/>
           ))}
         </div>
         {visibleRows.map((r,i)=>(
-          <div key={r.num+i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:i<2?`1px solid ${T.bgSubtle}`:'none',transition:'opacity .3s'}}>
+          <div key={r.num+i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:i<2?`1px solid ${T.bgSubtle}`:'none'}}>
             <span style={{fontFamily:F.mono,fontSize:10,color:T.textPrimary,flex:'0 0 90px'}}>{r.num}</span>
             <span style={{fontSize:10.5,color:T.textSecondary,flex:1}}>{r.co}</span>
             <span style={{fontSize:10.5,fontWeight:600,color:T.textPrimary}}>{r.amt}</span>
@@ -638,6 +525,110 @@ function Landing({onEnter}){
     )},
   ];
 
+  const STEPS=[
+    {n:1,title:'ERP verbinden',desc:'Einmalige Konfiguration in unter 2 Stunden. SAP, DATEV oder REST API — danach läuft alles automatisch.',tags:['SAP S/4HANA','SAP ECC','DATEV','Lexware','REST API'],preview:(
+      <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
+        {[['SAP S/4HANA','Connected'],['DATEV Connect','Connected'],['Lexware Office','Configure →']].map(([n,s],i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgBorder}`:'none'}}>
+            <div style={{width:7,height:7,borderRadius:'50%',background:s==='Connected'?T.green:T.bgBorder,flexShrink:0}}/>
+            <span style={{fontSize:12.5,color:T.textPrimary,flex:1}}>{n}</span>
+            <span style={{fontSize:11,fontWeight:600,color:s==='Connected'?T.green:T.accent}}>{s}</span>
+          </div>
+        ))}
+      </div>
+    )},
+    {n:2,title:'Ausgehend & Eingehend — bidirektional',desc:'Seit Januar 2025 Pflicht: Alle Unternehmen müssen E-Rechnungen empfangen können. invoiq verarbeitet beide Richtungen vollautomatisch — ohne Medienbruch.',tags:['Outbound XRechnung','Inbound Parsing','Peppol Empfang','PDF-Konvertierung'],preview:(
+      <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          <div style={{background:T.bg,border:`1px solid ${T.greenBdr}`,borderRadius:5,padding:'10px 12px'}}>
+            <div style={{fontSize:10,fontWeight:700,color:T.textMuted,marginBottom:6,letterSpacing:.5}}>AUSGEHEND</div>
+            <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em'}}>41</div>
+            <div style={{fontSize:10.5,color:T.green,fontWeight:600,marginTop:2}}>▲ +8% heute</div>
+          </div>
+          <div style={{background:T.bg,border:`1px solid ${T.accentPale}`,borderRadius:5,padding:'10px 12px'}}>
+            <div style={{fontSize:10,fontWeight:700,color:T.textMuted,marginBottom:6,letterSpacing:.5}}>EINGEHEND</div>
+            <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em'}}>28</div>
+            <div style={{fontSize:10.5,color:T.accent,fontWeight:600,marginTop:2}}>Automatisch verarbeitet</div>
+          </div>
+        </div>
+      </div>
+    )},
+    {n:3,title:'EN 16931 Validierung & XML',desc:'invoiq generiert XRechnung UBL 2.1 oder ZUGFeRD CII und validiert sofort gegen den europäischen Standard.',tags:['XRechnung 3.0','ZUGFeRD 2.4','Peppol BIS 3.0'],preview:(
+      <div style={{marginTop:12,background:T.brand,borderRadius:6,padding:'12px 14px',fontFamily:F.mono,fontSize:10.5,lineHeight:1.7,color:'rgba(255,255,255,.5)',overflow:'hidden',maxHeight:110}}>
+        <span style={{color:'#818CF8'}}>&lt;ubl:Invoice&gt;</span><br/>
+        {'  '}<span style={{color:'#818CF8'}}>&lt;cbc:ID&gt;</span><span style={{color:'#6EE7B7'}}>INV-2025-041</span><span style={{color:'#818CF8'}}>&lt;/&gt;</span><br/>
+        {'  '}<span style={{color:'#818CF8'}}>&lt;cbc:IssueDate&gt;</span><span style={{color:'#6EE7B7'}}>2025-05-27</span><span style={{color:'#818CF8'}}>&lt;/&gt;</span><br/>
+        {'  '}<span style={{color:'#818CF8'}}>&lt;cbc:PayableAmount&gt;</span><span style={{color:'#6EE7B7'}}>4284.00</span><span style={{color:'#818CF8'}}>&lt;/&gt;</span><br/>
+        <span style={{color:'#818CF8'}}>&lt;/ubl:Invoice&gt;</span>
+      </div>
+    )},
+    {n:4,title:'Automatische ERP-Buchung',desc:'Eingehende Rechnungen werden direkt in Ihr Buchhaltungssystem gebucht — vollautomatisch, ohne Medienbruch. Procure-to-Pay ohne manuelle Schritte.',tags:['SAP FI automatisch','DATEV Buchung','Order-to-Cash','Procure-to-Pay'],preview:(
+      <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
+        {[['Rechnung empfangen','XRechnung geparst',T.green],['ERP-Mapping','SAP FI Buchung erstellt',T.green],['Freigabe','Workflow ausgelöst',T.accent],['Archiviert','GoBD-konform gespeichert',T.green]].map(([s,d,c],i)=>(
+          <div key={i} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'5px 0',borderBottom:i<3?`1px solid ${T.bgBorder}`:'none'}}>
+            <div style={{width:7,height:7,borderRadius:'50%',background:c,flexShrink:0,marginTop:4}}/>
+            <div>
+              <div style={{fontSize:12,fontWeight:600,color:T.textPrimary}}>{s}</div>
+              <div style={{fontSize:11,color:T.textMuted}}>{d}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )},
+    {n:5,title:'GoBD-Archivierung & ViDA-ready',desc:'SHA-256-gesichert, 10 Jahre aufbewahrt — und bereits heute vorbereitet für ViDA Transaction-Reporting ab 2028/2030.',tags:['SHA-256','AWS Frankfurt','§147 AO','ViDA 2028','Meldesystem'],preview:(
+      <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+          <div style={{width:28,height:28,borderRadius:6,background:T.green,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="8" rx="1.5" stroke="#fff" strokeWidth="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </div>
+          <div style={{fontFamily:F.mono,fontSize:10,color:T.textSecondary,lineHeight:1.5}}>
+            <div style={{color:T.textMuted,fontSize:9,marginBottom:1}}>SHA-256</div>a7f3d9c2b1e8f4...4d2a9c1b3e7f
+          </div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
+          {[['12.441','Archiviert'],['10J','Aufbewahrung'],['ViDA','Ready 2028']].map(([v,l])=>(
+            <div key={l} style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:5,padding:'7px 9px',textAlign:'center'}}>
+              <div style={{fontSize:14,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em'}}>{v}</div>
+              <div style={{fontSize:9,color:T.textMuted,marginTop:2}}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )},
+  ];
+
+  // Pricing plans — new structure with Freemium
+  const PLANS=[
+    {
+      name:'Free',price:0,yearlyPrice:0,docs:'10 Dok./Monat',
+      sub:'Kein Kreditkarte nötig',
+      badge:null,
+      features:['XRechnung-Generator','Inbound-Empfang','PDF-Download','1 Nutzer'],
+      cta:'Kostenlos starten',ctaStyle:'outline',
+    },
+    {
+      name:'Starter',price:49,yearlyPrice:39,docs:'100 Dok./Monat',
+      sub:'Pro Monat, jederzeit kündbar',
+      badge:null,
+      features:['XRechnung + ZUGFeRD','Inbound-Empfang + Parsing','E-Mail-Versand','GoBD-Archiv','1 ERP-Konnektor','1 Nutzer'],
+      cta:'14 Tage gratis testen',ctaStyle:'outline',
+    },
+    {
+      name:'Business',price:199,yearlyPrice:159,docs:'1.000 Dok./Monat',
+      sub:'Pro Monat, jederzeit kündbar',
+      badge:'EMPFOHLEN',
+      features:['Alles in Starter','Peppol BIS 3.0 Versand','Automatische ERP-Buchung','5 ERP-Konnektoren','KI-Rechnungserkennung','ViDA-Reporting ready','5 Nutzer'],
+      cta:'Jetzt starten',ctaStyle:'primary',
+    },
+    {
+      name:'Pro',price:599,yearlyPrice:479,docs:'10.000 Dok./Monat',
+      sub:'Pro Monat, jederzeit kündbar',
+      badge:null,
+      features:['Alles in Business','Alle Konnektoren','Steuerberater-Portal','Branchen-Templates','Public REST API + Webhooks','White-Label','15 Nutzer'],
+      cta:'Demo buchen',ctaStyle:'outline',
+    },
+  ];
+
   return(<div style={{background:T.bg,minHeight:'100vh',overflowX:'hidden'}}>
 
     {/* NAV */}
@@ -652,73 +643,60 @@ function Landing({onEnter}){
       </div>
     </header>
 
-    {/* ── HERO ── */}
+    {/* HERO */}
     <section style={{minHeight:'100vh',display:'flex',alignItems:'center',padding:'80px clamp(16px,4vw,56px) 60px',position:'relative',overflow:'hidden'}}>
-      {/* Subtle grid */}
       <div style={{position:'absolute',inset:0,backgroundImage:`linear-gradient(${T.bgBorder} 1px,transparent 1px),linear-gradient(90deg,${T.bgBorder} 1px,transparent 1px)`,backgroundSize:'40px 40px',opacity:.35,pointerEvents:'none'}}/>
       <div style={{position:'absolute',inset:0,background:`radial-gradient(ellipse 70% 80% at 60% 50%,transparent 30%,${T.bg} 75%)`,pointerEvents:'none'}}/>
-
       <div style={{maxWidth:1100,margin:'0 auto',width:'100%',display:'grid',gridTemplateColumns:'1fr 1.1fr',gap:64,alignItems:'center',position:'relative'}}>
-
-        {/* Left — Copy */}
         <div>
           <div className="fu" style={{marginBottom:20}}>
             <span className="hero-pill">
               <span style={{width:6,height:6,borderRadius:'50%',background:T.green,animation:'pulse 2s ease-in-out infinite',display:'inline-block'}}/>
-              E-Rechnungspflicht 2027 — Jetzt vorbereiten
+              E-Rechnungspflicht 2025/2027 — Jetzt vorbereiten
             </span>
           </div>
           <h1 className="fu2" style={{fontFamily:F.ui,fontSize:'clamp(32px,4.5vw,56px)',fontWeight:800,color:T.textPrimary,lineHeight:1.1,letterSpacing:'-.04em',marginBottom:18}}>
             E-Invoice<br/>Compliance.<br/><span style={{color:T.accent}}>Automatisch.</span>
           </h1>
-          <p className="fu3" style={{fontSize:16,color:T.textSecondary,lineHeight:1.7,marginBottom:32,maxWidth:420}}>
-            XRechnung · ZUGFeRD · Peppol — für SAP, DATEV, Lexware und jedes andere ERP-System. In 48 Stunden live.
+          <p className="fu3" style={{fontSize:16,color:T.textSecondary,lineHeight:1.7,marginBottom:10,maxWidth:440}}>
+            Seit <strong>Januar 2025</strong> müssen alle Unternehmen E-Rechnungen empfangen können. Ab <strong>2027</strong> auch versenden.
+          </p>
+          <p className="fu3" style={{fontSize:14,color:T.textMuted,lineHeight:1.65,marginBottom:32,maxWidth:440}}>
+            invoiq deckt beides — bidirektional, vollautomatisch, für SAP, DATEV, Lexware und jedes ERP.
           </p>
           <div className="fu4" style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:40}}>
             <button className="btn btn-primary btn-lg" onClick={onEnter}>Kostenlos starten →</button>
             <button className="btn btn-ghost btn-lg" onClick={onEnter}>Demo ansehen</button>
           </div>
-          {/* Social proof numbers */}
-          <div className="fu5" style={{display:'flex',gap:28,paddingTop:24,borderTop:`1px solid ${T.bgBorder}`}}>
-            {[['48h','bis Go-Live'],['100%','EN 16931'],['10J','GoBD-Archiv']].map(([v,l])=>(
+          <div className="fu5" style={{display:'flex',gap:24,paddingTop:20,borderTop:`1px solid ${T.bgBorder}`}}>
+            {[['48h','bis Go-Live'],['Inbound','seit Jan 2025'],['ViDA','ready 2028']].map(([v,l])=>(
               <div key={l}>
-                <div style={{fontSize:20,fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em'}}>{v}</div>
-                <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>{l}</div>
+                <div style={{fontSize:18,fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em'}}>{v}</div>
+                <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{l}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Right — Live Dashboard Preview */}
+        {/* Hero Dashboard */}
         <div className="fu3" style={{position:'relative'}}>
-          {/* Glow behind card */}
           <div style={{position:'absolute',top:'10%',left:'10%',right:'10%',bottom:'10%',background:`radial-gradient(ellipse,${T.accentPale} 0%,transparent 70%)`,borderRadius:16,filter:'blur(20px)',opacity:.5,pointerEvents:'none'}}/>
-
           <div style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:10,boxShadow:T.shadowXl,overflow:'hidden',position:'relative'}}>
-            {/* Window chrome */}
             <div style={{height:34,background:T.bgSubtle,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',padding:'0 12px',gap:7}}>
               {['#FF5F57','#FEBC2E','#28C840'].map(c=><div key={c} style={{width:9,height:9,borderRadius:'50%',background:c}}/>)}
               <div style={{flex:1,height:14,background:T.bgBorder,borderRadius:3,marginLeft:8,maxWidth:180}}/>
             </div>
-
-            {/* App layout inside preview */}
             <div style={{display:'flex',height:320}}>
-              {/* Mini sidebar */}
               <div style={{width:110,background:T.bgSubtle,borderRight:`1px solid ${T.bgBorder}`,padding:'10px 8px',flexShrink:0}}>
                 <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:14,padding:'0 4px'}}>
                   <div style={{width:16,height:16,borderRadius:3,background:T.brand,flexShrink:0}}/>
                   <span style={{fontSize:11,fontWeight:700,color:T.textPrimary}}>invoiq</span>
                 </div>
                 {['Overview','Documents','Connectors','Archive','Settings'].map((item,i)=>(
-                  <div key={item} style={{padding:'5px 7px',borderRadius:5,marginBottom:2,background:i===heroTab===0&&item==='Documents'?T.bgMuted:i===0&&heroTab===0?T.bgMuted:i===1&&heroTab===1?T.bgMuted:i===2&&heroTab===2?T.bgMuted:'transparent',fontSize:11,fontWeight:i===heroTab?600:400,color:i===heroTab?T.textPrimary:T.textMuted,cursor:'default',transition:'all .2s'}}>
-                    {item}
-                  </div>
+                  <div key={item} style={{padding:'5px 7px',borderRadius:5,marginBottom:2,background:i===heroTab?T.bgMuted:'transparent',fontSize:11,fontWeight:i===heroTab?600:400,color:i===heroTab?T.textPrimary:T.textMuted,cursor:'default',transition:'all .2s'}}>{item}</div>
                 ))}
               </div>
-
-              {/* Main content */}
               <div style={{flex:1,overflow:'hidden'}}>
-                {/* Topbar inside preview */}
                 <div style={{height:36,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px'}}>
                   <div style={{display:'flex',gap:2}}>
                     {heroTabs.map((t,i)=>(
@@ -727,22 +705,17 @@ function Landing({onEnter}){
                   </div>
                   <div style={{width:7,height:7,borderRadius:'50%',background:T.green,animation:'pulse 2s ease-in-out infinite'}}/>
                 </div>
-                {/* Tab content */}
-                <div style={{overflow:'hidden',height:283,transition:'opacity .3s'}}>
-                  {heroTabs[heroTab].content}
-                </div>
+                <div style={{overflow:'hidden',height:283}}>{heroTabs[heroTab].content}</div>
               </div>
             </div>
           </div>
-
-          {/* Floating notification */}
-          <div style={{position:'absolute',bottom:-16,right:-12,background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'10px 14px',boxShadow:T.shadow3,display:'flex',alignItems:'center',gap:10,animation:'fadeIn .4s ease'}}>
+          <div style={{position:'absolute',bottom:-16,right:-12,background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'10px 14px',boxShadow:T.shadow3,display:'flex',alignItems:'center',gap:10}}>
             <div style={{width:28,height:28,borderRadius:6,background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div>
               <div style={{fontSize:11.5,fontWeight:600,color:T.textPrimary}}>XRechnung generiert</div>
-              <div style={{fontSize:10.5,color:T.textMuted}}>EN 16931 · GoBD ✓</div>
+              <div style={{fontSize:10.5,color:T.textMuted}}>EN 16931 · GoBD · ViDA-ready ✓</div>
             </div>
           </div>
         </div>
@@ -751,16 +724,13 @@ function Landing({onEnter}){
 
     {/* INTEGRATIONS MARQUEE */}
     <section style={{padding:'48px 0',borderTop:`1px solid rgba(99,91,255,.12)`,borderBottom:`1px solid rgba(99,91,255,.12)`,background:'#07102A',overflow:'hidden',position:'relative'}}>
-      {/* Subtle grid overlay */}
       <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(99,91,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(99,91,255,.07) 1px,transparent 1px)',backgroundSize:'40px 40px',pointerEvents:'none'}}/>
-      {/* Glow center */}
       <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:'60%',height:'100px',background:'radial-gradient(ellipse,rgba(99,91,255,.15) 0%,transparent 70%)',pointerEvents:'none'}}/>
       <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Kompatibel mit führenden ERP-Systemen</p>
       <div className="marquee-wrap" style={{position:'relative'}}>
         <div className="marquee-track">
           {[...integrations,...integrations].map((n,i)=>(
             <div key={i} className="integration-logo" style={{color:'rgba(255,255,255,.55)',background:'rgba(255,255,255,.04)',borderColor:'rgba(255,255,255,.08)'}}>
-              {/* Subtle dot indicator */}
               <span style={{width:5,height:5,borderRadius:'50%',background:'rgba(99,91,255,.7)',display:'inline-block',flexShrink:0}}/>
               {n}
             </div>
@@ -769,45 +739,89 @@ function Landing({onEnter}){
       </div>
     </section>
 
-    {/* ── ANIMATED PROCESS FLOW ── */}
+    {/* INBOUND EMPFANG — Kritische Marktlücke */}
+    <section style={{padding:'88px clamp(16px,4vw,56px)',background:T.bgSubtle,borderBottom:`1px solid ${T.bgBorder}`}}>
+      <div style={{maxWidth:1060,margin:'0 auto',display:'grid',gridTemplateColumns:'1fr 1fr',gap:56,alignItems:'center'}}>
+        <div>
+          <div className="reveal" style={{display:'inline-flex',alignItems:'center',gap:7,background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:6,padding:'4px 12px',fontSize:11.5,fontWeight:700,color:T.red,marginBottom:16}}>
+            ⚠ Seit 1. Januar 2025 gesetzlich verpflichtend
+          </div>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(24px,3.5vw,40px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1.15,marginBottom:16}}>
+            Inbound-Empfang.<br/><span style={{color:T.accent}}>Für alle Unternehmen.</span>
+          </h2>
+          <p className="reveal" style={{fontSize:14.5,color:T.textSecondary,lineHeight:1.75,marginBottom:20}}>
+            Seit Januar 2025 müssen alle <strong>3,5 Mio. B2B-Unternehmen</strong> in Deutschland E-Rechnungen empfangen können — unabhängig von Umsatz oder Größe. Nicht nur versenden.
+          </p>
+          <div className="reveal" style={{display:'flex',flexDirection:'column',gap:10,marginBottom:24}}>
+            {[
+              ['Automatisches Parsing','XRechnung, ZUGFeRD und Peppol werden sofort strukturiert ausgelesen'],
+              ['ERP-Buchung ohne Medienbruch','Direkte Verbuchung in SAP FI, DATEV oder Lexware — kein manueller Schritt'],
+              ['Validierung & Fehler-Alerts','Defekte Rechnungen werden erkannt und mit Klartexthinweis zurückgemeldet'],
+              ['Alle Tarife inklusive','Inbound-Empfang ist kein Premium-Feature — es ist Pflicht für alle'],
+            ].map(([t,d])=>(
+              <div key={t} style={{display:'flex',gap:12,alignItems:'flex-start'}}>
+                <div style={{width:18,height:18,borderRadius:'50%',background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color:T.green,flexShrink:0,marginTop:2,fontWeight:700}}>✓</div>
+                <div>
+                  <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:2}}>{t}</div>
+                  <div style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>{d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-primary reveal" onClick={onEnter}>Inbound einrichten →</button>
+        </div>
+
+        {/* Inbound flow visual */}
+        <div className="reveal">
+          <div style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:10,padding:24,boxShadow:T.shadow2}}>
+            <div style={{fontSize:12,fontWeight:600,color:T.textMuted,letterSpacing:.5,textTransform:'uppercase',marginBottom:16}}>Eingehende Rechnung — Live</div>
+            {[
+              {icon:'📥',step:'Empfang',detail:'XRechnung von Lieferant ABC',status:'done',time:'09:14:03'},
+              {icon:'🔍',step:'Parsing & Validierung',detail:'EN 16931 ✓ · Alle Pflichtfelder vorhanden',status:'done',time:'09:14:03'},
+              {icon:'🗺',step:'ERP-Mapping',detail:'Kreditor 10042 · Kostenstelle 4100',status:'done',time:'09:14:04'},
+              {icon:'📒',step:'SAP FI Buchung',detail:'Beleg 1800023847 erstellt',status:'done',time:'09:14:04'},
+              {icon:'🔒',step:'GoBD-Archivierung',detail:'SHA-256 · 10 Jahre gesichert',status:'done',time:'09:14:05'},
+            ].map((s,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'10px 0',borderBottom:i<4?`1px solid ${T.bgSubtle}`:'none',position:'relative'}}>
+                {i<4&&<div style={{position:'absolute',left:9,top:34,bottom:0,width:1,background:T.bgBorder}}/>}
+                <div style={{width:20,height:20,borderRadius:'50%',background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color:T.green,flexShrink:0,marginTop:2,fontWeight:700,zIndex:1}}>✓</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12.5,fontWeight:600,color:T.textPrimary}}>{s.step}</div>
+                  <div style={{fontSize:11.5,color:T.textMuted}}>{s.detail}</div>
+                </div>
+                <div style={{fontSize:10,color:T.textMuted,fontFamily:F.mono,flexShrink:0}}>{s.time}</div>
+              </div>
+            ))}
+            <div style={{marginTop:14,padding:'10px 14px',background:T.greenBg,border:`1px solid ${T.greenBdr}`,borderRadius:6,display:'flex',alignItems:'center',gap:10}}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span style={{fontSize:12.5,fontWeight:600,color:T.green}}>Vollständig verarbeitet — 2 Sekunden</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* ANIMATED PROCESS FLOW */}
     <section id="funktionen" style={{padding:'96px clamp(16px,4vw,56px)'}}>
       <div style={{maxWidth:960,margin:'0 auto'}}>
         <div style={{textAlign:'center',marginBottom:64}}>
           <span className="reveal badge badge-gray" style={{marginBottom:14,fontSize:11}}>So funktioniert's</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:700,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1.15,marginBottom:12}}>
-            Von der Faktura zur<br/>EN 16931-Rechnung.
-          </h2>
-          <p className="reveal" style={{fontSize:15,color:T.textSecondary,maxWidth:480,margin:'0 auto'}}>Fünf automatische Schritte — komplett ohne manuelle Eingriffe.</p>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em',lineHeight:1.15,marginBottom:12}}>Von der Faktura zur EN 16931-Rechnung.</h2>
+          <p className="reveal" style={{fontSize:15,color:T.textSecondary,maxWidth:480,margin:'0 auto'}}>Fünf automatische Schritte — bidirektional, ohne manuelle Eingriffe.</p>
         </div>
-
-        {/* Step flow */}
         <div style={{display:'flex',flexDirection:'column',gap:0}}>
           {STEPS.map((s,i)=>(
             <div key={s.n} className="flow-step" data-step={i} style={{display:'grid',gridTemplateColumns:'56px 1fr',gap:24,paddingBottom:i<STEPS.length-1?40:0,position:'relative',opacity:activeStep>=i?1:0,transform:activeStep>=i?'translateY(0)':'translateY(16px)',transition:'opacity .5s ease, transform .5s ease'}}>
-
-              {/* Vertical connector line */}
-              {i<STEPS.length-1 && (
-                <div style={{position:'absolute',left:27,top:56,width:2,height:'calc(100% - 30px)',background:`linear-gradient(to bottom,${activeStep>i?T.accent:T.bgBorder} 0%,${T.bgBorder} 100%)`,transition:'background .5s',borderRadius:1}}/>
-              )}
-
-              {/* Step circle */}
+              {i<STEPS.length-1&&<div style={{position:'absolute',left:27,top:56,width:2,height:'calc(100% - 30px)',background:`linear-gradient(to bottom,${activeStep>i?T.accent:T.bgBorder} 0%,${T.bgBorder} 100%)`,transition:'background .5s',borderRadius:1}}/>}
               <div style={{width:56,height:56,borderRadius:'50%',background:activeStep>=i?T.accent:T.bg,border:`2px solid ${activeStep>=i?T.accent:T.bgBorder}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:800,color:activeStep>=i?'#fff':T.textMuted,flexShrink:0,zIndex:1,transition:'all .4s cubic-bezier(.16,1,.3,1)',transform:activeStep===i?'scale(1.12)':'scale(1)',boxShadow:activeStep===i?`0 0 0 6px ${T.accentPale}`:activeStep>i?`0 0 0 4px ${T.accentLight}`:'none'}}>
-                {activeStep>i
-                  ? <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  : s.n
-                }
+                {activeStep>i?<svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>:s.n}
               </div>
-
-              {/* Content */}
               <div style={{paddingTop:12}}>
                 <h3 style={{fontSize:17,fontWeight:700,color:T.textPrimary,marginBottom:6,letterSpacing:'-.025em'}}>{s.title}</h3>
                 <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65,marginBottom:10,maxWidth:560}}>{s.desc}</p>
-                <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:activeStep>=i?0:0}}>
-                  {s.tags.map(t=>(
-                    <span key={t} style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:4,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,color:T.textSecondary}}>{t}</span>
-                  ))}
+                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {s.tags.map(t=><span key={t} style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:4,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,color:T.textSecondary}}>{t}</span>)}
                 </div>
-                {/* Animated preview panel */}
                 <div style={{overflow:'hidden',maxHeight:activeStep>=i?300:0,transition:'max-height .6s cubic-bezier(.16,1,.3,1) .15s',opacity:activeStep>=i?1:0,transitionDelay:activeStep>=i?'.15s':'0s'}}>
                   {s.preview}
                 </div>
@@ -818,24 +832,62 @@ function Landing({onEnter}){
       </div>
     </section>
 
-    {/* BENEFITS */}
+    {/* NEW FEATURES — Market dominance */}
     <section style={{padding:'88px clamp(16px,4vw,56px)',background:T.bgSubtle,borderTop:`1px solid ${T.bgBorder}`,borderBottom:`1px solid ${T.bgBorder}`}}>
       <div style={{maxWidth:1080,margin:'0 auto'}}>
-        <div style={{textAlign:'center',marginBottom:48}}>
-          <span className="reveal badge badge-blue" style={{marginBottom:14,fontSize:11}}>Warum invoiq</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:700,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1.15}}>Weniger Aufwand.<br/>Mehr Compliance.</h2>
+        <div style={{textAlign:'center',marginBottom:52}}>
+          <span className="reveal badge badge-blue" style={{marginBottom:14,fontSize:11}}>Marktführende Funktionen</span>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em',lineHeight:1.15}}>Alles was Sie brauchen.<br/>Nichts was Sie nicht brauchen.</h2>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(min(240px,100%),1fr))',gap:12}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(min(300px,100%),1fr))',gap:12}}>
           {[
-            {n:'01',title:'In 48 Stunden live',desc:'Keine monatelangen Projekte. Verbinden, konfigurieren, fertig.'},
-            {n:'02',title:'Rechtssicher ab Tag 1',desc:'EN 16931, GoBD, §147 AO — alle Anforderungen automatisch.'},
-            {n:'03',title:'Jedes ERP-System',desc:'SAP, DATEV, Lexware oder REST API — ein Portal.'},
-            {n:'04',title:'EU-weit einsatzbereit',desc:'XRechnung, ZUGFeRD, Peppol BIS 3.0 — bereit für ViDA.'},
-          ].map((b,i)=>(
-            <div key={i} className="feature-card reveal" style={{transitionDelay:`${i*.07}s`}}>
-              <div style={{width:28,height:18,borderRadius:3,background:T.brand,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9.5,fontWeight:800,color:'rgba(255,255,255,.65)',marginBottom:16,letterSpacing:.5}}>{b.n}</div>
-              <h3 style={{fontWeight:600,fontSize:15,color:T.textPrimary,marginBottom:7,letterSpacing:'-.02em'}}>{b.title}</h3>
-              <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65}}>{b.desc}</p>
+            {tag:'Neu',title:'KI-Rechnungserkennung',desc:'Automatische Extraktion aus PDF-Rechnungen — konvertiert historische Rechnungen in strukturierte XRechnungen ohne manuelle Arbeit.',color:T.purple},
+            {tag:'Pflicht ab 2025',title:'Inbound für alle Tarife',desc:'Empfang, Parsing und Validierung eingehender E-Rechnungen ist in jedem Plan inklusive — nicht erst ab 199 €.',color:T.green},
+            {tag:'Multiplikator',title:'Steuerberater-Portal',desc:'Zentrales Dashboard für Kanzleien mit hunderten KMU-Mandanten. Ein Login — alle Mandanten verwalten.',color:T.accent},
+            {tag:'2028 ready',title:'ViDA Transaction Reporting',desc:'Die EU-Initiative ViDA kommt 2028. invoiq baut die Schnittstellen jetzt — Sie müssen später nichts umstellen.',color:T.amber},
+            {tag:'Branche',title:'Branchen-Templates',desc:'Vorkonfigurierte Vorlagen für Bau, Handwerk, IT und E-Commerce — mit Abschlagszahlungen, GAEB-Support und mehr.',color:T.blue},
+            {tag:'Self-Service',title:'Lieferanten-Portal',desc:'Geschäftspartner empfangen und versenden E-Rechnungen ohne eigenes System — Sie werden der zentrale Hub.',color:T.accent},
+          ].map((f,i)=>(
+            <div key={i} className="feature-card reveal" style={{transitionDelay:`${i*.06}s`}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
+                <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:f.color+'15',color:f.color,border:`1px solid ${f.color}30`}}>{f.tag}</span>
+              </div>
+              <h3 style={{fontWeight:700,fontSize:15,color:T.textPrimary,marginBottom:7,letterSpacing:'-.02em'}}>{f.title}</h3>
+              <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65}}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* TARGET GROUPS */}
+    <section style={{padding:'88px clamp(16px,4vw,56px)'}}>
+      <div style={{maxWidth:1060,margin:'0 auto'}}>
+        <div style={{textAlign:'center',marginBottom:52}}>
+          <span className="reveal badge badge-gray" style={{marginBottom:14,fontSize:11}}>Zielgruppen</span>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em',lineHeight:1.15}}>Die richtige Lösung<br/>für jede Unternehmensgröße.</h2>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
+          {[
+            {num:'01',target:'Mittelstand mit SAP',sub:'> 800k€ Umsatz · ab 01.01.2027 Versandpflicht',points:['SAP S/4HANA & ECC Integration','IDoc / CPI / RFC Anbindung','Vollautomatischer Faktura-Versand','EN 16931 + ZUGFeRD'],cta:'SAP-Demo buchen',color:T.accent},
+            {num:'02',target:'DATEV-Kanzleien',sub:'Multiplikator für KMU-Mandanten',points:['Steuerberater-Portal',`Mandanten-Verwaltung zentral`,'DATEV Connect Integration','Alle Mandanten auf einen Blick'],cta:'Kanzlei-Paket ansehen',color:T.purple},
+            {num:'03',target:'Kleinunternehmen',sub:'Alle müssen empfangen können',points:['Kostenloser Einstieg (10 Dok.)','Inbound-Empfang inklusive','Kein ERP nötig','XRechnung-Generator gratis'],cta:'Kostenlos starten',color:T.green},
+          ].map((g,i)=>(
+            <div key={i} className="card reveal" style={{padding:24,transitionDelay:`${i*.08}s`}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+                <div style={{width:28,height:18,borderRadius:3,background:g.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9.5,fontWeight:800,color:'rgba(255,255,255,.8)',letterSpacing:.4}}>{g.num}</div>
+              </div>
+              <h3 style={{fontSize:17,fontWeight:700,color:T.textPrimary,marginBottom:5,letterSpacing:'-.025em'}}>{g.target}</h3>
+              <p style={{fontSize:12,color:T.textMuted,marginBottom:16}}>{g.sub}</p>
+              <div style={{display:'flex',flexDirection:'column',gap:7,marginBottom:20}}>
+                {g.points.map((p,j)=>(
+                  <div key={j} style={{display:'flex',gap:8,alignItems:'center',fontSize:13}}>
+                    <span style={{width:14,height:14,borderRadius:'50%',background:g.color+'15',border:`1px solid ${g.color}30`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,color:g.color,flexShrink:0,fontWeight:700}}>✓</span>
+                    <span style={{color:T.textSecondary}}>{p}</span>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-sm" onClick={onEnter} style={{width:'100%',justifyContent:'center',background:'transparent',color:g.color,border:`1px solid ${g.color}30`,fontWeight:600}}>{g.cta} →</button>
             </div>
           ))}
         </div>
@@ -843,14 +895,14 @@ function Landing({onEnter}){
     </section>
 
     {/* SECURITY */}
-    <section id="sicherheit" style={{padding:'88px clamp(16px,4vw,56px)'}}>
+    <section id="sicherheit" style={{padding:'88px clamp(16px,4vw,56px)',background:T.bgSubtle,borderTop:`1px solid ${T.bgBorder}`,borderBottom:`1px solid ${T.bgBorder}`}}>
       <div style={{maxWidth:920,margin:'0 auto',display:'grid',gridTemplateColumns:'1fr 1fr',gap:48,alignItems:'center'}}>
         <div>
           <span className="reveal badge badge-green" style={{marginBottom:16,fontSize:11}}>Security & Compliance</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(24px,3vw,40px)',fontWeight:700,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:18}}>Revisionssicher.<br/>Gerichtsfest.</h2>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(24px,3vw,40px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:18}}>Revisionssicher. Gerichtsfest.</h2>
           <p className="reveal" style={{fontSize:14,color:T.textSecondary,lineHeight:1.75,marginBottom:20}}>SHA-256-gesichert, unveränderlich für 10 Jahre nach §147 AO archiviert. Vollständiger Audit-Trail für jede Transaktion.</p>
           <div className="reveal" style={{display:'flex',flexDirection:'column',gap:8}}>
-            {['EN 16931 — Europäischer E-Rechnungsstandard','GoBD — Grundsätze ordnungsmäßiger Buchführung','§ 147 AO — 10 Jahre Aufbewahrungspflicht','DSGVO — Datenhaltung in AWS Frankfurt (EU)','SHA-256 — Kryptographische Integrität'].map(item=>(
+            {['EN 16931 — Europäischer E-Rechnungsstandard','GoBD — Grundsätze ordnungsmäßiger Buchführung','§ 147 AO — 10 Jahre Aufbewahrungspflicht','DSGVO — Datenhaltung in AWS Frankfurt (EU)','ViDA-ready — Transaction Reporting ab 2028','SHA-256 — Kryptographische Integrität'].map(item=>(
               <div key={item} style={{display:'flex',gap:10,alignItems:'center',fontSize:13.5,color:T.textSecondary}}>
                 <span style={{width:16,height:16,borderRadius:'50%',background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color:T.green,flexShrink:0,fontWeight:700}}>✓</span>
                 {item}
@@ -859,66 +911,81 @@ function Landing({onEnter}){
           </div>
         </div>
         <div className="reveal" style={{background:T.brand,borderRadius:8,padding:28,color:'#fff'}}>
-          {[['Compliance Score','98%',T.green],['Archivierte Dok.','12.441','rgba(255,255,255,.85)'],['Ø Verarbeitungszeit','< 1.2s','rgba(255,255,255,.6)'],['Verfügbarkeit','99.98%','#86EFAC']].map(([l,v,c])=>(
-            <div key={l} style={{padding:'14px 0',borderBottom:'1px solid rgba(255,255,255,.07)'}}>
-              <div style={{fontSize:10.5,color:'rgba(255,255,255,.4)',fontWeight:600,letterSpacing:.5,marginBottom:4,textTransform:'uppercase'}}>{l}</div>
-              <div style={{fontSize:24,fontWeight:800,color:c,lineHeight:1,letterSpacing:'-.03em'}}>{v}</div>
+          {[['Compliance Score','98%',T.green],['Archivierte Dok.','12.441','rgba(255,255,255,.85)'],['Ø Verarbeitungszeit','< 1.2s','rgba(255,255,255,.6)'],['Verfügbarkeit','99.98%','#86EFAC'],['ViDA-Status','Ready 2028','#A5B4FC']].map(([l,v,c])=>(
+            <div key={l} style={{padding:'12px 0',borderBottom:'1px solid rgba(255,255,255,.07)'}}>
+              <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:600,letterSpacing:.5,marginBottom:3,textTransform:'uppercase'}}>{l}</div>
+              <div style={{fontSize:22,fontWeight:800,color:c,lineHeight:1,letterSpacing:'-.03em'}}>{v}</div>
             </div>
           ))}
         </div>
       </div>
     </section>
 
-    {/* PRICING */}
-    <section id="preise" style={{padding:'88px clamp(16px,4vw,56px)',background:T.bgSubtle,borderTop:`1px solid ${T.bgBorder}`}}>
-      <div style={{maxWidth:940,margin:'0 auto'}}>
+    {/* PRICING — new 4-tier with Freemium */}
+    <section id="preise" style={{padding:'88px clamp(16px,4vw,56px)'}}>
+      <div style={{maxWidth:1080,margin:'0 auto'}}>
         <div style={{textAlign:'center',marginBottom:48}}>
           <span className="reveal badge badge-gray" style={{marginBottom:14,fontSize:11}}>Preise</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:700,color:T.textPrimary,letterSpacing:'-.03em'}}>Transparent.<br/>Kein usage-based Billing.</h2>
-          <p className="reveal" style={{fontSize:14,color:T.textSecondary,marginTop:10}}>Fester Monatspreis — keine Überraschungen. Jederzeit kündbar.</p>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em'}}>Transparent. Kein usage-based Billing.</h2>
+          <p className="reveal" style={{fontSize:14,color:T.textSecondary,marginTop:10,marginBottom:20}}>Fester Monatspreis — keine Überraschungen. Jederzeit kündbar.</p>
+          {/* Billing toggle */}
+          <div className="reveal" style={{display:'inline-flex',alignItems:'center',gap:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'6px 8px'}}>
+            <button onClick={()=>setBillingYearly(false)} style={{padding:'5px 14px',borderRadius:6,border:'none',fontSize:12.5,fontWeight:600,cursor:'pointer',background:!billingYearly?T.bg:T.bgSubtle,color:!billingYearly?T.textPrimary:T.textMuted,boxShadow:!billingYearly?T.shadow1:'none',transition:'all .15s'}}>Monatlich</button>
+            <button onClick={()=>setBillingYearly(true)} style={{padding:'5px 14px',borderRadius:6,border:'none',fontSize:12.5,fontWeight:600,cursor:'pointer',background:billingYearly?T.bg:T.bgSubtle,color:billingYearly?T.textPrimary:T.textMuted,boxShadow:billingYearly?T.shadow1:'none',transition:'all .15s'}}>
+              Jährlich <span style={{fontSize:10.5,fontWeight:700,color:T.green,marginLeft:4}}>-20%</span>
+            </button>
+          </div>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(250px,100%),1fr))',gap:12}}>
-          {[{name:'Starter',price:49,docs:'100 Dok./Monat',features:['XRechnung + ZUGFeRD','E-Mail-Versand','GoBD-Archiv','1 Nutzer'],featured:false},{name:'Business',price:199,docs:'1.000 Dok./Monat',features:['+ Peppol BIS 3.0','+ Inbound-Empfang','+ 5 Konnektoren','5 Nutzer'],featured:true},{name:'Pro',price:599,docs:'10.000 Dok./Monat',features:['+ Alle Konnektoren','+ Public REST API','+ Webhooks','15 Nutzer'],featured:false}].map((p,i)=>{
-            const bg=p.featured?T.brand:T.bg;
-            const bd=p.featured?T.brand:T.bgBorder;
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(220px,100%),1fr))',gap:10}}>
+          {PLANS.map((p,i)=>{
+            const price=billingYearly?p.yearlyPrice:p.price;
+            const bg=p.ctaStyle==='primary'?T.brand:T.bg;
+            const bd=p.ctaStyle==='primary'?T.brand:T.bgBorder;
             return(
-            <div key={i} className="pricing-card reveal" style={{transitionDelay:`${i*.1}s`,position:'relative',background:bg,borderColor:bd}}>
-              {p.featured&&<div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:T.accent,color:'#fff',fontSize:10.5,fontWeight:700,padding:'3px 14px',borderRadius:10,letterSpacing:.4,whiteSpace:'nowrap',zIndex:2}}>EMPFOHLEN</div>}
-              <div style={{fontWeight:600,fontSize:13,marginBottom:10,color:p.featured?'rgba(255,255,255,.5)':T.textMuted}}>{p.name}</div>
-              <div style={{display:'flex',alignItems:'baseline',gap:3,marginBottom:3}}>
-                <span style={{fontFamily:F.ui,fontSize:44,fontWeight:800,lineHeight:1,color:p.featured?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>{p.price}</span>
-                <span style={{fontSize:13.5,color:p.featured?'rgba(255,255,255,.4)':T.textMuted}}>€/Mo</span>
+            <div key={i} className="pricing-card reveal" style={{transitionDelay:`${i*.08}s`,position:'relative',background:bg,border:`1.5px solid ${bd}`}}>
+              {p.badge&&<div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:T.accent,color:'#fff',fontSize:10,fontWeight:700,padding:'3px 12px',borderRadius:10,whiteSpace:'nowrap',zIndex:2}}>{p.badge}</div>}
+              <div style={{fontWeight:700,fontSize:12,marginBottom:8,color:p.ctaStyle==='primary'?'rgba(255,255,255,.5)':T.textMuted,textTransform:'uppercase',letterSpacing:.5}}>{p.name}</div>
+              <div style={{display:'flex',alignItems:'baseline',gap:3,marginBottom:2}}>
+                {price===0
+                  ? <span style={{fontSize:36,fontWeight:800,lineHeight:1,color:p.ctaStyle==='primary'?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>Gratis</span>
+                  : <><span style={{fontSize:40,fontWeight:800,lineHeight:1,color:p.ctaStyle==='primary'?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>{price}</span><span style={{fontSize:13,color:p.ctaStyle==='primary'?'rgba(255,255,255,.4)':T.textMuted}}>€/Mo</span></>
+                }
               </div>
-              <div style={{fontSize:12,color:p.featured?'rgba(255,255,255,.4)':T.textMuted,marginBottom:18}}>{p.docs}</div>
-              <div style={{height:1,background:p.featured?'rgba(255,255,255,.1)':T.bgBorder,margin:'0 0 16px'}}/>
+              <div style={{fontSize:11.5,color:p.ctaStyle==='primary'?'rgba(255,255,255,.4)':T.textMuted,marginBottom:4}}>{p.docs}</div>
+              <div style={{fontSize:11,color:p.ctaStyle==='primary'?'rgba(255,255,255,.3)':T.textMuted,marginBottom:16}}>{p.sub}</div>
+              <div style={{height:1,background:p.ctaStyle==='primary'?'rgba(255,255,255,.1)':T.bgBorder,margin:'0 0 14px'}}/>
               {p.features.map((f,j)=>(
-                <div key={j} style={{display:'flex',gap:7,marginBottom:8,fontSize:13.5,color:j===0?(p.featured?'#fff':T.textPrimary):(p.featured?'rgba(255,255,255,.55)':T.textSecondary),alignItems:'center'}}>
-                  <span style={{fontSize:10,color:p.featured?'rgba(255,255,255,.35)':'#635BFF',flexShrink:0,fontWeight:700}}>✓</span>{f}
+                <div key={j} style={{display:'flex',gap:7,marginBottom:7,fontSize:13,color:j===0?(p.ctaStyle==='primary'?'#fff':T.textPrimary):(p.ctaStyle==='primary'?'rgba(255,255,255,.55)':T.textSecondary),alignItems:'center'}}>
+                  <span style={{fontSize:9,color:p.ctaStyle==='primary'?'rgba(255,255,255,.4)':'#635BFF',flexShrink:0,fontWeight:700}}>✓</span>{f}
                 </div>
               ))}
-              <button onClick={onEnter} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',background:p.featured?'rgba(255,255,255,.12)':'transparent',color:p.featured?'#fff':'#635BFF',border:p.featured?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:13,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.background=p.featured?'rgba(255,255,255,.18)':T.accentLight;}} onMouseLeave={e=>{e.currentTarget.style.background=p.featured?'rgba(255,255,255,.12)':'transparent';}}>{p.featured?'Jetzt starten →':'Kostenlos testen'}</button>
+              <button onClick={onEnter} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',background:p.ctaStyle==='primary'?'rgba(255,255,255,.12)':T.accent==='primary'?'transparent':'transparent',color:p.ctaStyle==='primary'?'#fff':'#635BFF',border:p.ctaStyle==='primary'?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:13,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.opacity='.8';}} onMouseLeave={e=>{e.currentTarget.style.opacity='1';}}>{p.cta} →</button>
             </div>
             );
           })}
+        </div>
+
+        {/* Note on inbound */}
+        <div className="reveal" style={{marginTop:20,padding:'14px 20px',background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,display:'flex',alignItems:'center',gap:12}}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke={T.accent} strokeWidth="1.5"/><path d="M8 5v3.5M8 11v.5" stroke={T.accent} strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <span style={{fontSize:13,color:T.textSecondary}}><strong style={{color:T.textPrimary}}>Inbound-Empfang ist in allen Tarifen inklusive</strong> — auch im kostenlosen Plan. Seit Januar 2025 gesetzlich verpflichtend für alle Unternehmen.</span>
         </div>
       </div>
     </section>
 
     {/* CTA */}
     <section style={{background:T.brand,padding:'72px clamp(16px,4vw,56px)',textAlign:'center'}}>
-      <span className="reveal badge" style={{background:'rgba(255,255,255,.1)',color:'rgba(255,255,255,.6)',borderColor:'rgba(255,255,255,.12)',marginBottom:14,fontSize:11}}>E-Rechnungspflicht 2027</span>
+      <span className="reveal badge" style={{background:'rgba(255,255,255,.1)',color:'rgba(255,255,255,.6)',borderColor:'rgba(255,255,255,.12)',marginBottom:14,fontSize:11}}>3,5 Mio. Unternehmen betroffen — jetzt</span>
       <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',color:'#fff',fontWeight:800,letterSpacing:'-.04em',marginBottom:10}}>Bereit vor dem Stichtag.</h2>
-      <p className="reveal" style={{color:'rgba(255,255,255,.45)',fontSize:15,marginBottom:28}}>In 48 Stunden gesetzeskonform — für jedes ERP-System.</p>
+      <p className="reveal" style={{color:'rgba(255,255,255,.45)',fontSize:15,marginBottom:28}}>Inbound ab sofort · Outbound ab 2027 · ViDA-ready ab 2028.</p>
       <button className="reveal btn btn-xl" onClick={onEnter} style={{background:'#fff',color:T.brand,border:'none',fontWeight:700}}>Kostenlos starten →</button>
     </section>
 
     {/* FOOTER */}
     <footer style={{background:T.bg,borderTop:`1px solid ${T.bgBorder}`,padding:'24px clamp(16px,4vw,56px)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
       <Wordmark size={18}/>
-      <div style={{fontSize:12,color:T.textMuted}}>© 2025 invoiq · invoiq.io · EN 16931 · GoBD · DSGVO</div>
-      <div style={{display:'flex',gap:16}}>
-        {['Impressum','Datenschutz','AGB'].map(l=><a key={l} href="#" style={{fontSize:12,color:T.textMuted,textDecoration:'none'}} onMouseEnter={e=>e.target.style.color=T.textPrimary} onMouseLeave={e=>e.target.style.color=T.textMuted}>{l}</a>)}
-      </div>
+      <div style={{fontSize:12,color:T.textMuted}}>© 2025 invoiq · invoiq.io · EN 16931 · GoBD · ViDA-ready · DSGVO</div>
+      <div style={{display:'flex',gap:16}}>{['Impressum','Datenschutz','AGB'].map(l=><a key={l} href="#" style={{fontSize:12,color:T.textMuted,textDecoration:'none'}} onMouseEnter={e=>e.target.style.color=T.textPrimary} onMouseLeave={e=>e.target.style.color=T.textMuted}>{l}</a>)}</div>
     </footer>
   </div>);
 }
