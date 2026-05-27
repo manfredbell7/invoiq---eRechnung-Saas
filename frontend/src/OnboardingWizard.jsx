@@ -449,7 +449,7 @@ function Step3({ data, setData }) {
         {FORMAT_OPTIONS.map(fmt => (
           <div key={fmt.type} className={`format-card ${data.format === fmt.type ? "selected" : ""}`} style={{ textAlign: "left", display: "flex", alignItems: "center", gap: 16, padding: "20px 20px" }} onClick={() => upd("format", fmt.type)}>
             {data.format === fmt.type && (
-              <div style={{ position: "absolute", top: 12, right: 12 }} className="check-circle" style={{ background: data.format === fmt.type ? "rgba(255,255,255,.2)" : C.greenBg, border: `1.5px solid ${data.format === fmt.type ? "rgba(255,255,255,.4)" : C.greenBdr}`, color: data.format === fmt.type ? C.white : C.green }}>✓</div>
+              <div className="check-circle" style={{ position: "absolute", top: 12, right: 12, background: data.format === fmt.type ? "rgba(255,255,255,.2)" : C.greenBg, border: `1.5px solid ${data.format === fmt.type ? "rgba(255,255,255,.4)" : C.greenBdr}`, color: data.format === fmt.type ? C.white : C.green }}>✓</div>
             )}
             {fmt.recommended && (
               <div style={{ position: "absolute", top: -10, left: 16, background: C.navy, color: C.white, fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 12, letterSpacing: .5 }}>
