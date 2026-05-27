@@ -9,21 +9,44 @@ import OnboardingWizard from "./OnboardingWizard.jsx";
    ═══════════════════════════════════════════════════════════════ */
 
 const T = {
-  brand:"#0F172A",brandMid:"#1E293B",brandLite:"#334155",
-  accent:"#2563EB",accentHover:"#1D4ED8",accentLight:"#EFF6FF",accentPale:"#DBEAFE",
-  bg:"#FFFFFF",bgSubtle:"#F8FAFC",bgMuted:"#F1F5F9",bgBorder:"#E2E8F0",
-  textPrimary:"#0F172A",textSecondary:"#475569",textMuted:"#94A3B8",textInverse:"#FFFFFF",
-  green:"#059669",greenBg:"#ECFDF5",greenBdr:"#A7F3D0",
-  red:"#DC2626",redBg:"#FEF2F2",redBdr:"#FECACA",
-  amber:"#D97706",amberBg:"#FFFBEB",amberBdr:"#FDE68A",
-  blue:"#2563EB",blueBg:"#EFF6FF",blueBdr:"#BFDBFE",
-  purple:"#7C3AED",purpleBg:"#F5F3FF",purpleBdr:"#DDD6FE",
-  shadow1:"0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04)",
-  shadow2:"0 4px 6px rgba(15,23,42,.05),0 2px 4px rgba(15,23,42,.04)",
-  shadow3:"0 10px 24px rgba(15,23,42,.08),0 4px 8px rgba(15,23,42,.04)",
-  shadowXl:"0 20px 48px rgba(15,23,42,.12),0 8px 16px rgba(15,23,42,.06)",
+  // Stripe-exact palette
+  brand:     "#0A2540",   // Stripe's deep navy
+  brandMid:  "#1a3a5c",
+  brandLite: "#425466",
+  accent:    "#635BFF",   // Stripe purple-blue
+  accentHover:"#4F46E5",
+  accentLight:"#F0EFFF",
+  accentPale: "#E5E4FF",
+
+  bg:        "#FFFFFF",
+  bgSubtle:  "#F6F9FC",   // Stripe's signature off-white
+  bgMuted:   "#EEF2F7",
+  bgBorder:  "#DDE1E7",   // Stripe border gray
+
+  textPrimary:  "#0A2540",
+  textSecondary:"#425466",
+  textMuted:    "#697386",
+  textPlaceholder:"#9AA8B7",
+
+  // Semantic — muted like Stripe
+  green:    "#1A9C5B",  greenBg:"#F0FBF5",  greenBdr:"#C3E9D5",
+  red:      "#C0392B",  redBg:  "#FEF4F4",  redBdr:  "#F5C6C4",
+  amber:    "#B45309",  amberBg:"#FEFBF0",  amberBdr:"#F5E0A0",
+  blue:     "#2563EB",  blueBg: "#F0F5FF",  blueBdr: "#C3D4F8",
+  gray:     "#697386",  grayBg: "#F6F9FC",  grayBdr: "#DDE1E7",
+
+  // Stripe-style minimal shadows
+  shadow1: "0 1px 1px rgba(0,0,0,.04), 0 2px 4px rgba(10,37,64,.08)",
+  shadow2: "0 2px 4px rgba(0,0,0,.04), 0 4px 12px rgba(10,37,64,.1)",
+  shadow3: "0 4px 8px rgba(0,0,0,.04), 0 8px 24px rgba(10,37,64,.1)",
+  shadowXl:"0 8px 16px rgba(0,0,0,.04), 0 20px 48px rgba(10,37,64,.12)",
 };
-const F={display:"'Instrument Serif','Georgia',serif",ui:"'Inter','DM Sans',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code',monospace"};
+// Stripe uses -apple-system / Inter — NO decorative display fonts in UI
+const F={
+  display:"'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+  ui:     "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+  mono:   "'SF Mono','Fira Code','Fira Mono','Roboto Mono',monospace",
+};
 
 const API_BASE=(import.meta?.env?.VITE_API_URL)||"http://localhost:3000/api/v1";
 const api={
@@ -60,87 +83,270 @@ const fmtNum=n=>new Intl.NumberFormat("de-DE").format(n||0);
 const fmtAgo=d=>{const s=Date.now()-new Date(d);if(s<3600000)return`vor ${Math.floor(s/60000)} Min.`;if(s<86400000)return`vor ${Math.floor(s/3600000)} Std.`;return"gestern";};
 
 const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth;}
-body{font-family:${F.ui};background:${T.bg};color:${T.textPrimary};font-size:14px;line-height:1.6;}
-::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:${T.bgSubtle};}::-webkit-scrollbar-thumb{background:${T.bgBorder};border-radius:3px;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-size:14px;line-height:1.5;letter-spacing:-.01em;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:${T.bgBorder};border-radius:2px;}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.fu{animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both}
-.fu2{animation:fadeUp .5s .08s cubic-bezier(.22,1,.36,1) both}
-.fu3{animation:fadeUp .5s .16s cubic-bezier(.22,1,.36,1) both}
-.fu4{animation:fadeUp .5s .24s cubic-bezier(.22,1,.36,1) both}
-.fu5{animation:fadeUp .5s .32s cubic-bezier(.22,1,.36,1) both}
-.fi{animation:fadeIn .35s ease both}.sci{animation:scaleIn .3s cubic-bezier(.22,1,.36,1) both}
-.skeleton{background:linear-gradient(90deg,${T.bgMuted} 25%,${T.bgSubtle} 50%,${T.bgMuted} 75%);background-size:200% 100%;animation:shimmer 1.4s ease-in-out infinite;border-radius:6px;}
-.btn{font-family:${F.ui};font-weight:600;cursor:pointer;border-radius:8px;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .16s cubic-bezier(.22,1,.36,1);white-space:nowrap;letter-spacing:-.01em;}
-.btn:active{transform:scale(.98)!important;}.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important;}
-.btn-primary{background:${T.accent};color:#fff;padding:9px 18px;font-size:13.5px;box-shadow:0 1px 3px rgba(37,99,235,.25);}
-.btn-primary:hover{background:${T.accentHover};transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.3);}
-.btn-dark{background:${T.brand};color:#fff;padding:9px 18px;font-size:13.5px;box-shadow:${T.shadow1};}
-.btn-dark:hover{background:${T.brandMid};transform:translateY(-1px);}
-.btn-ghost{background:transparent;color:${T.textSecondary};border:1px solid ${T.bgBorder};padding:8px 16px;font-size:13.5px;}
-.btn-ghost:hover{border-color:${T.textMuted};color:${T.textPrimary};background:${T.bgSubtle};}
-.btn-outline{background:transparent;color:${T.accent};border:1px solid ${T.accentPale};padding:7px 14px;font-size:13px;}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+.fi{animation:fadeIn .25s ease both}
+.fu{animation:fadeUp .4s cubic-bezier(.16,1,.3,1) both}
+.fu2{animation:fadeUp .4s .06s cubic-bezier(.16,1,.3,1) both}
+.fu3{animation:fadeUp .4s .12s cubic-bezier(.16,1,.3,1) both}
+.fu4{animation:fadeUp .4s .18s cubic-bezier(.16,1,.3,1) both}
+.fu5{animation:fadeUp .4s .24s cubic-bezier(.16,1,.3,1) both}
+.sci{animation:scaleIn .2s cubic-bezier(.16,1,.3,1) both}
+
+/* Skeleton */
+.skeleton{
+  background:linear-gradient(90deg,${T.bgMuted} 25%,${T.bgSubtle} 50%,${T.bgMuted} 75%);
+  background-size:400px 100%;
+  animation:shimmer 1.2s ease-in-out infinite;
+  border-radius:4px;
+}
+
+/* ── Buttons — Stripe-precise ── */
+.btn{
+  font-family:${F.ui};font-size:13.5px;font-weight:500;
+  cursor:pointer;border-radius:6px;border:none;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:all .14s ease;white-space:nowrap;
+  letter-spacing:-.01em;text-decoration:none;
+}
+.btn:active{transform:scale(.985)!important;filter:brightness(.96);}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important;}
+
+/* Primary — Stripe's indigo */
+.btn-primary{
+  background:${T.accent};color:#fff;
+  padding:8px 16px;
+  box-shadow:0 0 0 1px rgba(99,91,255,.2),0 1px 3px rgba(99,91,255,.25),inset 0 1px 0 rgba(255,255,255,.1);
+}
+.btn-primary:hover{background:${T.accentHover};box-shadow:0 0 0 1px rgba(79,70,229,.3),0 2px 6px rgba(79,70,229,.3),inset 0 1px 0 rgba(255,255,255,.1);}
+
+/* Dark — Stripe's brand button */
+.btn-dark{
+  background:${T.brand};color:#fff;padding:8px 16px;
+  box-shadow:0 0 0 1px rgba(10,37,64,.2),0 1px 3px rgba(10,37,64,.3),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.btn-dark:hover{background:${T.brandMid};}
+
+/* Ghost — subtle border */
+.btn-ghost{
+  background:${T.bg};color:${T.textSecondary};
+  border:1px solid ${T.bgBorder};padding:7px 14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+}
+.btn-ghost:hover{background:${T.bgSubtle};border-color:${T.textPlaceholder};color:${T.textPrimary};}
+
+.btn-outline{background:transparent;color:${T.accent};border:1px solid ${T.accentPale};padding:6px 13px;font-size:13px;}
 .btn-outline:hover{background:${T.accentLight};}
-.btn-danger{background:${T.redBg};color:${T.red};border:1px solid ${T.redBdr};padding:7px 14px;font-size:12.5px;}
-.btn-success{background:${T.greenBg};color:${T.green};border:1px solid ${T.greenBdr};padding:7px 14px;font-size:12.5px;}
-.btn-lg{padding:12px 28px;font-size:15px;border-radius:10px;}
-.btn-sm{padding:5px 11px;font-size:12px;border-radius:6px;}
-.btn-xl{padding:14px 36px;font-size:16px;border-radius:12px;letter-spacing:-.02em;}
-.input{width:100%;background:${T.bg};border:1px solid ${T.bgBorder};border-radius:8px;padding:9px 13px;font-family:${F.ui};font-size:14px;color:${T.textPrimary};outline:none;transition:border-color .15s,box-shadow .15s;}
-.input:focus{border-color:${T.accent};box-shadow:0 0 0 3px rgba(37,99,235,.1);}
-.input::placeholder{color:${T.textMuted};}
-.select{width:100%;background:${T.bg};border:1px solid ${T.bgBorder};border-radius:8px;padding:9px 13px;font-family:${F.ui};font-size:14px;color:${T.textPrimary};outline:none;cursor:pointer;}
+.btn-danger{background:${T.bg};color:${T.red};border:1px solid ${T.redBdr};padding:6px 13px;font-size:12.5px;}
+.btn-success{background:${T.bg};color:${T.green};border:1px solid ${T.greenBdr};padding:6px 13px;font-size:12.5px;}
+.btn-lg{padding:10px 22px;font-size:15px;font-weight:600;border-radius:8px;}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:5px;}
+.btn-xl{padding:13px 32px;font-size:16px;font-weight:600;border-radius:8px;}
+
+/* ── Inputs — Stripe-exact ── */
+.input{
+  width:100%;background:${T.bg};
+  border:1px solid ${T.bgBorder};border-radius:6px;
+  padding:8px 12px;font-family:${F.ui};font-size:14px;
+  color:${T.textPrimary};outline:none;
+  box-shadow:0 1px 1px rgba(0,0,0,.04),0 2px 4px rgba(10,37,64,.06);
+  transition:border-color .14s,box-shadow .14s;
+}
+.input:focus{
+  border-color:${T.accent};
+  box-shadow:0 0 0 2px rgba(99,91,255,.15),0 1px 1px rgba(0,0,0,.04);
+}
+.input::placeholder{color:${T.textPlaceholder};}
+.select{
+  width:100%;background:${T.bg};border:1px solid ${T.bgBorder};border-radius:6px;
+  padding:8px 12px;font-family:${F.ui};font-size:14px;color:${T.textPrimary};
+  outline:none;cursor:pointer;
+  box-shadow:0 1px 1px rgba(0,0,0,.04);
+  transition:border-color .14s;
+}
 .select:focus{border-color:${T.accent};}
-.label{display:block;font-size:11.5px;font-weight:600;color:${T.textSecondary};letter-spacing:.3px;margin-bottom:6px;}
-.card{background:${T.bg};border:1px solid ${T.bgBorder};border-radius:12px;box-shadow:${T.shadow1};}
-.card-hover{transition:all .18s;}.card-hover:hover{border-color:${T.textMuted};box-shadow:${T.shadow2};transform:translateY(-1px);}
+.label{
+  display:block;font-size:12px;font-weight:500;
+  color:${T.textSecondary};margin-bottom:5px;
+}
+
+/* ── Cards — Stripe's layered approach ── */
+.card{
+  background:${T.bg};border:1px solid ${T.bgBorder};
+  border-radius:8px;
+  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 6px rgba(10,37,64,.06);
+}
+.card-hover{transition:all .15s;}
+.card-hover:hover{
+  border-color:${T.textPlaceholder};
+  box-shadow:0 2px 4px rgba(0,0,0,.04),0 4px 12px rgba(10,37,64,.1);
+  transform:translateY(-1px);
+}
+
+/* ── Table ── */
 .table{width:100%;border-collapse:collapse;}
-.table th{text-align:left;padding:10px 14px;font-size:11.5px;color:${T.textMuted};font-weight:600;letter-spacing:.3px;text-transform:uppercase;border-bottom:1px solid ${T.bgBorder};}
-.table td{padding:12px 14px;font-size:13.5px;border-bottom:1px solid ${T.bgSubtle};vertical-align:middle;}
-.tr-hover:hover{background:${T.bgSubtle};}
-.badge{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:2px 8px;font-size:11.5px;font-weight:600;}
-.badge-green{background:${T.greenBg};color:${T.green};border:1px solid ${T.greenBdr};}
-.badge-red{background:${T.redBg};color:${T.red};border:1px solid ${T.redBdr};}
-.badge-amber{background:${T.amberBg};color:${T.amber};border:1px solid ${T.amberBdr};}
-.badge-blue{background:${T.blueBg};color:${T.blue};border:1px solid ${T.blueBdr};}
-.badge-purple{background:${T.purpleBg};color:${T.purple};border:1px solid ${T.purpleBdr};}
-.badge-gray{background:${T.bgMuted};color:${T.textSecondary};border:1px solid ${T.bgBorder};}
-.nav-item{display:flex;align-items:center;gap:9px;padding:7px 10px;background:transparent;color:${T.textMuted};border:none;border-radius:7px;cursor:pointer;font-size:13.5px;font-weight:500;text-align:left;width:100%;font-family:${F.ui};transition:all .12s;}
-.nav-item:hover{color:${T.textPrimary};background:${T.bgSubtle};}
+.table th{
+  text-align:left;padding:9px 14px;
+  font-size:11px;color:${T.textMuted};font-weight:600;
+  letter-spacing:.6px;text-transform:uppercase;
+  border-bottom:1px solid ${T.bgBorder};
+  background:${T.bgSubtle};
+}
+.table th:first-child{border-radius:8px 0 0 0;}
+.table th:last-child{border-radius:0 8px 0 0;}
+.table td{
+  padding:11px 14px;font-size:13.5px;
+  border-bottom:1px solid ${T.bgSubtle};
+  vertical-align:middle;
+}
+.tr-hover:hover{background:${T.bgSubtle};cursor:pointer;}
+
+/* ── Badges — Stripe minimal ── */
+.badge{
+  display:inline-flex;align-items:center;gap:3px;
+  border-radius:4px;padding:2px 7px;
+  font-size:11px;font-weight:600;letter-spacing:.2px;
+}
+.badge-green {background:${T.greenBg};color:${T.green}; border:1px solid ${T.greenBdr};}
+.badge-red   {background:${T.redBg};  color:${T.red};   border:1px solid ${T.redBdr};}
+.badge-amber {background:${T.amberBg};color:${T.amber}; border:1px solid ${T.amberBdr};}
+.badge-blue  {background:${T.blueBg}; color:${T.blue};  border:1px solid ${T.blueBdr};}
+.badge-purple{background:${T.accentLight};color:${T.accent};border:1px solid ${T.accentPale};}
+.badge-gray  {background:${T.bgMuted};color:${T.textSecondary};border:1px solid ${T.bgBorder};}
+
+/* ── Navigation ── */
+.nav-item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;background:transparent;
+  color:${T.textMuted};border:none;border-radius:6px;
+  cursor:pointer;font-size:13px;font-weight:500;
+  text-align:left;width:100%;font-family:${F.ui};
+  transition:all .1s;
+}
+.nav-item:hover{color:${T.textPrimary};background:${T.bgMuted};}
 .nav-item.active{color:${T.textPrimary};background:${T.bgMuted};font-weight:600;}
-.nav-section{font-size:10.5px;font-weight:700;color:${T.textMuted};letter-spacing:1px;text-transform:uppercase;padding:12px 10px 4px;}
-.topbar{height:52px;border-bottom:1px solid ${T.bgBorder};display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:${T.bg};flex-shrink:0;}
-.sidebar{width:220px;background:${T.bg};border-right:1px solid ${T.bgBorder};display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.nav-section{
+  font-size:10px;font-weight:600;color:${T.textPlaceholder};
+  letter-spacing:.8px;text-transform:uppercase;
+  padding:12px 10px 4px;
+}
+
+/* ── Layout ── */
+.sidebar{
+  width:216px;background:${T.bg};
+  border-right:1px solid ${T.bgBorder};
+  display:flex;flex-direction:column;flex-shrink:0;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.topbar{
+  height:50px;border-bottom:1px solid ${T.bgBorder};
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;background:${T.bg};flex-shrink:0;
+}
+
+/* ── Misc ── */
 .divider{height:1px;background:${T.bgBorder};}
-.progress{height:3px;background:${T.bgMuted};border-radius:2px;overflow:hidden;}
-.progress-fill{height:100%;background:${T.accent};border-radius:2px;transition:width .4s;}
-.stat-num{font-family:${F.display};font-size:32px;font-weight:400;color:${T.textPrimary};line-height:1.1;letter-spacing:-.02em;}
-.tab{padding:8px 16px;font-size:13.5px;font-weight:500;color:${T.textMuted};border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;font-family:${F.ui};transition:all .14s;}
+.progress{height:2px;background:${T.bgMuted};border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;background:${T.accent};border-radius:2px;transition:width .3s;}
+.stat-num{
+  font-family:${F.ui};font-size:28px;font-weight:700;
+  color:${T.textPrimary};line-height:1;letter-spacing:-.03em;
+}
+.tab{
+  padding:8px 14px;font-size:13px;font-weight:500;
+  color:${T.textMuted};border:none;background:transparent;
+  cursor:pointer;border-bottom:2px solid transparent;
+  font-family:${F.ui};transition:all .12s;
+  letter-spacing:-.01em;
+}
 .tab.active{color:${T.textPrimary};border-bottom-color:${T.accent};font-weight:600;}
 .tab:hover{color:${T.textSecondary};}
-.avatar{width:28px;height:28px;border-radius:50%;background:${T.accentLight};display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:${T.accent};flex-shrink:0;}
-.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(6px);}
-.modal{background:${T.bg};border-radius:14px;padding:28px;max-width:520px;width:100%;box-shadow:${T.shadowXl};}
-.hero-pill{display:inline-flex;align-items:center;gap:7px;background:${T.bgSubtle};border:1px solid ${T.bgBorder};border-radius:20px;padding:5px 14px;font-size:12.5px;color:${T.textSecondary};font-weight:500;}
-.feature-card{background:${T.bg};border:1px solid ${T.bgBorder};border-radius:12px;padding:24px;transition:all .2s;}
-.feature-card:hover{border-color:${T.accent};box-shadow:${T.shadow2};transform:translateY(-2px);}
-.pricing-card{background:${T.bg};border:1px solid ${T.bgBorder};border-radius:14px;padding:28px;transition:all .2s;}
-.pricing-card:hover{box-shadow:${T.shadow3};transform:translateY(-3px);}
+.avatar{
+  width:26px;height:26px;border-radius:50%;
+  background:${T.accentLight};display:flex;
+  align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:${T.accent};flex-shrink:0;
+}
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(10,37,64,.4);
+  z-index:1000;display:flex;align-items:center;justify-content:center;
+  padding:24px;backdrop-filter:blur(4px);
+}
+.modal{
+  background:${T.bg};border-radius:8px;padding:24px;
+  max-width:480px;width:100%;
+  box-shadow:0 4px 8px rgba(0,0,0,.04),0 20px 48px rgba(10,37,64,.16);
+}
+
+/* ── Landing-specific ── */
+.hero-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  background:${T.bg};border:1px solid ${T.bgBorder};
+  border-radius:20px;padding:4px 12px;
+  font-size:12px;color:${T.textSecondary};font-weight:500;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+}
+.feature-card{
+  background:${T.bg};border:1px solid ${T.bgBorder};
+  border-radius:8px;padding:22px;
+  transition:all .15s;
+  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 6px rgba(10,37,64,.05);
+}
+.feature-card:hover{
+  border-color:${T.textPlaceholder};
+  box-shadow:0 2px 4px rgba(0,0,0,.04),0 6px 16px rgba(10,37,64,.08);
+  transform:translateY(-2px);
+}
+.pricing-card{
+  background:${T.bg};border:1px solid ${T.bgBorder};
+  border-radius:8px;padding:28px;
+  transition:all .15s;
+  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 6px rgba(10,37,64,.05);
+}
+.pricing-card:hover{
+  box-shadow:0 4px 8px rgba(0,0,0,.04),0 12px 32px rgba(10,37,64,.1);
+  transform:translateY(-2px);
+}
 .pricing-card.featured{background:${T.brand};border-color:${T.brand};}
-.reveal{opacity:0;transform:translateY(24px);transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1);}
-.reveal.visible{opacity:1;transform:none;}
-.integration-logo{padding:7px 14px;background:${T.bg};border:1px solid ${T.bgBorder};border-radius:7px;font-size:12px;font-weight:600;color:${T.textSecondary};white-space:nowrap;transition:all .18s;cursor:default;}
-.integration-logo:hover{border-color:${T.textMuted};color:${T.textPrimary};}
-.connector-card{background:${T.bg};border:1px solid ${T.bgBorder};border-radius:11px;padding:18px;transition:all .18s;cursor:pointer;}
-.connector-card:hover{border-color:${T.accent};box-shadow:${T.shadow2};transform:translateY(-2px);}
+.integration-logo{
+  padding:6px 13px;background:${T.bg};border:1px solid ${T.bgBorder};
+  border-radius:6px;font-size:12px;font-weight:500;
+  color:${T.textSecondary};white-space:nowrap;
+  transition:all .14s;cursor:default;
+  box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.integration-logo:hover{border-color:${T.textPlaceholder};color:${T.textPrimary};}
+.connector-card{
+  background:${T.bg};border:1px solid ${T.bgBorder};
+  border-radius:8px;padding:16px;transition:all .14s;cursor:pointer;
+  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 4px rgba(10,37,64,.05);
+}
+.connector-card:hover{border-color:${T.accent};box-shadow:0 2px 4px rgba(0,0,0,.04),0 4px 12px rgba(10,37,64,.08);transform:translateY(-1px);}
 .connector-card.connected{border-color:${T.greenBdr};background:${T.greenBg};}
+
+/* Scroll reveal */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1);}
+.reveal.visible{opacity:1;transform:none;}
+
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .topbar{padding:0 16px;}
+}
 `;
 
 function Wordmark({size=22,inverted=false}){
@@ -154,7 +360,7 @@ function Wordmark({size=22,inverted=false}){
         <rect x="15.8" y="7" width="2.5" height="10" rx="1.25" fill={inverted?T.brand:"#fff"}/>
       </svg>
     </div>
-    <span style={{fontFamily:F.display,fontSize:size*.9,fontWeight:400,color:c,letterSpacing:"-.02em"}}>inv<span style={{color:a}}>o</span>iq</span>
+    <span style={{fontFamily:F.ui,fontSize:size*.9,fontWeight:400,color:c,letterSpacing:"-.02em"}}>inv<span style={{color:a}}>o</span>iq</span>
   </div>);
 }
 
@@ -193,10 +399,10 @@ function Landing({onEnter}){
 
   const integrations=["SAP S/4HANA","SAP ECC","DATEV","Lexware","MS Dynamics 365","Odoo","Xero","QuickBooks","NetSuite","sevDesk","lexoffice","Weclapp"];
   const benefits=[
-    {icon:"⚡",title:"In 48 Stunden live",desc:"Keine monatelangen Projekte. Verbinden, konfigurieren, fertig."},
-    {icon:"🛡",title:"Rechtssicher ab Tag 1",desc:"EN 16931, GoBD, §147 AO — alle gesetzlichen Anforderungen automatisch."},
-    {icon:"🔗",title:"Jedes ERP-System",desc:"SAP, DATEV, Lexware oder REST API — ein Portal für alle Systeme."},
-    {icon:"🌍",title:"EU-weit einsatzbereit",desc:"XRechnung, ZUGFeRD, Peppol BIS 3.0 — bereit für ViDA."},
+    {icon:"01",title:"In 48 Stunden live",desc:"Keine monatelangen Projekte. Verbinden, konfigurieren, fertig."},
+    {icon:"02",title:"Rechtssicher ab Tag 1",desc:"EN 16931, GoBD, §147 AO — alle gesetzlichen Anforderungen automatisch."},
+    {icon:"03",title:"Jedes ERP-System",desc:"SAP, DATEV, Lexware oder REST API — ein Portal für alle Systeme."},
+    {icon:"04",title:"EU-weit einsatzbereit",desc:"XRechnung, ZUGFeRD, Peppol BIS 3.0 — bereit für ViDA."},
   ];
 
   return(<div style={{background:T.bg,minHeight:"100vh",overflowX:"hidden"}}>
@@ -220,8 +426,8 @@ function Landing({onEnter}){
         <div className="fu" style={{marginBottom:24,display:"inline-block"}}>
           <span className="hero-pill"><span style={{width:7,height:7,borderRadius:"50%",background:T.green,animation:"pulse 2s ease-in-out infinite",display:"inline-block"}}/>E-Rechnungspflicht 2027 — Jetzt vorbereiten</span>
         </div>
-        <h1 className="fu2" style={{fontFamily:F.display,fontSize:"clamp(40px,6.5vw,80px)",fontWeight:400,color:T.textPrimary,lineHeight:1.08,letterSpacing:"-.03em",marginBottom:24}}>
-          E-Invoice Compliance.<br/><em style={{fontStyle:"italic",color:T.accent}}>Automatisch.</em>
+        <h1 className="fu2" style={{fontFamily:F.ui,fontSize:"clamp(36px,5.5vw,64px)",fontWeight:800,color:T.textPrimary,lineHeight:1.1,letterSpacing:"-.04em",marginBottom:22}}>
+          E-Invoice Compliance.<br/><span style={{color:T.accent}}>Automatisch.</span>
         </h1>
         <p className="fu3" style={{fontSize:"clamp(15px,1.8vw,19px)",color:T.textSecondary,maxWidth:520,margin:"0 auto 40px",lineHeight:1.75,fontWeight:400}}>
           XRechnung · ZUGFeRD · Peppol — für SAP, DATEV, Lexware und jedes andere ERP-System.
@@ -231,7 +437,7 @@ function Landing({onEnter}){
           <button className="btn btn-ghost btn-xl" onClick={onEnter}>Demo ansehen</button>
         </div>
         {/* App preview mock */}
-        <div className="fu5" style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:12,overflow:"hidden",boxShadow:T.shadow3,maxWidth:680,margin:"0 auto",textAlign:"left"}}>
+        <div className="fu5" style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,overflow:"hidden",boxShadow:T.shadow3,maxWidth:680,margin:"0 auto",textAlign:"left"}}>
           <div style={{height:36,background:T.bg,borderBottom:`1px solid ${T.bgBorder}`,display:"flex",alignItems:"center",padding:"0 14px",gap:7}}>
             {["#FF5F57","#FEBC2E","#28C840"].map(c=><div key={c} style={{width:10,height:10,borderRadius:"50%",background:c}}/>)}
             <div style={{flex:1,height:16,background:T.bgSubtle,borderRadius:4,marginLeft:8}}/>
@@ -240,7 +446,7 @@ function Landing({onEnter}){
             {[["41","Sent","▲ +8%",T.green],["28","Received","This week",T.accent],["1","Errors","Review",T.red],["98%","Compliance","EN 16931 ✓",T.green]].map(([v,l,s,c])=>(
               <div key={l} style={{background:T.bg,borderRadius:8,padding:"10px 12px",border:`1px solid ${T.bgBorder}`}}>
                 <div style={{fontSize:11,color:T.textMuted,marginBottom:5}}>{l}</div>
-                <div style={{fontFamily:F.display,fontSize:22,color:T.textPrimary,lineHeight:1}}>{v}</div>
+                <div style={{fontFamily:F.ui,fontSize:22,color:T.textPrimary,lineHeight:1}}>{v}</div>
                 <div style={{fontSize:10,color:c,marginTop:4,fontWeight:600}}>{s}</div>
               </div>
             ))}
@@ -272,11 +478,11 @@ function Landing({onEnter}){
       <div style={{maxWidth:1080,margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:52}}>
           <span className="reveal badge badge-blue" style={{marginBottom:14}}>Kern-Benefits</span>
-          <h2 className="reveal" style={{fontFamily:F.display,fontSize:"clamp(28px,4vw,48px)",fontWeight:400,color:T.textPrimary,letterSpacing:"-.025em",lineHeight:1.15}}>Weniger Aufwand.<br/><em>Mehr Compliance.</em></h2>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,color:T.textPrimary,letterSpacing:"-.03em",lineHeight:1.15}}>Weniger Aufwand.<br/>Mehr Compliance.</h2>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(250px,100%),1fr))",gap:14}}>
           {benefits.map((b,i)=><div key={i} className="feature-card reveal" style={{transitionDelay:`${i*.08}s`}}>
-            <div style={{width:40,height:40,borderRadius:10,background:T.bgMuted,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:16}}>{b.icon}</div>
+            <div style={{width:32,height:20,borderRadius:4,background:T.brand,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"rgba(255,255,255,.7)",marginBottom:18,letterSpacing:".5px"}}>{b.icon}</div>
             <h3 style={{fontWeight:600,fontSize:15,color:T.textPrimary,marginBottom:7}}>{b.title}</h3>
             <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65}}>{b.desc}</p>
           </div>)}
@@ -289,12 +495,12 @@ function Landing({onEnter}){
       <div style={{maxWidth:900,margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:52}}>
           <span className="reveal badge badge-gray" style={{marginBottom:14}}>So funktioniert's</span>
-          <h2 className="reveal" style={{fontFamily:F.display,fontSize:"clamp(28px,4vw,48px)",fontWeight:400,color:T.textPrimary,letterSpacing:"-.025em"}}>Von der Faktura<br/><em>zur EN 16931-Rechnung</em> — automatisch.</h2>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,color:T.textPrimary,letterSpacing:"-.03em"}}>Von der Faktura<br/>zur EN 16931-Rechnung — automatisch.</h2>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(220px,100%),1fr))",gap:0}}>
           {[{num:"01",title:"ERP verbinden",desc:"SAP, DATEV oder REST API — einmalige Konfiguration in unter 2 Stunden."},{num:"02",title:"Regeln festlegen",desc:"Format, Zustellweg, Empfänger — alles konfigurierbar ohne Code."},{num:"03",title:"Automatisch live",desc:"Jede Faktura wird sofort zu einer validen XRechnung und GoBD-archiviert."}].map((s,i)=>(
             <div key={i} className="reveal" style={{transitionDelay:`${i*.1}s`,padding:"28px 24px",borderRight:i<2?`1px solid ${T.bgBorder}`:"none",textAlign:"center"}}>
-              <div style={{fontFamily:F.display,fontSize:40,color:T.accent,opacity:.25,marginBottom:10,lineHeight:1}}>{s.num}</div>
+              <div style={{fontFamily:F.ui,fontSize:40,color:T.accent,opacity:.25,marginBottom:10,lineHeight:1}}>{s.num}</div>
               <div style={{width:32,height:32,borderRadius:8,background:T.brand,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,margin:"0 auto 14px"}}>{i+1}</div>
               <h3 style={{fontWeight:600,fontSize:15.5,color:T.textPrimary,marginBottom:8}}>{s.title}</h3>
               <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65}}>{s.desc}</p>
@@ -309,7 +515,7 @@ function Landing({onEnter}){
       <div style={{maxWidth:920,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center"}}>
         <div>
           <span className="reveal badge badge-green" style={{marginBottom:16}}>Security & Compliance</span>
-          <h2 className="reveal" style={{fontFamily:F.display,fontSize:"clamp(26px,3.5vw,42px)",fontWeight:400,color:T.textPrimary,letterSpacing:"-.025em",marginBottom:20}}>Revisionssicher.<br/><em>Gerichtsfest.</em></h2>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:"clamp(24px,3vw,40px)",fontWeight:700,color:T.textPrimary,letterSpacing:"-.03em",marginBottom:20}}>Revisionssicher.<br/>Gerichtsfest.</h2>
           <p className="reveal" style={{fontSize:14,color:T.textSecondary,lineHeight:1.75,marginBottom:22}}>SHA-256-gesichert, unveränderlich für 10 Jahre nach §147 AO archiviert. Vollständiger Audit-Trail.</p>
           <div className="reveal" style={{display:"flex",flexDirection:"column",gap:9}}>
             {["EN 16931 — Europäischer E-Rechnungsstandard","GoBD — Grundsätze ordnungsmäßiger Buchführung","§ 147 AO — 10 Jahre Aufbewahrungspflicht","DSGVO — Datenhaltung in AWS Frankfurt (EU)","SHA-256 — Kryptographische Integrität"].map(item=>(
@@ -319,11 +525,11 @@ function Landing({onEnter}){
             ))}
           </div>
         </div>
-        <div className="reveal" style={{background:T.brand,borderRadius:14,padding:28,color:"#fff"}}>
+        <div className="reveal" style={{background:T.brand,borderRadius:8,padding:28,color:"#fff"}}>
           {[["Compliance Score","98%",T.green],["Archivierte Dok.","12.441","rgba(255,255,255,.8)"],["Ø Verarbeitungszeit","< 1.2s","rgba(255,255,255,.6)"],["Verfügbarkeit","99.98%","#86EFAC"]].map(([l,v,c])=>(
             <div key={l} style={{padding:"14px 0",borderBottom:"1px solid rgba(255,255,255,.08)"}}>
               <div style={{fontSize:11,color:"rgba(255,255,255,.45)",fontWeight:600,letterSpacing:.5,marginBottom:5,textTransform:"uppercase"}}>{l}</div>
-              <div style={{fontFamily:F.display,fontSize:26,color:c,lineHeight:1}}>{v}</div>
+              <div style={{fontFamily:F.ui,fontSize:26,color:c,lineHeight:1}}>{v}</div>
             </div>
           ))}
         </div>
@@ -335,15 +541,15 @@ function Landing({onEnter}){
       <div style={{maxWidth:960,margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:52}}>
           <span className="reveal badge badge-gray" style={{marginBottom:14}}>Preise</span>
-          <h2 className="reveal" style={{fontFamily:F.display,fontSize:"clamp(28px,4vw,48px)",fontWeight:400,color:T.textPrimary,letterSpacing:"-.025em"}}>Transparent.<br/><em>Kein usage-based Billing.</em></h2>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,color:T.textPrimary,letterSpacing:"-.03em"}}>Transparent.<br/>Kein usage-based Billing.</h2>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(250px,100%),1fr))",gap:14}}>
           {[{name:"Starter",price:49,docs:"100 Dok./Monat",features:["XRechnung + ZUGFeRD","E-Mail-Versand","GoBD-Archiv","1 Nutzer"],featured:false},{name:"Business",price:199,docs:"1.000 Dok./Monat",features:["+ Peppol BIS 3.0","+ Inbound-Empfang","+ 5 Konnektoren","5 Nutzer"],featured:true},{name:"Pro",price:599,docs:"10.000 Dok./Monat",features:["+ Alle Konnektoren","+ Public REST API","+ Webhooks","15 Nutzer"],featured:false}].map((p,i)=>(
             <div key={i} className="pricing-card reveal" style={{transitionDelay:`${i*.1}s`,position:"relative"}}>
-              {p.featured&&<div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:T.accent,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 14px",borderRadius:20,letterSpacing:.5,whiteSpace:"nowrap"}}>EMPFOHLEN</div>}
+              {p.featured&&<div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:T.accent,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 14px",borderRadius:10,letterSpacing:.5,whiteSpace:"nowrap"}}>EMPFOHLEN</div>}
               <div style={{fontWeight:600,fontSize:13.5,marginBottom:12,color:p.featured?"rgba(255,255,255,.55)":T.textMuted}}>{p.name}</div>
               <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:4}}>
-                <span style={{fontFamily:F.display,fontSize:48,fontWeight:400,lineHeight:1,color:p.featured?"#fff":T.textPrimary,letterSpacing:"-.03em"}}>{p.price}</span>
+                <span style={{fontFamily:F.ui,fontSize:48,fontWeight:400,lineHeight:1,color:p.featured?"#fff":T.textPrimary,letterSpacing:"-.03em"}}>{p.price}</span>
                 <span style={{fontSize:14,color:p.featured?"rgba(255,255,255,.4)":T.textMuted}}>€/Mo</span>
               </div>
               <div style={{fontSize:12.5,color:p.featured?"rgba(255,255,255,.4)":T.textMuted,marginBottom:20}}>{p.docs}</div>
@@ -361,7 +567,7 @@ function Landing({onEnter}){
     {/* CTA */}
     <section style={{background:T.brand,padding:"72px clamp(16px,4vw,56px)",textAlign:"center"}}>
       <span className="reveal badge" style={{background:"rgba(255,255,255,.1)",color:"rgba(255,255,255,.7)",borderColor:"rgba(255,255,255,.15)",marginBottom:16}}>E-Rechnungspflicht 2027</span>
-      <h2 className="reveal" style={{fontFamily:F.display,fontSize:"clamp(26px,4vw,48px)",color:"#fff",fontWeight:400,letterSpacing:"-.025em",marginBottom:12}}>Bereit vor dem Stichtag.</h2>
+      <h2 className="reveal" style={{fontFamily:F.ui,fontSize:"clamp(26px,4vw,48px)",color:"#fff",fontWeight:400,letterSpacing:"-.025em",marginBottom:12}}>Bereit vor dem Stichtag.</h2>
       <p className="reveal" style={{color:"rgba(255,255,255,.5)",fontSize:16,marginBottom:28,fontWeight:300}}>In 48 Stunden gesetzeskonform — für jedes ERP-System.</p>
       <button className="reveal btn btn-xl" onClick={onEnter} style={{background:"#fff",color:T.brand,border:"none",boxShadow:T.shadow2}}>Kostenlos starten →</button>
     </section>
@@ -383,7 +589,7 @@ function Auth({mode,onSwitch,onSuccess,loading}){
     <div style={{width:"100%",maxWidth:400}}>
       <div style={{textAlign:"center",marginBottom:28}}><Wordmark size={24}/></div>
       <div className="card sci" style={{padding:30,boxShadow:T.shadow3}}>
-        <h2 style={{fontFamily:F.display,fontSize:24,fontWeight:400,color:T.textPrimary,marginBottom:5,letterSpacing:"-.02em"}}>{mode==="login"?"Willkommen zurück.":"Konto erstellen."}</h2>
+        <h2 style={{fontFamily:F.ui,fontSize:24,fontWeight:400,color:T.textPrimary,marginBottom:5,letterSpacing:"-.02em"}}>{mode==="login"?"Willkommen zurück.":"Konto erstellen."}</h2>
         <p style={{fontSize:13,color:T.textMuted,marginBottom:24}}>{mode==="login"?"E-Invoice Compliance — automatisch.":"Kostenlos starten — in 2 Minuten."}</p>
         <div style={{display:"flex",flexDirection:"column",gap:13}}>
           {mode==="register"&&<>
@@ -403,7 +609,7 @@ function Auth({mode,onSwitch,onSuccess,loading}){
 
 // ── APP SHELL ─────────────────────────────────────────────────
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
-  const items=[{key:"dashboard",icon:"▦",label:"Overview"},{key:"invoices",icon:"⊟",label:"Documents"},{key:"connect",icon:"⊕",label:"Connectors"},{key:"archive",icon:"⊞",label:"Archive"},{key:"webhooks",icon:"⊛",label:"Webhooks"},{key:"settings",icon:"⊙",label:"Settings"}];
+  const items=[{key:"dashboard",icon:"·",label:"Overview"},{key:"invoices",icon:"·",label:"Documents"},{key:"connect",icon:"·",label:"Connectors"},{key:"archive",icon:"·",label:"Archive"},{key:"webhooks",icon:"·",label:"Webhooks"},{key:"settings",icon:"·",label:"Settings"}];
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
   const isAdmin=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
@@ -415,10 +621,10 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
       <nav style={{flex:1,padding:"6px 8px 0"}}>
         <div className="nav-section">Workspace</div>
         {items.map(({key,icon,label})=><button key={key} className={`nav-item ${nav===key?"active":""}`} onClick={()=>setNav(key)}>
-          <span style={{fontSize:13,width:15,textAlign:"center",flexShrink:0,color:nav===key?T.accent:"inherit"}}>{icon}</span>{label}
+          <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav===key?T.accent:"transparent",border:`1px solid ${nav===key?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}>{icon}</span>{label}
         </button>)}
         {isAdmin&&<><div className="nav-section" style={{marginTop:6}}>Admin</div>
-          <button className="nav-item" onClick={onAdmin} style={{color:T.red}}><span style={{fontSize:13,width:15,textAlign:"center"}}>⚡</span>Admin Panel</button>
+          <button className="nav-item" onClick={onAdmin} style={{color:T.red,fontSize:12}}><span style={{fontSize:8,width:8,height:8,borderRadius:"50%",background:T.red,display:"inline-block",flexShrink:0}}/>Admin Panel</button>
         </>}
       </nav>
       <div style={{padding:"10px 8px 14px",borderTop:`1px solid ${T.bgBorder}`}}>
@@ -473,7 +679,7 @@ function Dashboard({user,org,notify,onNav}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:22}}>
       <div>
-        <h1 style={{fontFamily:F.display,fontSize:24,fontWeight:400,color:T.textPrimary,letterSpacing:"-.025em"}}>Good morning{user?.full_name?`, ${user.full_name.split(" ")[0]}`:""}.</h1>
+        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:"-.025em"}}>Good morning{user?.full_name?`, ${user.full_name.split(" ")[0]}`:""}.</h1>
         <p style={{color:T.textMuted,fontSize:12.5,marginTop:4}}>{new Date().toLocaleDateString("de-DE",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
       </div>
       <button className="btn btn-primary btn-sm" onClick={()=>onNav("invoices")}>+ New Document</button>
@@ -554,7 +760,7 @@ function Invoices({notify}){
   if(view==="create") return(<div className="fi">
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>
       <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setXml(null);}}>← Back</button>
-      <div><h1 style={{fontFamily:F.display,fontSize:20,fontWeight:400,color:T.textPrimary}}>New Document</h1><p style={{fontSize:12,color:T.textMuted}}>Generate an EN 16931-compliant e-invoice</p></div>
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:400,color:T.textPrimary}}>New Document</h1><p style={{fontSize:12,color:T.textMuted}}>Generate an EN 16931-compliant e-invoice</p></div>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
       <div className="card" style={{padding:20}}>
@@ -586,7 +792,7 @@ function Invoices({notify}){
         <div style={{background:T.bgSubtle,borderRadius:9,padding:"12px 16px",minWidth:220,border:`1px solid ${T.bgBorder}`}}>
           {[["Net",fmtEUR(net)],["VAT",fmtEUR(vat)]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",gap:32,marginBottom:7,fontSize:13,color:T.textMuted}}><span>{l}</span><span>{v}</span></div>)}
           <div style={{height:1,background:T.bgBorder,margin:"7px 0"}}/>
-          <div style={{display:"flex",justifyContent:"space-between",gap:32,fontFamily:F.display,fontSize:18,color:T.textPrimary,fontWeight:400}}><span>Total</span><span>{fmtEUR(net+vat)}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",gap:32,fontFamily:F.ui,fontSize:18,color:T.textPrimary,fontWeight:400}}><span>Total</span><span>{fmtEUR(net+vat)}</span></div>
         </div>
       </div>
     </div>
@@ -604,7 +810,7 @@ function Invoices({notify}){
 
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-      <div><h1 style={{fontFamily:F.display,fontSize:22,fontWeight:400,color:T.textPrimary}}>Documents</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} documents total</p></div>
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Documents</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} documents total</p></div>
       <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export started","success")}>↓ Export</button><button className="btn btn-primary btn-sm" onClick={()=>setView("create")}>+ New</button></div>
     </div>
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
@@ -655,7 +861,7 @@ function ConnectorsView({notify}){
   const filtered=cat==="All"?CONN:CONN.filter(c=>c.cat===cat);
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
-      <div><h1 style={{fontFamily:F.display,fontSize:22,fontWeight:400,color:T.textPrimary}}>Connectors</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{CONN.length} systems · {Object.keys(connected).length} connected</p></div>
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Connectors</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{CONN.length} systems · {Object.keys(connected).length} connected</p></div>
       <span className="badge badge-green">✓ {Object.keys(connected).length} Active</span>
     </div>
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:18}}>
@@ -675,7 +881,7 @@ function ConnectorsView({notify}){
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(220px,100%),1fr))",gap:9}}>
         {filtered.filter(c=>!connected[c.type]).map(conn=><div key={conn.type} className="connector-card card-hover" style={{position:"relative"}} onClick={()=>setModal(conn)}>
           {conn.cert&&<span className="badge badge-amber" style={{position:"absolute",top:11,right:11,fontSize:10}}>Cert. req.</span>}
-          <div style={{fontSize:22,marginBottom:9}}>{conn.icon}</div>
+          <div style={{width:32,height:32,borderRadius:6,background:T.bgMuted,border:`1px solid ${T.bgBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:9,fontFamily:F.mono}}>{conn.type.substring(0,3).toUpperCase()}</div>
           <div style={{fontWeight:600,fontSize:13.5,color:T.textPrimary,marginBottom:3}}>{conn.name}</div>
           <div style={{fontSize:11.5,color:T.textMuted,marginBottom:9}}>{conn.method}</div>
           <span className="badge badge-gray" style={{fontSize:10.5}}>{conn.cat}</span>
@@ -686,7 +892,7 @@ function ConnectorsView({notify}){
     {modal&&<div className="modal-overlay" onClick={()=>setModal(null)}>
       <div className="modal sci" onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:26}}>{modal.icon}</span><div><div style={{fontFamily:F.display,fontSize:19,fontWeight:400,color:T.textPrimary}}>{modal.name}</div><div style={{fontSize:12,color:T.textMuted}}>{modal.method}</div></div></div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:26}}>{modal.icon}</span><div><div style={{fontFamily:F.ui,fontSize:19,fontWeight:400,color:T.textPrimary}}>{modal.name}</div><div style={{fontSize:12,color:T.textMuted}}>{modal.method}</div></div></div>
           <button onClick={()=>setModal(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:T.textMuted}}>×</button>
         </div>
         {modal.cert&&<div style={{background:T.amberBg,border:`1px solid ${T.amberBdr}`,borderRadius:8,padding:"9px 13px",marginBottom:14,fontSize:13,color:T.amber}}>⚠️ Certification required. Contact <strong>manfred@invoiq.io</strong></div>}
@@ -702,12 +908,12 @@ function ConnectorsView({notify}){
   </div>);
 }
 
-function Placeholder({title,sub,icon="📋"}){return(<div className="fi"><h1 style={{fontFamily:F.display,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:4}}>{title}</h1><p style={{color:T.textMuted,fontSize:13,marginBottom:22}}>{sub}</p><div className="card" style={{textAlign:"center",padding:52,color:T.textMuted}}><div style={{fontSize:28,marginBottom:10}}>{icon}</div><div style={{fontSize:13.5}}>Coming in Release 1.0</div></div></div>);}
+function Placeholder({title,sub,icon="📋"}){return(<div className="fi"><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:4}}>{title}</h1><p style={{color:T.textMuted,fontSize:13,marginBottom:22}}>{sub}</p><div className="card" style={{textAlign:"center",padding:52,color:T.textMuted}}><div style={{fontSize:28,marginBottom:10}}>{icon}</div><div style={{fontSize:13.5}}>Coming in Release 1.0</div></div></div>);}
 
 // ── ADMIN SHELL ───────────────────────────────────────────────
 function AdminShell({user,org,nav,setNav,onBack,children}){
   const isSuper=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
-  const items=isSuper?[{section:"Platform"},{key:"overview",icon:"▦",label:"Overview"},{key:"allinvoices",icon:"⊟",label:"All Documents"},{key:"users",icon:"👤",label:"Users"},{key:"revenue",icon:"📈",label:"Revenue"},{section:"System"},{key:"peppol",icon:"🌍",label:"Peppol"},{key:"apilogs",icon:"📋",label:"Audit Logs"}]:[{section:org?.name||"Company"},{key:"overview",icon:"▦",label:"Overview"},{key:"myinvoices",icon:"⊟",label:"Documents"},{key:"myusers",icon:"👤",label:"Team"},{key:"billing",icon:"💳",label:"Billing"}];
+  const items=isSuper?[{section:"Platform"},{key:"overview",icon:"·",label:"Overview"},{key:"allinvoices",icon:"·",label:"All Documents"},{key:"users",icon:"·",label:"Users"},{key:"revenue",icon:"·",label:"Revenue"},{section:"System"},{key:"peppol",icon:"·",label:"Peppol"},{key:"apilogs",icon:"·",label:"Audit Logs"}]:[{section:org?.name||"Company"},{key:"overview",icon:"▦",label:"Overview"},{key:"myinvoices",icon:"·",label:"Documents"},{key:"myusers",icon:"·",label:"Team"},{key:"billing",icon:"·",label:"Billing"}];
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
     <aside className="sidebar" style={{background:T.brand}}>
       <div style={{padding:"14px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.1)"}}><Wordmark size={20} inverted/><div style={{fontSize:10,color:"rgba(255,255,255,.35)",marginTop:7,fontWeight:700,letterSpacing:.5,textTransform:"uppercase"}}>{isSuper?"Super Admin":"Customer Admin"}</div></div>
@@ -730,7 +936,7 @@ function AdminOverview({notify,isSuper}){
   const mrr=MOCK_ORGS.filter(o=>o.status==="active").reduce((s,o)=>s+o.mrr,0);
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
-      <div><h1 style={{fontFamily:F.display,fontSize:22,fontWeight:400,color:T.textPrimary}}>{isSuper?"Platform Overview":"Overview"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super Admin":MOCK_ORGS[0].name}</p></div>
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Platform Overview":"Overview"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super Admin":MOCK_ORGS[0].name}</p></div>
       {isSuper&&<button className="btn btn-ghost btn-sm" onClick={()=>notify("Export started","success")}>↓ Export</button>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
@@ -761,7 +967,7 @@ function AdminDocs({notify}){
   const[filter,setFilter]=useState("all");
   const filtered=filter==="all"?MOCK_INV:MOCK_INV.filter(i=>i.status===filter);
   return(<div className="fi">
-    <h1 style={{fontFamily:F.display,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:18}}>All Documents</h1>
+    <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:18}}>All Documents</h1>
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
       {["all","delivered","validated","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>{{all:"All",delivered:"Delivered",validated:"Validated",error:"Errors",archived:"Archived"}[s]}<span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:"1px 5px",borderRadius:7,color:T.textMuted}}>{s==="all"?MOCK_INV.length:MOCK_INV.filter(i=>i.status===s).length}</span></button>)}
     </div>
@@ -782,7 +988,7 @@ function AdminDocs({notify}){
 function AdminUsers({notify}){
   const users=[{id:"u1",name:"Manfred Bell",email:"manfred@invoiq.io",role:"super_admin",org:"invoiq",status:"active",last:"Today"},{id:"u2",name:"Hans Müller",email:"hans@mueller.de",role:"owner",org:"Müller & Partner GmbH",status:"active",last:"Today"},{id:"u3",name:"Sarah Weber",email:"s.weber@techvision.de",role:"admin",org:"TechVision AG",status:"active",last:"Yesterday"},{id:"u4",name:"Klaus Bauer",email:"k.bauer@logistik.de",role:"member",org:"Bauer Logistik KG",status:"active",last:"3 days ago"}];
   return(<div className="fi">
-    <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}><h1 style={{fontFamily:F.display,fontSize:22,fontWeight:400,color:T.textPrimary}}>Users</h1><button className="btn btn-primary btn-sm" onClick={()=>notify("Invitation sent","success")}>+ Invite</button></div>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Users</h1><button className="btn btn-primary btn-sm" onClick={()=>notify("Invitation sent","success")}>+ Invite</button></div>
     <div className="card"><table className="table"><thead><tr>{["User","Role","Organization","Status","Last Login","Actions"].map(h=><th key={h}>{h}</th>)}</tr></thead>
       <tbody>{users.map(u=><tr key={u.id} className="tr-hover">
         <td><div style={{display:"flex",alignItems:"center",gap:8}}><div className="avatar">{u.name[0]}</div><div><div style={{fontWeight:600,fontSize:13}}>{u.name}</div><div style={{fontSize:10.5,color:T.textMuted}}>{u.email}</div></div></div></td>
@@ -800,7 +1006,7 @@ function AdminRevenue(){
   const plans=[{name:"Starter",count:2,price:49},{name:"Business",count:2,price:199},{name:"Pro",count:1,price:599}];
   const mrr=plans.reduce((s,p)=>s+p.count*p.price,0);
   return(<div className="fi">
-    <h1 style={{fontFamily:F.display,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:18}}>Revenue</h1>
+    <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:18}}>Revenue</h1>
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
       {[["MRR",fmtEUR(mrr)],["ARR",fmtEUR(mrr*12)],["Avg/Customer",fmtEUR(mrr/5)]].map(([l,v])=><div key={l} className="card" style={{padding:18}}><div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:9}}>{l}</div><div className="stat-num">{v}</div></div>)}
     </div>
