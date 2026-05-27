@@ -324,13 +324,36 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
 }
 .pricing-card.featured{background:${T.brand};border-color:${T.brand};}
 .integration-logo{
-  padding:6px 13px;background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:6px;font-size:12px;font-weight:500;
-  color:${T.textSecondary};white-space:nowrap;
-  transition:all .14s;cursor:default;
-  box-shadow:0 1px 2px rgba(0,0,0,.04);
+  display:inline-flex;align-items:center;gap:8px;
+  padding:9px 18px;
+  background:${T.bg};
+  border:1px solid ${T.bgBorder};
+  border-radius:8px;
+  font-size:13px;font-weight:600;
+  color:${T.textSecondary};
+  white-space:nowrap;
+  cursor:default;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 2px 8px rgba(10,37,64,.05);
+  transition:border-color .15s,color .15s,box-shadow .15s,transform .15s;
+  user-select:none;
+  flex-shrink:0;
 }
-.integration-logo:hover{border-color:${T.textPlaceholder};color:${T.textPrimary};}
+.integration-logo:hover{
+  border-color:${T.accent};color:${T.textPrimary};
+  box-shadow:0 2px 4px rgba(0,0,0,.06),0 4px 16px rgba(99,91,255,.12);
+  transform:translateY(-1px);
+}
+@keyframes marquee{
+  0%{transform:translateX(0)}
+  100%{transform:translateX(-50%)}
+}
+.marquee-track{
+  display:flex;gap:10px;
+  animation:marquee 28s linear infinite;
+  width:max-content;
+}
+.marquee-track:hover{animation-play-state:paused;}
+.marquee-wrap{overflow:hidden;mask-image:linear-gradient(to right,transparent 0%,black 8%,black 92%,transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 8%,black 92%,transparent 100%);}
 .connector-card{
   background:${T.bg};border:1px solid ${T.bgBorder};
   border-radius:8px;padding:16px;transition:all .14s;cursor:pointer;
@@ -718,12 +741,22 @@ function Landing({onEnter}){
       </div>
     </section>
 
-    {/* INTEGRATIONS BAR */}
-    <section style={{padding:'36px clamp(16px,4vw,56px)',borderTop:`1px solid ${T.bgBorder}`,borderBottom:`1px solid ${T.bgBorder}`,background:T.bgSubtle,overflow:'hidden'}}>
-      <div style={{maxWidth:960,margin:'0 auto',textAlign:'center'}}>
-        <p style={{fontSize:11,fontWeight:600,color:T.textMuted,letterSpacing:1,textTransform:'uppercase',marginBottom:16}}>Kompatibel mit führenden ERP-Systemen</p>
-        <div style={{display:'flex',gap:7,flexWrap:'wrap',justifyContent:'center'}}>
-          {integrations.map(n=><div key={n} className="integration-logo">{n}</div>)}
+    {/* INTEGRATIONS MARQUEE */}
+    <section style={{padding:'40px 0',borderTop:`1px solid ${T.bgBorder}`,borderBottom:`1px solid ${T.bgBorder}`,background:T.bgSubtle,overflow:'hidden'}}>
+      <p style={{fontSize:10.5,fontWeight:700,color:T.textMuted,letterSpacing:1.2,textTransform:'uppercase',marginBottom:20,textAlign:'center'}}>Kompatibel mit führenden ERP-Systemen</p>
+      <div className="marquee-wrap">
+        <div className="marquee-track">
+          {[...integrations,...integrations].map((n,i)=>(
+            <div key={i} className="integration-logo">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{flexShrink:0,opacity:.45}}>
+                <rect x="1" y="1" width="5" height="5" rx="1.5" fill="currentColor"/>
+                <rect x="8" y="1" width="5" height="5" rx="1.5" fill="currentColor"/>
+                <rect x="1" y="8" width="5" height="5" rx="1.5" fill="currentColor"/>
+                <rect x="8" y="8" width="5" height="5" rx="1.5" fill="currentColor"/>
+              </svg>
+              {n}
+            </div>
+          ))}
         </div>
       </div>
     </section>
