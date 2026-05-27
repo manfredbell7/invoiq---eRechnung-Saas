@@ -323,37 +323,45 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
   transform:translateY(-2px);
 }
 .pricing-card.featured{background:${T.brand};border-color:${T.brand};}
+/* Integration logo pills — futuristic */
 .integration-logo{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:9px 18px;
-  background:${T.bg};
-  border:1px solid ${T.bgBorder};
-  border-radius:8px;
-  font-size:13px;font-weight:600;
+  display:inline-flex;align-items:center;gap:9px;
+  padding:11px 20px;
+  background:rgba(10,37,64,.04);
+  border:1px solid rgba(99,91,255,.18);
+  border-radius:10px;
+  font-size:13px;font-weight:600;letter-spacing:-.01em;
   color:${T.textSecondary};
-  white-space:nowrap;
-  cursor:default;
-  box-shadow:0 1px 2px rgba(0,0,0,.04),0 2px 8px rgba(10,37,64,.05);
-  transition:border-color .15s,color .15s,box-shadow .15s,transform .15s;
-  user-select:none;
-  flex-shrink:0;
+  white-space:nowrap;cursor:default;
+  transition:border-color .2s,color .2s,background .2s,box-shadow .2s,transform .2s;
+  user-select:none;flex-shrink:0;
+  position:relative;
+  overflow:hidden;
+}
+.integration-logo::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(99,91,255,.07) 0%,transparent 60%);
+  pointer-events:none;
 }
 .integration-logo:hover{
-  border-color:${T.accent};color:${T.textPrimary};
-  box-shadow:0 2px 4px rgba(0,0,0,.06),0 4px 16px rgba(99,91,255,.12);
-  transform:translateY(-1px);
+  border-color:rgba(99,91,255,.55);
+  color:${T.textPrimary};
+  background:rgba(99,91,255,.07);
+  box-shadow:0 0 0 1px rgba(99,91,255,.15),0 4px 20px rgba(99,91,255,.15);
+  transform:translateY(-2px);
 }
-@keyframes marquee{
-  0%{transform:translateX(0)}
-  100%{transform:translateX(-50%)}
-}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 .marquee-track{
   display:flex;gap:10px;
-  animation:marquee 28s linear infinite;
+  animation:marquee 32s linear infinite;
   width:max-content;
 }
 .marquee-track:hover{animation-play-state:paused;}
-.marquee-wrap{overflow:hidden;mask-image:linear-gradient(to right,transparent 0%,black 8%,black 92%,transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 8%,black 92%,transparent 100%);}
+.marquee-wrap{
+  overflow:hidden;
+  mask-image:linear-gradient(to right,transparent 0%,black 10%,black 90%,transparent 100%);
+  -webkit-mask-image:linear-gradient(to right,transparent 0%,black 10%,black 90%,transparent 100%);
+}
 .connector-card{
   background:${T.bg};border:1px solid ${T.bgBorder};
   border-radius:8px;padding:16px;transition:all .14s;cursor:pointer;
@@ -742,18 +750,18 @@ function Landing({onEnter}){
     </section>
 
     {/* INTEGRATIONS MARQUEE */}
-    <section style={{padding:'40px 0',borderTop:`1px solid ${T.bgBorder}`,borderBottom:`1px solid ${T.bgBorder}`,background:T.bgSubtle,overflow:'hidden'}}>
-      <p style={{fontSize:10.5,fontWeight:700,color:T.textMuted,letterSpacing:1.2,textTransform:'uppercase',marginBottom:20,textAlign:'center'}}>Kompatibel mit führenden ERP-Systemen</p>
-      <div className="marquee-wrap">
+    <section style={{padding:'48px 0',borderTop:`1px solid rgba(99,91,255,.12)`,borderBottom:`1px solid rgba(99,91,255,.12)`,background:'#07102A',overflow:'hidden',position:'relative'}}>
+      {/* Subtle grid overlay */}
+      <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(99,91,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(99,91,255,.07) 1px,transparent 1px)',backgroundSize:'40px 40px',pointerEvents:'none'}}/>
+      {/* Glow center */}
+      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:'60%',height:'100px',background:'radial-gradient(ellipse,rgba(99,91,255,.15) 0%,transparent 70%)',pointerEvents:'none'}}/>
+      <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Kompatibel mit führenden ERP-Systemen</p>
+      <div className="marquee-wrap" style={{position:'relative'}}>
         <div className="marquee-track">
           {[...integrations,...integrations].map((n,i)=>(
-            <div key={i} className="integration-logo">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{flexShrink:0,opacity:.45}}>
-                <rect x="1" y="1" width="5" height="5" rx="1.5" fill="currentColor"/>
-                <rect x="8" y="1" width="5" height="5" rx="1.5" fill="currentColor"/>
-                <rect x="1" y="8" width="5" height="5" rx="1.5" fill="currentColor"/>
-                <rect x="8" y="8" width="5" height="5" rx="1.5" fill="currentColor"/>
-              </svg>
+            <div key={i} className="integration-logo" style={{color:'rgba(255,255,255,.55)',background:'rgba(255,255,255,.04)',borderColor:'rgba(255,255,255,.08)'}}>
+              {/* Subtle dot indicator */}
+              <span style={{width:5,height:5,borderRadius:'50%',background:'rgba(99,91,255,.7)',display:'inline-block',flexShrink:0}}/>
               {n}
             </div>
           ))}
@@ -870,9 +878,12 @@ function Landing({onEnter}){
           <p className="reveal" style={{fontSize:14,color:T.textSecondary,marginTop:10}}>Fester Monatspreis — keine Überraschungen. Jederzeit kündbar.</p>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(250px,100%),1fr))',gap:12}}>
-          {[{name:'Starter',price:49,docs:'100 Dok./Monat',features:['XRechnung + ZUGFeRD','E-Mail-Versand','GoBD-Archiv','1 Nutzer'],featured:false},{name:'Business',price:199,docs:'1.000 Dok./Monat',features:['+ Peppol BIS 3.0','+ Inbound-Empfang','+ 5 Konnektoren','5 Nutzer'],featured:true},{name:'Pro',price:599,docs:'10.000 Dok./Monat',features:['+ Alle Konnektoren','+ Public REST API','+ Webhooks','15 Nutzer'],featured:false}].map((p,i)=>(
-            <div key={i} className="pricing-card reveal" style={{transitionDelay:`${i*.1}s`,position:'relative'}}>
-              {p.featured&&<div style={{position:'absolute',top:-11,left:'50%',transform:'translateX(-50%)',background:T.accent,color:'#fff',fontSize:10.5,fontWeight:700,padding:'3px 12px',borderRadius:10,letterSpacing:.4,whiteSpace:'nowrap'}}>EMPFOHLEN</div>}
+          {[{name:'Starter',price:49,docs:'100 Dok./Monat',features:['XRechnung + ZUGFeRD','E-Mail-Versand','GoBD-Archiv','1 Nutzer'],featured:false},{name:'Business',price:199,docs:'1.000 Dok./Monat',features:['+ Peppol BIS 3.0','+ Inbound-Empfang','+ 5 Konnektoren','5 Nutzer'],featured:true},{name:'Pro',price:599,docs:'10.000 Dok./Monat',features:['+ Alle Konnektoren','+ Public REST API','+ Webhooks','15 Nutzer'],featured:false}].map((p,i)=>{
+            const bg=p.featured?T.brand:T.bg;
+            const bd=p.featured?T.brand:T.bgBorder;
+            return(
+            <div key={i} className="pricing-card reveal" style={{transitionDelay:`${i*.1}s`,position:'relative',background:bg,borderColor:bd}}>
+              {p.featured&&<div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:T.accent,color:'#fff',fontSize:10.5,fontWeight:700,padding:'3px 14px',borderRadius:10,letterSpacing:.4,whiteSpace:'nowrap',zIndex:2}}>EMPFOHLEN</div>}
               <div style={{fontWeight:600,fontSize:13,marginBottom:10,color:p.featured?'rgba(255,255,255,.5)':T.textMuted}}>{p.name}</div>
               <div style={{display:'flex',alignItems:'baseline',gap:3,marginBottom:3}}>
                 <span style={{fontFamily:F.ui,fontSize:44,fontWeight:800,lineHeight:1,color:p.featured?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>{p.price}</span>
@@ -880,12 +891,15 @@ function Landing({onEnter}){
               </div>
               <div style={{fontSize:12,color:p.featured?'rgba(255,255,255,.4)':T.textMuted,marginBottom:18}}>{p.docs}</div>
               <div style={{height:1,background:p.featured?'rgba(255,255,255,.1)':T.bgBorder,margin:'0 0 16px'}}/>
-              {p.features.map((f,j)=><div key={j} style={{display:'flex',gap:7,marginBottom:8,fontSize:13.5,color:j===0?(p.featured?'#fff':T.textPrimary):(p.featured?'rgba(255,255,255,.55)':T.textSecondary),alignItems:'center'}}>
-                <span style={{fontSize:10,color:p.featured?'rgba(255,255,255,.4)':T.accent,flexShrink:0}}>✓</span>{f}
-              </div>)}
-              <button onClick={onEnter} className="btn btn-sm" style={{marginTop:16,width:'100%',justifyContent:'center',background:p.featured?'#fff':'transparent',color:p.featured?T.brand:T.accent,border:p.featured?'none':`1px solid ${T.accentPale}`,padding:'9px',fontSize:13,borderRadius:6}}>{p.featured?'Jetzt starten':'Kostenlos testen'}</button>
+              {p.features.map((f,j)=>(
+                <div key={j} style={{display:'flex',gap:7,marginBottom:8,fontSize:13.5,color:j===0?(p.featured?'#fff':T.textPrimary):(p.featured?'rgba(255,255,255,.55)':T.textSecondary),alignItems:'center'}}>
+                  <span style={{fontSize:10,color:p.featured?'rgba(255,255,255,.35)':'#635BFF',flexShrink:0,fontWeight:700}}>✓</span>{f}
+                </div>
+              ))}
+              <button onClick={onEnter} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',background:p.featured?'rgba(255,255,255,.12)':'transparent',color:p.featured?'#fff':'#635BFF',border:p.featured?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:13,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.background=p.featured?'rgba(255,255,255,.18)':T.accentLight;}} onMouseLeave={e=>{e.currentTarget.style.background=p.featured?'rgba(255,255,255,.12)':'transparent';}}>{p.featured?'Jetzt starten →':'Kostenlos testen'}</button>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
