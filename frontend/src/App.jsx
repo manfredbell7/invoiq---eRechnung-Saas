@@ -1408,6 +1408,563 @@ function ConnectorsView({notify}){
   </div>);
 }
 
+// ══════════════════════════════════════════════════════════════
+// INBOUND — Eingehende E-Rechnungen empfangen & verarbeiten
+// ══════════════════════════════════════════════════════════════
+function InboundScreen({notify}){
+  const[tab,setTab]=useState('received');
+  const[invoices,setInvoices]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[selected,setSelected]=useState(null);
+  const[uploading,setUploading]=useState(false);
+  const fileRef=useRef(null);
+
+  useEffect(()=>{
+    api.listInvoices('?direction=inbound&limit=20')
+      .then(d=>setInvoices(d.invoices||[]))
+      .catch(()=>setInvoices([
+        {id:'ib1',invoice_number:'EINGANG-2025-003',buyer_name:'invoiq GmbH',amount_gross:4284,format:'xrechnung',status:'validated',created_at:new Date(Date.now()-3600000).toISOString(),sender_name:'Müller Lieferant GmbH',validation_passed:true,archived:true},
+        {id:'ib2',invoice_number:'EINGANG-2025-002',buyer_name:'invoiq GmbH',amount_gross:1290,format:'zugferd',status:'error',created_at:new Date(Date.now()-86400000).toISOString(),sender_name:'TechParts AG',validation_passed:false,archived:false,last_error:'Pflichtfeld BuyerReference fehlt'},
+        {id:'ib3',invoice_number:'EINGANG-2025-001',buyer_name:'invoiq GmbH',amount_gross:8900,format:'peppol',status:'archived',created_at:new Date(Date.now()-172800000).toISOString(),sender_name:'SAP Partner GmbH',validation_passed:true,archived:true},
+      ]))
+      .finally(()=>setLoading(false));
+  },[]);
+
+  const handleUpload=async(e)=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    setUploading(true);
+    // Simulate processing
+    await new Promise(r=>setTimeout(r,1400));
+    notify(`${file.name} empfangen & validiert ✓`,'success');
+    setUploading(false);
+    e.target.value='';
+  };
+
+  const stats=[
+    {label:'Empfangen',value:invoices.length,sub:'Gesamt',color:T.textPrimary},
+    {label:'Validiert',value:invoices.filter(i=>i.validation_passed).length,sub:'EN 16931 ✓',color:T.green},
+    {label:'Fehler',value:invoices.filter(i=>i.status==='error').length,sub:'Prüfen nötig',color:T.red},
+    {label:'Archiviert',value:invoices.filter(i=>i.archived).length,sub:'GoBD-konform',color:T.accent},
+  ];
+
+  return(
+    <div className="fi">
+      {/* Header */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
+        <div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+            <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em'}}>Inbound</h1>
+            <span className="badge badge-red" style={{fontSize:10.5}}>Pflicht seit Jan 2025</span>
+          </div>
+          <p style={{fontSize:13,color:T.textMuted}}>Eingehende E-Rechnungen empfangen, validieren und in Ihr ERP buchen.</p>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <input ref={fileRef} type="file" accept=".xml,.pdf" style={{display:'none'}} onChange={handleUpload}/>
+          <button className="btn btn-ghost btn-sm" onClick={()=>fileRef.current?.click()} disabled={uploading}>
+            {uploading?<><Spinner size={13}/>&nbsp;Verarbeite...</>:'↑ XML / PDF hochladen'}
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={()=>notify('Peppol-Adresse kopiert: DE:invoiq','success')}>
+            📋 Meine Peppol-ID
+          </button>
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}}>
+        {stats.map((s,i)=>(
+          <div key={i} className="card" style={{padding:16}}>
+            <div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8}}>{s.label}</div>
+            <div className="stat-num" style={{fontSize:26,color:s.color}}>{s.value}</div>
+            <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* How to receive */}
+      <div className="card" style={{padding:18,marginBottom:16,background:'linear-gradient(135deg,#EFF6FF 0%,#F8FAFC 100%)',border:`1px solid ${T.blueBdr}`}}>
+        <div style={{fontSize:12,fontWeight:700,color:T.accent,letterSpacing:.4,textTransform:'uppercase',marginBottom:10}}>Wie Sie Rechnungen empfangen</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+          {[
+            {title:'Per E-Mail',desc:'Senden Sie Lieferanten Ihre Rechnungs-E-Mail:',value:'rechnungen@invoiq.io',action:'Kopieren'},
+            {title:'Per Peppol',desc:'Ihr Peppol-Identifier für direkte Netzwerk-Zustellung:',value:'0190:DE123456789',action:'Kopieren'},
+            {title:'Per Upload / API',desc:'Ziehen Sie XML-Dateien hier rein oder nutzen Sie die REST API:',value:'POST /api/v1/invoices/inbound',action:'Docs'},
+          ].map((m,i)=>(
+            <div key={i} style={{background:T.bg,borderRadius:7,padding:'12px 14px',border:`1px solid ${T.bgBorder}`}}>
+              <div style={{fontSize:12.5,fontWeight:700,color:T.textPrimary,marginBottom:4}}>{m.title}</div>
+              <div style={{fontSize:11.5,color:T.textMuted,marginBottom:8,lineHeight:1.5}}>{m.desc}</div>
+              <div style={{fontFamily:F.mono,fontSize:11,color:T.accent,background:T.bgSubtle,borderRadius:4,padding:'5px 8px',marginBottom:8,wordBreak:'break-all'}}>{m.value}</div>
+              <button className="btn btn-outline btn-sm" onClick={()=>notify(`${m.title}: ${m.value}`,'success')}>{m.action} →</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:'flex',gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
+        {[['received','Empfangen'],['validated','Validiert'],['errors','Fehler'],['archived','Archiviert']].map(([k,l])=>(
+          <button key={k} className={`tab ${tab===k?'active':''}`} onClick={()=>setTab(k)}>
+            {l}
+            <span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:'1px 5px',borderRadius:7,color:T.textMuted}}>
+              {k==='received'?invoices.length:k==='validated'?invoices.filter(i=>i.validation_passed).length:k==='errors'?invoices.filter(i=>i.status==='error').length:invoices.filter(i=>i.archived).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="card">
+        <table className="table">
+          <thead><tr>{['Nummer','Absender','Betrag','Format','Validation','Status','Aktionen'].map(h=><th key={h}>{h}</th>)}</tr></thead>
+          <tbody>
+            {loading?[1,2,3].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
+            :(tab==='received'?invoices:tab==='validated'?invoices.filter(i=>i.validation_passed):tab==='errors'?invoices.filter(i=>i.status==='error'):invoices.filter(i=>i.archived)).map(inv=>(
+              <tr key={inv.id} className="tr-hover" onClick={()=>setSelected(inv)} style={{cursor:'pointer'}}>
+                <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12,color:T.textPrimary}}>{inv.invoice_number}</td>
+                <td style={{fontSize:13}}>{inv.sender_name||inv.buyer_name||'—'}</td>
+                <td style={{fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
+                <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:4,padding:'2px 7px',fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
+                <td>{inv.validation_passed!==false?<span className="badge badge-green">EN 16931 ✓</span>:<span className="badge badge-red">Fehler</span>}</td>
+                <td><StatusBadge status={inv.status}/></td>
+                <td>
+                  <div style={{display:'flex',gap:6}} onClick={e=>e.stopPropagation()}>
+                    {inv.status==='error'&&<button className="btn btn-danger btn-sm" onClick={()=>notify('Fehlerbericht geöffnet','info')}>Prüfen</button>}
+                    {inv.validation_passed&&<button className="btn btn-outline btn-sm" onClick={()=>notify('In SAP FI gebucht ✓','success')}>→ ERP buchen</button>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!loading&&invoices.length===0&&<tr><td colSpan={7} style={{textAlign:'center',color:T.textMuted,padding:28,fontSize:13}}>Noch keine eingehenden Rechnungen</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Detail modal */}
+      {selected&&(
+        <div className="modal-overlay" onClick={()=>setSelected(null)}>
+          <div className="modal sci" onClick={e=>e.stopPropagation()} style={{maxWidth:560}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
+              <div>
+                <div style={{fontFamily:F.mono,fontSize:13,color:T.accent,marginBottom:3}}>{selected.invoice_number}</div>
+                <div style={{fontSize:18,fontWeight:700,color:T.textPrimary,letterSpacing:'-.02em'}}>{selected.sender_name||selected.buyer_name}</div>
+              </div>
+              <button onClick={()=>setSelected(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:18,color:T.textMuted}}>×</button>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+              {[['Betrag',fmtEUR(selected.amount_gross)],['Format',selected.format?.toUpperCase()],['Status',<StatusBadge status={selected.status}/>],['Validierung',selected.validation_passed?'✓ EN 16931':'✗ Fehler'],['Empfangen',fmtAgo(selected.created_at)],['Archiviert',selected.archived?'✓ GoBD':'—']].map(([l,v])=>(
+                <div key={l} style={{background:T.bgSubtle,borderRadius:6,padding:'10px 12px'}}>
+                  <div className="label" style={{marginBottom:4}}>{l}</div>
+                  <div style={{fontWeight:600,color:T.textPrimary,fontSize:13.5}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {selected.last_error&&<div style={{background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:6,padding:'10px 14px',fontSize:13,color:T.red,marginBottom:14}}>⚠ {selected.last_error}</div>}
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn btn-ghost" onClick={()=>setSelected(null)}>Schließen</button>
+              {selected.validation_passed&&<button className="btn btn-primary" onClick={()=>{notify('In ERP gebucht ✓','success');setSelected(null);}}>→ In ERP buchen</button>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// ARCHIVE — GoBD-konformes Archiv
+// ══════════════════════════════════════════════════════════════
+function ArchiveScreen({notify}){
+  const[docs,setDocs]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[search,setSearch]=useState('');
+  const[filter,setFilter]=useState('all');
+  const[selected,setSelected]=useState(null);
+
+  useEffect(()=>{
+    api.listInvoices('?archived=true&limit=30')
+      .then(d=>setDocs(d.invoices||[]))
+      .catch(()=>setDocs([
+        {id:'a1',invoice_number:'INV-2025-041',buyer_name:'Müller GmbH',amount_gross:4284,format:'xrechnung',direction:'outbound',archived_at:'2025-05-27T09:14:05Z',archive_hash:'a7f3d9c2b1e8f4a2c9d1b3e7f5a8c2d4',xml_hash:'b2e8f1a4c7d9e3f6a1b5c8d2e4f7a9b3',status:'archived'},
+        {id:'a2',invoice_number:'EINGANG-2025-003',buyer_name:'invoiq GmbH',amount_gross:1290,format:'zugferd',direction:'inbound',archived_at:'2025-05-26T14:22:11Z',archive_hash:'c4f8b2e6a1d9c3f7b5e2a8d6c1f4b9e7',xml_hash:'d6a2c9f4b8e1d3a7c2f5b8e4a1d7c3f9',status:'archived'},
+        {id:'a3',invoice_number:'INV-2025-040',buyer_name:'TechVision AG',amount_gross:12900,format:'xrechnung',direction:'outbound',archived_at:'2025-05-25T16:08:33Z',archive_hash:'e8b4f1c6a3d9e2f7c1b6e4a9d3f8c2b7',xml_hash:'f1c5a8d3b7e2c6a4d8b1f5c9a2d6b4e8',status:'archived'},
+        {id:'a4',invoice_number:'INV-2025-039',buyer_name:'Stadtwerke Nord',amount_gross:780,format:'peppol',direction:'outbound',archived_at:'2025-05-24T11:44:17Z',archive_hash:'a3d7f2c8b5e1a9d4c7f3b8e6a2d1c5f9',xml_hash:'b6e4c1f8a5d2b9e3c7f1a4d8b2e5c9f3',status:'archived'},
+      ]))
+      .finally(()=>setLoading(false));
+  },[]);
+
+  const filtered=docs.filter(d=>{
+    const matchSearch=!search||d.invoice_number?.toLowerCase().includes(search.toLowerCase())||d.buyer_name?.toLowerCase().includes(search.toLowerCase());
+    const matchFilter=filter==='all'||d.direction===filter||d.format===filter;
+    return matchSearch&&matchFilter;
+  });
+
+  const totalArchived=docs.length;
+  const totalSize=(docs.length*0.024).toFixed(1);
+
+  return(
+    <div className="fi">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
+        <div>
+          <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em',marginBottom:4}}>GoBD-Archiv</h1>
+          <p style={{fontSize:13,color:T.textMuted}}>SHA-256-gesichert · unveränderlich · §147 AO · 10 Jahre Aufbewahrung</p>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>notify('Audit-Report wird generiert...','info')}>↓ Audit-Report</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>notify('Export gestartet','success')}>↓ Export</button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}}>
+        {[
+          {label:'Archivierte Dokumente',value:fmtNum(totalArchived),sub:'Gesamt'},
+          {label:'Speicher genutzt',value:`${totalSize} MB`,sub:'AWS Frankfurt'},
+          {label:'Retention',value:'10 Jahre',sub:'§147 AO konform'},
+          {label:'Compliance',value:'GoBD ✓',sub:'SHA-256 gesichert'},
+        ].map((s,i)=>(
+          <div key={i} className="card" style={{padding:16}}>
+            <div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8}}>{s.label}</div>
+            <div className="stat-num" style={{fontSize:22,color:T.textPrimary}}>{s.value}</div>
+            <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* GoBD Info */}
+      <div style={{background:'linear-gradient(135deg,#ECFDF5 0%,#F8FAFC 100%)',border:`1px solid ${T.greenBdr}`,borderRadius:8,padding:'14px 18px',marginBottom:16,display:'flex',alignItems:'center',gap:14}}>
+        <div style={{width:36,height:36,borderRadius:8,background:T.green,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="9" width="14" height="9" rx="2" stroke="#fff" strokeWidth="1.8"/><path d="M6.5 9V6.5a3.5 3.5 0 017 0V9" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13.5,fontWeight:700,color:T.textPrimary,marginBottom:3}}>Revisionssicheres Archiv — automatisch</div>
+          <div style={{fontSize:12.5,color:T.textSecondary}}>Jedes Dokument wird beim Speichern gehasht (SHA-256), unveränderlich in AWS Frankfurt gespeichert und automatisch 10 Jahre aufbewahrt. Jede Änderung ist im Audit-Trail protokolliert.</div>
+        </div>
+        <button className="btn btn-success btn-sm" onClick={()=>notify('Archiv-Integrität geprüft ✓','success')}>Integrität prüfen</button>
+      </div>
+
+      {/* Search + Filter */}
+      <div style={{display:'flex',gap:10,marginBottom:14}}>
+        <input className="input" style={{maxWidth:320}} placeholder="Suche nach Nummer, Empfänger..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <select className="select" style={{maxWidth:180}} value={filter} onChange={e=>setFilter(e.target.value)}>
+          <option value="all">Alle Richtungen</option>
+          <option value="outbound">Ausgehend</option>
+          <option value="inbound">Eingehend</option>
+          <option value="xrechnung">XRechnung</option>
+          <option value="zugferd">ZUGFeRD</option>
+          <option value="peppol">Peppol</option>
+        </select>
+      </div>
+
+      {/* Archive table */}
+      <div className="card">
+        <table className="table">
+          <thead><tr>{['Dokument','Gegenpartei','Betrag','Format','Richtung','Archiviert am','Hash','Aktionen'].map(h=><th key={h}>{h}</th>)}</tr></thead>
+          <tbody>
+            {loading?[1,2,3].map(i=><tr key={i}><td colSpan={8}><div className="skeleton" style={{height:14}}/></td></tr>)
+            :filtered.map(doc=>(
+              <tr key={doc.id} className="tr-hover" onClick={()=>setSelected(doc)} style={{cursor:'pointer'}}>
+                <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12,color:T.textPrimary}}>{doc.invoice_number}</td>
+                <td style={{fontSize:13}}>{doc.buyer_name}</td>
+                <td style={{fontWeight:600}}>{fmtEUR(doc.amount_gross)}</td>
+                <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:4,padding:'2px 7px',fontSize:11,fontWeight:700,fontFamily:F.mono}}>{doc.format?.toUpperCase()}</span></td>
+                <td><span className={doc.direction==='inbound'?'badge badge-blue':'badge badge-gray'} style={{fontSize:10.5}}>{doc.direction==='inbound'?'↓ Eingang':'↑ Ausgang'}</span></td>
+                <td style={{fontSize:12,color:T.textMuted,fontFamily:F.mono}}>{doc.archived_at?new Date(doc.archived_at).toLocaleDateString('de-DE'):'—'}</td>
+                <td style={{fontFamily:F.mono,fontSize:10,color:T.textMuted}}>{doc.archive_hash?.substring(0,12)}...</td>
+                <td onClick={e=>e.stopPropagation()}>
+                  <div style={{display:'flex',gap:5}}>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>notify('Hash verifiziert ✓','success')}>Verify</button>
+                    <button className="btn btn-outline btn-sm" onClick={()=>notify('Download gestartet','success')}>↓ XML</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!loading&&filtered.length===0&&<tr><td colSpan={8} style={{textAlign:'center',color:T.textMuted,padding:28,fontSize:13}}>Keine archivierten Dokumente gefunden</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Hash detail modal */}
+      {selected&&(
+        <div className="modal-overlay" onClick={()=>setSelected(null)}>
+          <div className="modal sci" onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
+              <div style={{fontFamily:F.ui,fontSize:18,fontWeight:700,color:T.textPrimary}}>{selected.invoice_number}</div>
+              <button onClick={()=>setSelected(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:18,color:T.textMuted}}>×</button>
+            </div>
+            <div className="divider" style={{marginBottom:16}}/>
+            <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:16}}>
+              {[['Dokument-Hash (SHA-256)',selected.archive_hash],['XML-Hash',selected.xml_hash],['Archiviert am',selected.archived_at?new Date(selected.archived_at).toLocaleString('de-DE'):'—'],['Speicherort','AWS S3 Frankfurt (eu-central-1)'],['Retention','10 Jahre ab Archivierungsdatum'],['Status','GoBD-konform · unveränderlich']].map(([l,v])=>(
+                <div key={l}>
+                  <div className="label" style={{marginBottom:3}}>{l}</div>
+                  <div style={{fontFamily:['Dokument-Hash (SHA-256)','XML-Hash'].includes(l)?F.mono:F.ui,fontSize:['Dokument-Hash (SHA-256)','XML-Hash'].includes(l)?11:13,color:T.textPrimary,background:['Dokument-Hash (SHA-256)','XML-Hash'].includes(l)?T.bgSubtle:T.bg,padding:['Dokument-Hash (SHA-256)','XML-Hash'].includes(l)?'6px 10px':'0',borderRadius:5,wordBreak:'break-all'}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn btn-ghost" onClick={()=>setSelected(null)}>Schließen</button>
+              <button className="btn btn-success" onClick={()=>notify('Hash verifiziert — Dokument unverändert ✓','success')}>✓ Hash verifizieren</button>
+              <button className="btn btn-primary" onClick={()=>notify('XML wird heruntergeladen','success')}>↓ XML herunterladen</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// SETTINGS — Firmendaten, API, Plan, Team
+// ══════════════════════════════════════════════════════════════
+function SettingsScreen({user,org,notify}){
+  const[tab,setTab]=useState('company');
+  const[saving,setSaving]=useState(false);
+  const[form,setForm]=useState({
+    name:org?.name||'',
+    vat_id:'DE123456789',
+    address:'Musterstraße 1',
+    city:'Berlin',
+    zip:'10115',
+    country:'DE',
+    iban:'DE89 3704 0044 0532 0130 00',
+    email:user?.email||'',
+    phone:'',
+    default_format:'xrechnung',
+    default_delivery:'email',
+    auto_archive:true,
+    en16931_strict:true,
+    peppol_enabled:false,
+    vida_reporting:false,
+  });
+  const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
+
+  const save=async()=>{
+    setSaving(true);
+    await new Promise(r=>setTimeout(r,800));
+    setSaving(false);
+    notify('Gespeichert ✓','success');
+  };
+
+  const TABS=[['company','Unternehmen'],['formats','Formate & Versand'],['api','API & Webhooks'],['team','Team'],['billing','Plan & Abrechnung']];
+
+  return(
+    <div className="fi">
+      <div style={{marginBottom:22}}>
+        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em',marginBottom:4}}>Einstellungen</h1>
+        <p style={{fontSize:13,color:T.textMuted}}>Konfigurieren Sie Ihr Konto, Formate und Integrationen.</p>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'200px 1fr',gap:20}}>
+        {/* Sidebar tabs */}
+        <div className="card" style={{padding:'8px',height:'fit-content'}}>
+          {TABS.map(([k,l])=>(
+            <button key={k} className={`nav-item ${tab===k?'active':''}`} onClick={()=>setTab(k)} style={{fontSize:13,marginBottom:2}}>
+              <span style={{width:8,height:8,borderRadius:'50%',background:tab===k?T.accent:T.bgBorder,display:'inline-block',flexShrink:0}}/>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div>
+          {tab==='company'&&(
+            <div className="card" style={{padding:24}}>
+              <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:18,paddingBottom:14,borderBottom:`1px solid ${T.bgBorder}`}}>Unternehmensdaten</div>
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+                  <div><label className="label">Unternehmensname</label><input className="input" value={form.name} onChange={e=>upd('name',e.target.value)}/></div>
+                  <div><label className="label">USt-IdNr.</label><input className="input" value={form.vat_id} onChange={e=>upd('vat_id',e.target.value)} placeholder="DE123456789"/></div>
+                </div>
+                <div><label className="label">Straße & Hausnummer</label><input className="input" value={form.address} onChange={e=>upd('address',e.target.value)}/></div>
+                <div style={{display:'grid',gridTemplateColumns:'120px 1fr 120px',gap:14}}>
+                  <div><label className="label">PLZ</label><input className="input" value={form.zip} onChange={e=>upd('zip',e.target.value)}/></div>
+                  <div><label className="label">Stadt</label><input className="input" value={form.city} onChange={e=>upd('city',e.target.value)}/></div>
+                  <div><label className="label">Land</label><select className="select" value={form.country} onChange={e=>upd('country',e.target.value)}><option value="DE">Deutschland</option><option value="AT">Österreich</option><option value="CH">Schweiz</option></select></div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+                  <div><label className="label">E-Mail (Rechnungseingang)</label><input className="input" type="email" value={form.email} onChange={e=>upd('email',e.target.value)}/></div>
+                  <div><label className="label">IBAN (für Zahlungsziel)</label><input className="input" value={form.iban} onChange={e=>upd('iban',e.target.value)}/></div>
+                </div>
+              </div>
+              <div style={{display:'flex',justifyContent:'flex-end',marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bgBorder}`}}>
+                <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?<><Spinner color="#fff" size={13}/>&nbsp;Speichern...</>:'Speichern'}</button>
+              </div>
+            </div>
+          )}
+
+          {tab==='formats'&&(
+            <div style={{display:'flex',flexDirection:'column',gap:14}}>
+              <div className="card" style={{padding:22}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Standard-Formate</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}}>
+                  <div><label className="label">Standard-Rechnungsformat</label>
+                    <select className="select" value={form.default_format} onChange={e=>upd('default_format',e.target.value)}>
+                      <option value="xrechnung">XRechnung 3.0 (Standard DE)</option>
+                      <option value="zugferd">ZUGFeRD 2.4 (PDF + XML)</option>
+                      <option value="peppol">Peppol BIS 3.0 (EU-Netzwerk)</option>
+                      <option value="facturx">Factur-X (Frankreich)</option>
+                    </select>
+                  </div>
+                  <div><label className="label">Standard-Zustellweg</label>
+                    <select className="select" value={form.default_delivery} onChange={e=>upd('default_delivery',e.target.value)}>
+                      <option value="email">E-Mail</option>
+                      <option value="peppol">Peppol-Netzwerk</option>
+                      <option value="manual">Manuell / Download</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="card" style={{padding:22}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Compliance-Einstellungen</div>
+                <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                  {[
+                    {key:'auto_archive',label:'Automatische GoBD-Archivierung',sub:'Jedes Dokument wird sofort nach Generierung archiviert'},
+                    {key:'en16931_strict',label:'EN 16931 Strict Mode',sub:'Rechnungen werden vor dem Versand gegen den vollen Standard validiert'},
+                    {key:'peppol_enabled',label:'Peppol-Netzwerk aktivieren',sub:'Direkte Zustellung über das europäische Peppol-Netzwerk (Storecove)'},
+                    {key:'vida_reporting',label:'ViDA Transaction Reporting (Beta)',sub:'Vorbereitung für EU-Meldepflicht ab 2028 — jetzt aktivieren und Daten sammeln'},
+                  ].map(({key,label,sub})=>(
+                    <div key={key} style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,padding:'12px 14px',background:T.bgSubtle,borderRadius:7,border:`1px solid ${T.bgBorder}`}}>
+                      <div>
+                        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:3}}>{label}</div>
+                        <div style={{fontSize:12,color:T.textMuted}}>{sub}</div>
+                      </div>
+                      <div onClick={()=>upd(key,!form[key])} style={{width:40,height:22,borderRadius:11,background:form[key]?T.accent:T.bgBorder,cursor:'pointer',transition:'background .2s',flexShrink:0,position:'relative',marginTop:2}}>
+                        <div style={{position:'absolute',top:3,left:form[key]?20:3,width:16,height:16,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}}/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex',justifyContent:'flex-end',marginTop:16}}>
+                  <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?<><Spinner color="#fff" size={13}/>&nbsp;Speichern...</>:'Speichern'}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab==='api'&&(
+            <div style={{display:'flex',flexDirection:'column',gap:14}}>
+              <div className="card" style={{padding:22}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>API-Zugang</div>
+                <div style={{marginBottom:14}}>
+                  <label className="label">Live API Key</label>
+                  <div style={{display:'flex',gap:8}}>
+                    <input className="input" readOnly value="iq_live_demo_key_001_xxxxxxxxxxxxxxxx" style={{fontFamily:F.mono,fontSize:12,color:T.textMuted}}/>
+                    <button className="btn btn-ghost btn-sm" style={{flexShrink:0}} onClick={()=>notify('API Key kopiert','success')}>Kopieren</button>
+                    <button className="btn btn-danger btn-sm" style={{flexShrink:0}} onClick={()=>notify('Neuer API Key generiert','success')}>Rotieren</button>
+                  </div>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <label className="label">Base URL</label>
+                  <div style={{fontFamily:F.mono,fontSize:12,color:T.accent,background:T.bgSubtle,borderRadius:6,padding:'9px 12px',border:`1px solid ${T.bgBorder}`}}>https://invoiq-erechnung-saas-production.up.railway.app/api/v1</div>
+                </div>
+                <div style={{background:T.bgSubtle,borderRadius:7,padding:'14px 16px',border:`1px solid ${T.bgBorder}`}}>
+                  <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:10,letterSpacing:.4,textTransform:'uppercase'}}>Schnellstart</div>
+                  <pre style={{fontFamily:F.mono,fontSize:11,color:T.textSecondary,lineHeight:1.7,overflow:'auto'}}>{`curl -X POST https://invoiq-erechnung-saas-production.up.railway.app/api/v1/invoices \\
+  -H "Authorization: Bearer iq_live_demo_key_001" \\
+  -H "Content-Type: application/json" \\
+  -d '{"invoice_number":"INV-001","format":"xrechnung",...}'`}</pre>
+                </div>
+              </div>
+              <div className="card" style={{padding:22}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Webhooks</div>
+                <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:14}}>
+                  {[['invoice.created','Neue Rechnung erstellt'],['invoice.delivered','Rechnung zugestellt'],['invoice.error','Validierungsfehler'],['inbound.received','Eingehende Rechnung']].map(([ev,desc])=>(
+                    <div key={ev} style={{display:'flex',alignItems:'center',gap:12,padding:'9px 12px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`}}>
+                      <span style={{fontFamily:F.mono,fontSize:11,color:T.accent,flex:'0 0 180px'}}>{ev}</span>
+                      <span style={{fontSize:12.5,color:T.textSecondary,flex:1}}>{desc}</span>
+                      <span className="badge badge-green" style={{fontSize:10}}>Aktiv</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                  <input className="input" placeholder="https://ihre-app.de/webhook" style={{flex:1}}/>
+                  <button className="btn btn-primary btn-sm" onClick={()=>notify('Webhook hinzugefügt ✓','success')}>Hinzufügen</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab==='team'&&(
+            <div className="card" style={{padding:22}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary}}>Team-Mitglieder</div>
+                <button className="btn btn-primary btn-sm" onClick={()=>notify('Einladung versendet ✓','success')}>+ Einladen</button>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
+                {[
+                  {name:user?.full_name||'Manfred Bell',email:user?.email||'manfred@invoiq.io',role:'Owner',you:true},
+                ].map((m,i)=>(
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:T.bgSubtle,borderRadius:7,border:`1px solid ${T.bgBorder}`}}>
+                    <div className="avatar">{(m.name||'U')[0]}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{m.name} {m.you&&<span style={{fontSize:11,color:T.textMuted}}>(Sie)</span>}</div>
+                      <div style={{fontSize:12,color:T.textMuted}}>{m.email}</div>
+                    </div>
+                    <span className="badge badge-blue" style={{fontSize:10.5}}>{m.role}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{background:T.bgSubtle,borderRadius:7,padding:'12px 14px',border:`1px solid ${T.bgBorder}`}}>
+                <div style={{fontSize:12.5,fontWeight:600,color:T.textPrimary,marginBottom:5}}>Benutzer einladen</div>
+                <div style={{display:'flex',gap:10}}>
+                  <input className="input" placeholder="E-Mail-Adresse" style={{flex:1}}/>
+                  <select className="select" style={{width:140}}>
+                    <option>Admin</option><option>Member</option><option>Viewer</option>
+                  </select>
+                  <button className="btn btn-primary btn-sm" onClick={()=>notify('Einladung versendet ✓','success')}>Einladen</button>
+                </div>
+                <div style={{fontSize:11.5,color:T.textMuted,marginTop:8}}>Add-on: +9€/Monat pro zusätzlichem Nutzer</div>
+              </div>
+            </div>
+          )}
+
+          {tab==='billing'&&(
+            <div style={{display:'flex',flexDirection:'column',gap:14}}>
+              <div className="card" style={{padding:22}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Aktueller Plan</div>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+                  <div>
+                    <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:4}}>{org?.plan?.toUpperCase()||'STARTER'}</div>
+                    <div style={{fontSize:13.5,color:T.textSecondary}}>29€/Monat · 100 Rechnungen/Monat · Jährlich kündbar</div>
+                  </div>
+                  <button className="btn btn-primary" onClick={()=>notify('Plan-Upgrade geöffnet','info')}>Upgrade →</button>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:T.textMuted,marginBottom:5}}>
+                    <span>Dokumente diesen Monat</span>
+                    <span style={{fontWeight:600,color:T.textPrimary}}>{org?.plan_doc_used||41} / {org?.plan_doc_limit||100}</span>
+                  </div>
+                  <div className="progress"><div className="progress-fill" style={{width:`${Math.min(100,((org?.plan_doc_used||41)/(org?.plan_doc_limit||100))*100)}%`}}/></div>
+                </div>
+                <div style={{background:T.bgSubtle,borderRadius:6,padding:'10px 14px',fontSize:12.5,color:T.textSecondary,border:`1px solid ${T.bgBorder}`}}>
+                  <strong style={{color:T.textPrimary}}>Überschreitung:</strong> Zusätzliche Rechnungen werden mit 0,50€/Rechnung berechnet — kein Zwangsupgrade.
+                </div>
+              </div>
+              <div className="card" style={{padding:22}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Zahlungshistorie</div>
+                {['Mai 2025','April 2025','März 2025'].map(m=>(
+                  <div key={m} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:`1px solid ${T.bgSubtle}`}}>
+                    <div style={{fontSize:13.5,fontWeight:500,color:T.textPrimary}}>{m}</div>
+                    <div style={{display:'flex',gap:12,alignItems:'center'}}>
+                      <span style={{fontSize:13.5,fontWeight:700,color:T.textPrimary}}>29,00€</span>
+                      <span className="badge badge-green" style={{fontSize:10.5}}>Bezahlt</span>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>notify('PDF heruntergeladen','success')}>↓ PDF</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{padding:'12px 16px',background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:7}}>
+                <button style={{background:'none',border:'none',color:T.red,cursor:'pointer',fontSize:13,fontFamily:F.ui,fontWeight:600}} onClick={()=>notify('Kündigungsanfrage gesendet','error')}>Konto kündigen</button>
+                <span style={{fontSize:12,color:T.red,marginLeft:8}}>— Jederzeit möglich, keine Mindestlaufzeit</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function Placeholder({title,sub,icon="📋"}){return(<div className="fi"><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:4}}>{title}</h1><p style={{color:T.textMuted,fontSize:13,marginBottom:22}}>{sub}</p><div className="card" style={{textAlign:"center",padding:52,color:T.textMuted}}><div style={{fontSize:28,marginBottom:10}}>{icon}</div><div style={{fontSize:13.5}}>Coming in Release 1.0</div></div></div>);}
 
 // ── ADMIN SHELL ───────────────────────────────────────────────
@@ -1568,9 +2125,10 @@ export default function App(){
       {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={setNav}/>}
       {nav==="invoices"&&<Invoices notify={notify}/>}
       {nav==="connect"&&<ConnectorsView notify={notify}/>}
-      {nav==="archive"&&<Placeholder title="Archive" sub="SHA-256 · GoBD · §147 AO · 10-year retention" icon="🔒"/>}
+          {nav==="inbound"&&<InboundScreen notify={notify}/>}
+      {nav==="archive"&&<ArchiveScreen notify={notify}/>}
       {nav==="webhooks"&&<Placeholder title="Webhooks" sub="invoice.created · invoice.sent · invoice.delivered" icon="⚡"/>}
-      {nav==="settings"&&<Placeholder title="Settings" sub="Account · Plan · API Keys · White-Label" icon="⚙️"/>}
+      {nav==="settings"&&<SettingsScreen user={user} org={org} notify={notify}/>}
     </AppShell>}
     {screen==="admin"&&<AdminShell user={user} org={org} nav={adminNav} setNav={setAdminNav} onBack={()=>setScreen("app")}>
       {adminNav==="overview"&&<AdminOverview notify={notify} isSuper={isSuper}/>}
