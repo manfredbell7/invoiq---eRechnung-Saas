@@ -1427,7 +1427,9 @@ function DokumentenScanner({ notify }) {
   const [generating, setGenerating] = useState(false);
   const [xml, setXml] = useState(null);
   const fileRef = useRef(null);
+  const cameraRef = useRef(null);
   const progressRef = useRef(null);
+  const [isMobile] = useState(() => /iPhone|iPad|iPod|Android/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : ''));
 
   const ACCEPTED = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
@@ -1474,67 +1476,27 @@ function DokumentenScanner({ notify }) {
     }, 180);
 
     try {
-      // Convert file to base64
-      const base64 = await new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = e => res(e.target.result.split(',')[1]);
-        reader.onerror = rej;
-        reader.readAsDataURL(file);
-      });
+      // Send file to backend → backend calls Anthropic (no CORS issue)
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const mediaType = file.type === 'application/pdf' ? 'application/pdf' : file.type;
-
-      // Call Claude API with the document
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(`${API_BASE}/scanner/extract`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: mediaType === 'application/pdf' ? 'document' : 'image',
-                source: { type: 'base64', media_type: mediaType, data: base64 },
-              },
-              {
-                type: 'text',
-                text: `Extrahiere alle Rechnungsfelder aus diesem Dokument. Antworte NUR mit einem JSON-Objekt, kein Markdown, keine Erklärung:
-{
-  "invoice_number": "",
-  "invoice_date": "YYYY-MM-DD",
-  "due_date": "YYYY-MM-DD",
-  "seller_name": "",
-  "seller_vat_id": "",
-  "seller_address": "",
-  "seller_city": "",
-  "buyer_name": "",
-  "buyer_address": "",
-  "buyer_city": "",
-  "buyer_vat_id": "",
-  "line_items": [{"description": "", "quantity": 1, "unit_price": 0, "vat_rate": 19}],
-  "currency": "EUR",
-  "confidence": 0.0,
-  "notes": ""
-}
-Fehlende Felder als leeren String. confidence zwischen 0 und 1.`,
-              },
-            ],
-          }],
-        }),
+        headers: { 'Authorization': `Bearer ${api._token}` },
+        body: formData,
       });
 
-      if (!response.ok) throw new Error(`API ${response.status}`);
-      const data = await response.json();
-      const text = data.content?.[0]?.text || '{}';
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `Fehler ${response.status}`);
+      }
 
-      // Parse JSON
-      let parsed;
-      try {
-        parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
-      } catch {
-        throw new Error('Extraktion fehlgeschlagen — Dokument nicht lesbar');
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'Extraktion fehlgeschlagen');
+
+      const parsed = data.data;
+      if (data.demo) {
+        notify('Demo-Modus: Testdaten angezeigt (kein API-Key gesetzt)', 'info');
       }
 
       clearInterval(progressRef.current);
@@ -1647,6 +1609,7 @@ Fehlende Felder als leeren String. confidence zwischen 0 und 1.`,
         }}
       >
         <input ref={fileRef} type="file" accept=".pdf,image/*" style={{ display: 'none' }} onChange={e => handleFile(e.target.files?.[0])} />
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => handleFile(e.target.files?.[0])} />
         <div style={{ width: 56, height: 56, borderRadius: 12, background: T.bg, border: `1px solid ${T.bgBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: T.shadow2 }}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
             <path d="M12 15V3m0 0L8 7m4-4l4 4" stroke={T.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1657,13 +1620,47 @@ Fehlende Felder als leeren String. confidence zwischen 0 und 1.`,
           {dragOver ? 'Loslassen zum Hochladen' : 'Rechnung hierher ziehen'}
         </div>
         <div style={{ fontSize: 13.5, color: T.textMuted, marginBottom: 16 }}>oder klicken zum Auswählen</div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
           {['PDF', 'JPG', 'PNG'].map(t => (
             <span key={t} style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 5, background: T.bg, border: `1px solid ${T.bgBorder}`, color: T.textSecondary }}>{t}</span>
           ))}
           <span style={{ fontSize: 11, color: T.textMuted, alignSelf: 'center' }}>· max. 10 MB</span>
         </div>
       </div>
+
+      {/* Mobile camera button — shown always, prominent on mobile */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+        <button
+          onClick={() => cameraRef.current?.click()}
+          className="btn btn-dark"
+          style={{ flex: 1, justifyContent: 'center', padding: '13px', fontSize: 15, borderRadius: 10, gap: 10 }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="1.8"/>
+          </svg>
+          Rechnung fotografieren
+        </button>
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="btn btn-ghost"
+          style={{ flex: 1, justifyContent: 'center', padding: '13px', fontSize: 15, borderRadius: 10, gap: 10 }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          Datei hochladen
+        </button>
+      </div>
+
+      {/* Mobile hint */}
+      {isMobile && (
+        <div style={{ padding: '10px 14px', background: T.accentLight, border: `1px solid ${T.accentPale}`, borderRadius: 8, fontSize: 13, color: T.accent, marginBottom: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="1.5"/><path d="M10 6v4.5M10 13v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          Tipp: Legen Sie die Rechnung flach auf einen hellen Untergrund für beste Ergebnisse.
+        </div>
+      )}
 
       {/* How it works */}
       <div className="card" style={{ padding: 20 }}>
