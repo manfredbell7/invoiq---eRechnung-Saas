@@ -1109,7 +1109,7 @@ function Auth({mode,onSwitch,onSuccess,loading}){
 
 // ── APP SHELL ─────────────────────────────────────────────────
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
-  const items=[{key:"dashboard",icon:"·",label:"Overview"},{key:"invoices",icon:"·",label:"Documents"},{key:"connect",icon:"·",label:"Connectors"},{key:"archive",icon:"·",label:"Archive"},{key:"webhooks",icon:"·",label:"Webhooks"},{key:"settings",icon:"·",label:"Settings"}];
+  const items=[{key:"dashboard",icon:"·",label:"Overview"},{key:"invoices",icon:"·",label:"Documents"},{key:"connect",icon:"·",label:"Connectors"},{key:"inbound",icon:"·",label:"Inbound"},{key:"steuerberater",icon:"·",label:"Kanzlei-Portal"},{key:"archive",icon:"·",label:"Archive"},{key:"webhooks",icon:"·",label:"Webhooks"},{key:"settings",icon:"·",label:"Settings"}];
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
   const isAdmin=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
@@ -1147,7 +1147,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
     </aside>
     <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
       <div className="topbar">
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Overview","invoices":"Documents","connect":"Connectors","archive":"Archive","webhooks":"Webhooks","settings":"Settings"}[nav]||nav}</div>
+        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Overview","invoices":"Documents","connect":"Connectors","inbound":"Inbound","steuerberater":"Kanzlei-Portal","archive":"Archive","webhooks":"Webhooks","settings":"Settings"}[nav]||nav}</div>
         <div style={{flex:1,maxWidth:300,margin:"0 20px"}}>
           <div style={{position:"relative"}}>
             <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:T.textMuted,fontSize:12}}>🔍</span>
