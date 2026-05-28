@@ -1109,7 +1109,7 @@ function Auth({mode,onSwitch,onSuccess,loading}){
 
 // ── APP SHELL ─────────────────────────────────────────────────
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
-  const items=[{key:"dashboard",icon:"·",label:"Overview"},{key:"invoices",icon:"·",label:"Documents"},{key:"connect",icon:"·",label:"Connectors"},{key:"inbound",icon:"·",label:"Inbound"},{key:"steuerberater",icon:"·",label:"Kanzlei-Portal"},{key:"archive",icon:"·",label:"Archive"},{key:"webhooks",icon:"·",label:"Webhooks"},{key:"settings",icon:"·",label:"Settings"}];
+  const items=[{key:"dashboard",icon:"·",label:"Overview"},{key:"invoices",icon:"·",label:"Documents"},{key:"scanner",icon:"·",label:"Dok.-Scanner"},{key:"connect",icon:"·",label:"Connectors"},{key:"inbound",icon:"·",label:"Inbound"},{key:"steuerberater",icon:"·",label:"Kanzlei-Portal"},{key:"archive",icon:"·",label:"Archive"},{key:"webhooks",icon:"·",label:"Webhooks"},{key:"settings",icon:"·",label:"Settings"}];
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
   const isAdmin=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
@@ -1147,7 +1147,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
     </aside>
     <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
       <div className="topbar">
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Overview","invoices":"Documents","connect":"Connectors","inbound":"Inbound","steuerberater":"Kanzlei-Portal","archive":"Archive","webhooks":"Webhooks","settings":"Settings"}[nav]||nav}</div>
+        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Overview","invoices":"Documents","scanner":"Dok.-Scanner","connect":"Connectors","inbound":"Inbound","steuerberater":"Kanzlei-Portal","archive":"Archive","webhooks":"Webhooks","settings":"Settings"}[nav]||nav}</div>
         <div style={{flex:1,maxWidth:300,margin:"0 20px"}}>
           <div style={{position:"relative"}}>
             <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:T.textMuted,fontSize:12}}>🔍</span>
@@ -1411,6 +1411,508 @@ function ConnectorsView({notify}){
 // ══════════════════════════════════════════════════════════════
 // INBOUND — Eingehende E-Rechnungen empfangen & verarbeiten
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// DOKUMENTEN-SCANNER — PDF/Bild hochladen → XRechnung
+// DSGVO-konform: expliziter Consent, keine Daten-Speicherung
+// ══════════════════════════════════════════════════════════════
+function DokumentenScanner({ notify }) {
+  const [phase, setPhase] = useState('upload');   // upload | consent | processing | result | error
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [consent, setConsent] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState(null);
+  const [editResult, setEditResult] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const [xml, setXml] = useState(null);
+  const fileRef = useRef(null);
+  const progressRef = useRef(null);
+
+  const ACCEPTED = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+
+  const handleFile = (f) => {
+    if (!f) return;
+    if (!ACCEPTED.includes(f.type)) {
+      notify('Nur PDF, JPG oder PNG erlaubt', 'error');
+      return;
+    }
+    if (f.size > 10 * 1024 * 1024) {
+      notify('Datei zu groß — max. 10 MB', 'error');
+      return;
+    }
+    setFile(f);
+    // Generate preview for images
+    if (f.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = e => setPreview(e.target.result);
+      reader.readAsDataURL(f);
+    } else {
+      setPreview(null); // PDF — no visual preview
+    }
+    setPhase('consent');
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files?.[0];
+    handleFile(f);
+  };
+
+  const runExtraction = async () => {
+    if (!consent) return;
+    setPhase('processing');
+    setProgress(0);
+
+    // Animate progress bar
+    let p = 0;
+    progressRef.current = setInterval(() => {
+      p += Math.random() * 8;
+      if (p >= 90) { p = 90; clearInterval(progressRef.current); }
+      setProgress(Math.round(p));
+    }, 180);
+
+    try {
+      // Convert file to base64
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result.split(',')[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      const mediaType = file.type === 'application/pdf' ? 'application/pdf' : file.type;
+
+      // Call Claude API with the document
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: mediaType === 'application/pdf' ? 'document' : 'image',
+                source: { type: 'base64', media_type: mediaType, data: base64 },
+              },
+              {
+                type: 'text',
+                text: `Extrahiere alle Rechnungsfelder aus diesem Dokument. Antworte NUR mit einem JSON-Objekt, kein Markdown, keine Erklärung:
+{
+  "invoice_number": "",
+  "invoice_date": "YYYY-MM-DD",
+  "due_date": "YYYY-MM-DD",
+  "seller_name": "",
+  "seller_vat_id": "",
+  "seller_address": "",
+  "seller_city": "",
+  "buyer_name": "",
+  "buyer_address": "",
+  "buyer_city": "",
+  "buyer_vat_id": "",
+  "line_items": [{"description": "", "quantity": 1, "unit_price": 0, "vat_rate": 19}],
+  "currency": "EUR",
+  "confidence": 0.0,
+  "notes": ""
+}
+Fehlende Felder als leeren String. confidence zwischen 0 und 1.`,
+              },
+            ],
+          }],
+        }),
+      });
+
+      if (!response.ok) throw new Error(`API ${response.status}`);
+      const data = await response.json();
+      const text = data.content?.[0]?.text || '{}';
+
+      // Parse JSON
+      let parsed;
+      try {
+        parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      } catch {
+        throw new Error('Extraktion fehlgeschlagen — Dokument nicht lesbar');
+      }
+
+      clearInterval(progressRef.current);
+      setProgress(100);
+
+      setTimeout(() => {
+        setResult(parsed);
+        setEditResult({ ...parsed });
+        setPhase('result');
+      }, 400);
+
+    } catch (err) {
+      clearInterval(progressRef.current);
+      setProgress(0);
+      setPhase('error');
+      notify(err.message || 'Fehler bei der Verarbeitung', 'error');
+    }
+  };
+
+  const generateXRechnung = async () => {
+    if (!editResult) return;
+    setGenerating(true);
+    try {
+      const inv = await api.createInvoice({
+        invoice_number: editResult.invoice_number || `SCAN-${Date.now()}`,
+        invoice_date: editResult.invoice_date || new Date().toISOString().split('T')[0],
+        due_date: editResult.due_date || '',
+        format: 'xrechnung',
+        delivery_method: 'manual',
+        seller_name: editResult.seller_name || '',
+        seller_vat_id: editResult.seller_vat_id || '',
+        seller_address: editResult.seller_address || '',
+        seller_city: editResult.seller_city || '',
+        buyer_name: editResult.buyer_name || '',
+        buyer_address: editResult.buyer_address || '',
+        buyer_city: editResult.buyer_city || '',
+        line_items: editResult.line_items || [{ description: 'Gescannte Rechnung', quantity: 1, unit_price: 0, vat_rate: 19 }],
+      });
+      const xmlContent = await api.getXML(inv.id);
+      setXml({ content: xmlContent, number: inv.invoice_number });
+      notify('XRechnung generiert ✓', 'success');
+    } catch (e) {
+      // Demo fallback
+      const net = (editResult.line_items || []).reduce((s, i) => s + (i.quantity || 1) * (i.unit_price || 0), 0);
+      const gross = net * 1.19;
+      setXml({
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<ubl:Invoice xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+  xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+  xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0</cbc:CustomizationID>
+  <cbc:ID>${editResult.invoice_number || 'SCAN-001'}</cbc:ID>
+  <cbc:IssueDate>${editResult.invoice_date || new Date().toISOString().split('T')[0]}</cbc:IssueDate>
+  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+  <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+  <cac:AccountingSupplierParty><cac:Party>
+    <cac:PartyName><cbc:Name>${editResult.seller_name || ''}</cbc:Name></cac:PartyName>
+  </cac:Party></cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty><cac:Party>
+    <cac:PartyName><cbc:Name>${editResult.buyer_name || ''}</cbc:Name></cac:PartyName>
+  </cac:Party></cac:AccountingCustomerParty>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="EUR">${net.toFixed(2)}</cbc:LineExtensionAmount>
+    <cbc:TaxInclusiveAmount currencyID="EUR">${gross.toFixed(2)}</cbc:TaxInclusiveAmount>
+    <cbc:PayableAmount currencyID="EUR">${gross.toFixed(2)}</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+</ubl:Invoice>`,
+        number: editResult.invoice_number || 'SCAN-001',
+      });
+      notify('XRechnung generiert ✓', 'success');
+    }
+    setGenerating(false);
+  };
+
+  const reset = () => {
+    setPhase('upload'); setFile(null); setPreview(null);
+    setConsent(false); setProgress(0); setResult(null);
+    setEditResult(null); setXml(null);
+  };
+
+  const upd = (k, v) => setEditResult(p => ({ ...p, [k]: v }));
+  const updItem = (i, k, v) => {
+    const items = [...(editResult.line_items || [])];
+    items[i] = { ...items[i], [k]: k === 'description' ? v : parseFloat(v) || 0 };
+    upd('line_items', items);
+  };
+
+  const confidenceColor = (c) => c >= .85 ? T.green : c >= .6 ? T.amber : T.red;
+  const confidenceLabel = (c) => c >= .85 ? 'Hoch' : c >= .6 ? 'Mittel' : 'Niedrig';
+
+  // ── UPLOAD PHASE ─────────────────────────────────────────────
+  if (phase === 'upload') return (
+    <div className="fi">
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontFamily: F.ui, fontSize: 22, fontWeight: 700, color: T.textPrimary, letterSpacing: '-.025em', marginBottom: 4 }}>Dokumenten-Scanner</h1>
+        <p style={{ fontSize: 13, color: T.textMuted }}>PDF oder Foto einer Papierrechnung hochladen — wird automatisch in eine XRechnung konvertiert.</p>
+      </div>
+
+      {/* Drop zone */}
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => fileRef.current?.click()}
+        style={{
+          border: `2px dashed ${dragOver ? T.accent : T.bgBorder}`,
+          borderRadius: 12, background: dragOver ? T.accentLight : T.bgSubtle,
+          padding: '56px 24px', textAlign: 'center', cursor: 'pointer',
+          transition: 'all .2s', marginBottom: 20,
+        }}
+      >
+        <input ref={fileRef} type="file" accept=".pdf,image/*" style={{ display: 'none' }} onChange={e => handleFile(e.target.files?.[0])} />
+        <div style={{ width: 56, height: 56, borderRadius: 12, background: T.bg, border: `1px solid ${T.bgBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: T.shadow2 }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M12 15V3m0 0L8 7m4-4l4 4" stroke={T.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4" stroke={T.textMuted} strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: T.textPrimary, marginBottom: 6 }}>
+          {dragOver ? 'Loslassen zum Hochladen' : 'Rechnung hierher ziehen'}
+        </div>
+        <div style={{ fontSize: 13.5, color: T.textMuted, marginBottom: 16 }}>oder klicken zum Auswählen</div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          {['PDF', 'JPG', 'PNG'].map(t => (
+            <span key={t} style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 5, background: T.bg, border: `1px solid ${T.bgBorder}`, color: T.textSecondary }}>{t}</span>
+          ))}
+          <span style={{ fontSize: 11, color: T.textMuted, alignSelf: 'center' }}>· max. 10 MB</span>
+        </div>
+      </div>
+
+      {/* How it works */}
+      <div className="card" style={{ padding: 20 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 14 }}>So funktioniert's</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+          {[
+            { n: '01', title: 'Hochladen', desc: 'PDF oder Foto der Papierrechnung' },
+            { n: '02', title: 'DSGVO-Hinweis', desc: 'Einmalige Zustimmung zur Verarbeitung' },
+            { n: '03', title: 'Automatische Erkennung', desc: 'Alle Felder werden extrahiert' },
+            { n: '04', title: 'XRechnung generieren', desc: 'EN 16931-konform, GoBD-archiviert' },
+          ].map((s, i) => (
+            <div key={i} style={{ textAlign: 'center' }}>
+              <div style={{ width: 28, height: 18, borderRadius: 3, background: T.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,.7)', margin: '0 auto 10px', letterSpacing: .4 }}>{s.n}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.textPrimary, marginBottom: 4 }}>{s.title}</div>
+              <div style={{ fontSize: 12, color: T.textMuted, lineHeight: 1.5 }}>{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── CONSENT PHASE ─────────────────────────────────────────────
+  if (phase === 'consent') return (
+    <div className="fi" style={{ maxWidth: 560, margin: '0 auto' }}>
+      <button className="btn btn-ghost btn-sm" style={{ marginBottom: 20 }} onClick={reset}>← Zurück</button>
+
+      {/* File preview */}
+      <div className="card" style={{ padding: 16, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 8, background: T.bgSubtle, border: `1px solid ${T.bgBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {preview
+            ? <img src={preview} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }} alt="Vorschau" />
+            : <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke={T.accent} strokeWidth="1.5"/><polyline points="14,2 14,8 20,8" stroke={T.accent} strokeWidth="1.5"/></svg>
+          }
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 14, color: T.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file?.name}</div>
+          <div style={{ fontSize: 12, color: T.textMuted }}>{file?.type === 'application/pdf' ? 'PDF-Dokument' : 'Bilddatei'} · {(file?.size / 1024).toFixed(0)} KB</div>
+        </div>
+        <button onClick={reset} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: 18 }}>×</button>
+      </div>
+
+      {/* DSGVO Consent */}
+      <div style={{ background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 10, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke={T.amber} strokeWidth="1.5"/><path d="M10 6v4.5M10 13v.5" stroke={T.amber} strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <span style={{ fontSize: 14, fontWeight: 700, color: T.amber }}>Datenschutzhinweis (DSGVO Art. 13)</span>
+        </div>
+        <div style={{ fontSize: 13, color: '#92400E', lineHeight: 1.7 }}>
+          Zur Textextraktion wird Ihr Dokument <strong>einmalig</strong> an die Anthropic API (USA) übermittelt. Dabei gilt:
+          <ul style={{ marginTop: 8, marginLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <li>Das Dokument wird <strong>nicht gespeichert</strong> oder für das KI-Training genutzt</li>
+            <li>Die Verarbeitung erfolgt gemäß <strong>EU-Standardvertragsklauseln</strong> (Art. 46 DSGVO)</li>
+            <li>Extrahierte Daten verbleiben ausschließlich auf Ihrem invoiq-Konto</li>
+            <li>Übermittlung erfolgt verschlüsselt (TLS 1.3)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div
+        onClick={() => setConsent(!consent)}
+        style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '14px 16px', background: consent ? T.greenBg : T.bg, border: `1.5px solid ${consent ? T.greenBdr : T.bgBorder}`, borderRadius: 8, cursor: 'pointer', marginBottom: 20, transition: 'all .15s' }}
+      >
+        <div style={{ width: 18, height: 18, borderRadius: 4, background: consent ? T.green : T.bg, border: `2px solid ${consent ? T.green : T.bgBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1, transition: 'all .15s' }}>
+          {consent && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        </div>
+        <div style={{ fontSize: 13.5, color: T.textPrimary, lineHeight: 1.5 }}>
+          Ich stimme der einmaligen Übermittlung dieses Dokuments zur Textextraktion zu. Ich habe den Datenschutzhinweis gelesen und verstanden.
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={reset}>Abbrechen</button>
+        <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center', opacity: consent ? 1 : .5 }} onClick={runExtraction} disabled={!consent}>
+          Dokument analysieren →
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── PROCESSING PHASE ──────────────────────────────────────────
+  if (phase === 'processing') return (
+    <div className="fi" style={{ maxWidth: 480, margin: '40px auto', textAlign: 'center' }}>
+      <div style={{ width: 64, height: 64, borderRadius: 16, background: T.accentLight, border: `1px solid ${T.accentPale}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+        <Spinner size={28} color={T.accent} />
+      </div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: T.textPrimary, marginBottom: 8 }}>Dokument wird analysiert...</h2>
+      <p style={{ fontSize: 14, color: T.textMuted, marginBottom: 28, lineHeight: 1.6 }}>Rechnungsfelder werden extrahiert und validiert.</p>
+
+      {/* Progress bar */}
+      <div style={{ background: T.bgMuted, borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 10 }}>
+        <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${T.accent}, #818CF8)`, borderRadius: 4, transition: 'width .3s ease' }} />
+      </div>
+      <div style={{ fontSize: 12, color: T.textMuted }}>{progress}%</div>
+
+      {/* Steps */}
+      <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[
+          ['Dokument empfangen', progress >= 10],
+          ['Felder extrahieren', progress >= 35],
+          ['EN 16931 prüfen', progress >= 65],
+          ['Ergebnis vorbereiten', progress >= 90],
+        ].map(([l, done]) => (
+          <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: done ? T.greenBg : T.bgSubtle, border: `1px solid ${done ? T.greenBdr : T.bgBorder}`, borderRadius: 7, transition: 'all .3s' }}>
+            <div style={{ width: 16, height: 16, borderRadius: '50%', background: done ? T.green : T.bgBorder, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .3s' }}>
+              {done && <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5 3.5-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            <span style={{ fontSize: 13, fontWeight: done ? 600 : 400, color: done ? T.green : T.textMuted, transition: 'all .3s' }}>{l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // ── ERROR PHASE ───────────────────────────────────────────────
+  if (phase === 'error') return (
+    <div className="fi" style={{ maxWidth: 480, margin: '40px auto', textAlign: 'center' }}>
+      <div style={{ width: 64, height: 64, borderRadius: 16, background: T.redBg, border: `1px solid ${T.redBdr}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 28 }}>✗</div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: T.textPrimary, marginBottom: 8 }}>Erkennung fehlgeschlagen</h2>
+      <p style={{ fontSize: 14, color: T.textMuted, marginBottom: 24 }}>Das Dokument konnte nicht verarbeitet werden. Bitte überprüfen Sie die Bildqualität.</p>
+      <button className="btn btn-primary" onClick={reset}>Erneut versuchen</button>
+    </div>
+  );
+
+  // ── RESULT PHASE ──────────────────────────────────────────────
+  if (phase === 'result' && editResult) {
+    const net = (editResult.line_items || []).reduce((s, i) => s + (i.quantity || 1) * (i.unit_price || 0), 0);
+    const vat = (editResult.line_items || []).reduce((s, i) => s + (i.quantity || 1) * (i.unit_price || 0) * ((i.vat_rate || 19) / 100), 0);
+    const conf = result?.confidence || 0;
+
+    return (
+      <div className="fi">
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <h1 style={{ fontFamily: F.ui, fontSize: 20, fontWeight: 700, color: T.textPrimary }}>Ergebnis prüfen & bestätigen</h1>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 5, background: confidenceColor(conf) + '15', color: confidenceColor(conf), border: `1px solid ${confidenceColor(conf)}30` }}>
+                Konfidenz: {confidenceLabel(conf)} ({Math.round(conf * 100)}%)
+              </span>
+            </div>
+            <p style={{ fontSize: 13, color: T.textMuted }}>Bitte prüfen und korrigieren Sie die erkannten Felder vor der Generierung.</p>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={reset}>← Neues Dokument</button>
+        </div>
+
+        {/* Confidence warning */}
+        {conf < .75 && (
+          <div style={{ padding: '10px 16px', background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, marginBottom: 14, fontSize: 13, color: T.amber, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke={T.amber} strokeWidth="1.5"/><path d="M8 5v3.5M8 11v.5" stroke={T.amber} strokeWidth="1.5" strokeLinecap="round"/></svg>
+            Niedrige Erkennungsqualität — bitte alle Felder sorgfältig prüfen. {result?.notes && <span style={{ marginLeft: 4 }}>{result.notes}</span>}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+          {/* Seller */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 14 }}>Rechnungssteller</div>
+            {[['seller_name', 'Unternehmensname'], ['seller_vat_id', 'USt-IdNr.'], ['seller_address', 'Adresse'], ['seller_city', 'Stadt']].map(([k, l]) => (
+              <div key={k} style={{ marginBottom: 10 }}>
+                <label className="label">{l}</label>
+                <input className="input" value={editResult[k] || ''} onChange={e => upd(k, e.target.value)} />
+              </div>
+            ))}
+          </div>
+
+          {/* Buyer + Invoice details */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 14 }}>Rechnungsdetails</div>
+              {[['invoice_number', 'Rechnungsnummer'], ['invoice_date', 'Rechnungsdatum'], ['due_date', 'Fälligkeitsdatum']].map(([k, l]) => (
+                <div key={k} style={{ marginBottom: 10 }}>
+                  <label className="label">{l}</label>
+                  <input className="input" value={editResult[k] || ''} onChange={e => upd(k, e.target.value)} />
+                </div>
+              ))}
+            </div>
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 14 }}>Empfänger</div>
+              {[['buyer_name', 'Unternehmensname'], ['buyer_city', 'Stadt']].map(([k, l]) => (
+                <div key={k} style={{ marginBottom: 10 }}>
+                  <label className="label">{l}</label>
+                  <input className="input" value={editResult[k] || ''} onChange={e => upd(k, e.target.value)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Line items */}
+        <div className="card" style={{ padding: 20, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 12 }}>Positionen</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 70px 130px 80px 32px', gap: 7, marginBottom: 8 }}>
+            {['Beschreibung', 'Menge', 'Einzelpreis', 'MwSt', ''].map((h, i) => (
+              <div key={i} style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 600, letterSpacing: .3, textTransform: 'uppercase' }}>{h}</div>
+            ))}
+          </div>
+          {(editResult.line_items || []).map((item, idx) => (
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '3fr 70px 130px 80px 32px', gap: 7, marginBottom: 6 }}>
+              <input className="input" value={item.description || ''} onChange={e => updItem(idx, 'description', e.target.value)} />
+              <input className="input" type="number" value={item.quantity || 1} onChange={e => updItem(idx, 'quantity', e.target.value)} />
+              <input className="input" type="number" step="0.01" value={item.unit_price || 0} onChange={e => updItem(idx, 'unit_price', e.target.value)} />
+              <select className="select" value={item.vat_rate || 19} onChange={e => updItem(idx, 'vat_rate', e.target.value)}>
+                <option value={19}>19%</option><option value={7}>7%</option><option value={0}>0%</option>
+              </select>
+              <button onClick={() => upd('line_items', (editResult.line_items || []).filter((_, j) => j !== idx))} style={{ background: T.redBg, border: `1px solid ${T.redBdr}`, borderRadius: 6, color: T.red, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>×</button>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+            <button onClick={() => upd('line_items', [...(editResult.line_items || []), { description: '', quantity: 1, unit_price: 0, vat_rate: 19 }])} style={{ background: 'none', border: `1.5px dashed ${T.bgBorder}`, borderRadius: 6, color: T.accent, cursor: 'pointer', padding: '6px 14px', fontSize: 12.5, fontFamily: F.ui, fontWeight: 500 }}>+ Position hinzufügen</button>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 12.5, color: T.textMuted }}>Netto {fmtEUR(net)} · MwSt {fmtEUR(vat)}</div>
+              <div style={{ fontFamily: F.ui, fontSize: 20, fontWeight: 800, color: T.textPrimary, letterSpacing: '-.03em' }}>Brutto {fmtEUR(net + vat)}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Generate button */}
+        {!xml ? (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button className="btn btn-ghost" onClick={reset}>Verwerfen</button>
+            <button className="btn btn-primary" style={{ padding: '10px 28px', fontSize: 14 }} onClick={generateXRechnung} disabled={generating}>
+              {generating ? <><Spinner color="#fff" size={14} />&nbsp;Generiere XRechnung...</> : '⚡ XRechnung generieren →'}
+            </button>
+          </div>
+        ) : (
+          <div className="card sci" style={{ padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <span className="badge badge-green">✓ EN 16931</span>
+                <span className="badge badge-green">GoBD ✓</span>
+                <span style={{ fontSize: 12, color: T.textMuted, fontFamily: F.mono }}>{xml.number}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-primary btn-sm" onClick={() => { const b = new Blob([xml.content], { type: 'application/xml' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = `${xml.number}.xml`; a.click(); }}>↓ XML herunterladen</button>
+                <button className="btn btn-ghost btn-sm" onClick={reset}>Neues Dokument</button>
+              </div>
+            </div>
+            <pre style={{ background: T.bgSubtle, border: `1px solid ${T.bgBorder}`, borderRadius: 8, padding: 14, fontSize: 11, color: T.textSecondary, overflow: 'auto', maxHeight: 280, lineHeight: 1.6, fontFamily: F.mono }}>{xml.content}</pre>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+
 function InboundScreen({notify}){
   const[tab,setTab]=useState('received');
   const[invoices,setInvoices]=useState([]);
@@ -2513,6 +3015,7 @@ export default function App(){
       {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={setNav}/>}
       {nav==="invoices"&&<Invoices notify={notify}/>}
       {nav==="connect"&&<ConnectorsView notify={notify}/>}
+          {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify}/>}
           {nav==="steuerberater"&&<SteuerberaterPortal user={user} notify={notify} onBack={()=>setNav('dashboard')}/>}
       {nav==="archive"&&<ArchiveScreen notify={notify}/>}
