@@ -431,7 +431,7 @@ function Landing({onEnter}){
     return()=>clearInterval(id);
   },[]);
   useEffect(()=>{
-    const id=setInterval(()=>setHeroTab(t=>(t+1)%3),3500);
+    const id=setInterval(()=>setHeroTab(t=>(t+1)%7),3200);
     return()=>clearInterval(id);
   },[]);
   useEffect(()=>{
@@ -647,7 +647,7 @@ function Landing({onEnter}){
     <section style={{minHeight:'100vh',display:'flex',alignItems:'center',padding:'80px clamp(16px,4vw,56px) 60px',position:'relative',overflow:'hidden'}}>
       <div style={{position:'absolute',inset:0,backgroundImage:`linear-gradient(${T.bgBorder} 1px,transparent 1px),linear-gradient(90deg,${T.bgBorder} 1px,transparent 1px)`,backgroundSize:'40px 40px',opacity:.35,pointerEvents:'none'}}/>
       <div style={{position:'absolute',inset:0,background:`radial-gradient(ellipse 70% 80% at 60% 50%,transparent 30%,${T.bg} 75%)`,pointerEvents:'none'}}/>
-      <div style={{maxWidth:1100,margin:'0 auto',width:'100%',display:'grid',gridTemplateColumns:'1fr 1.1fr',gap:64,alignItems:'center',position:'relative'}}>
+      <div style={{maxWidth:1100,margin:'0 auto',width:'100%',display:'grid',gridTemplateColumns:'1fr 1.35fr',gap:48,alignItems:'center',position:'relative'}}>
         <div>
           <div className="fu" style={{marginBottom:20}}>
             <span className="hero-pill">
@@ -678,44 +678,184 @@ function Landing({onEnter}){
           </div>
         </div>
 
-        {/* Hero Dashboard */}
+        {/* Hero Dashboard — 7 screens */}
         <div className="fu3" style={{position:'relative'}}>
-          <div style={{position:'absolute',top:'10%',left:'10%',right:'10%',bottom:'10%',background:`radial-gradient(ellipse,${T.accentPale} 0%,transparent 70%)`,borderRadius:16,filter:'blur(20px)',opacity:.5,pointerEvents:'none'}}/>
-          <div style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:10,boxShadow:T.shadowXl,overflow:'hidden',position:'relative'}}>
-            <div style={{height:34,background:T.bgSubtle,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',padding:'0 12px',gap:7}}>
-              {['#FF5F57','#FEBC2E','#28C840'].map(c=><div key={c} style={{width:9,height:9,borderRadius:'50%',background:c}}/>)}
-              <div style={{flex:1,height:14,background:T.bgBorder,borderRadius:3,marginLeft:8,maxWidth:180}}/>
+          <div style={{position:'absolute',top:'5%',left:'5%',right:'5%',bottom:'5%',background:`radial-gradient(ellipse,${T.accentPale} 0%,transparent 70%)`,borderRadius:16,filter:'blur(24px)',opacity:.55,pointerEvents:'none'}}/>
+          <div style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:12,boxShadow:T.shadowXl,overflow:'hidden',position:'relative'}}>
+            {/* Chrome */}
+            <div style={{height:36,background:T.bgSubtle,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',padding:'0 14px',gap:7,flexShrink:0}}>
+              {['#FF5F57','#FEBC2E','#28C840'].map(c=><div key={c} style={{width:10,height:10,borderRadius:'50%',background:c}}/>)}
+              <div style={{flex:1,height:15,background:T.bgBorder,borderRadius:4,marginLeft:8,maxWidth:200}}/>
+              <div style={{display:'flex',gap:5,alignItems:'center'}}>
+                <div style={{width:7,height:7,borderRadius:'50%',background:T.green,animation:'pulse 2s ease-in-out infinite'}}/>
+                <span style={{fontSize:10,color:T.textMuted,fontWeight:500}}>invoiq.io</span>
+              </div>
             </div>
-            <div style={{display:'flex',height:320}}>
-              <div style={{width:110,background:T.bgSubtle,borderRight:`1px solid ${T.bgBorder}`,padding:'10px 8px',flexShrink:0}}>
-                <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:14,padding:'0 4px'}}>
-                  <div style={{width:16,height:16,borderRadius:3,background:T.brand,flexShrink:0}}/>
+            <div style={{display:'flex',height:420}}>
+              {/* Sidebar */}
+              <div style={{width:126,background:T.bgSubtle,borderRight:`1px solid ${T.bgBorder}`,padding:'10px 8px',flexShrink:0,display:'flex',flexDirection:'column',gap:2}}>
+                <div style={{display:'flex',alignItems:'center',gap:5,padding:'2px 4px',marginBottom:10}}>
+                  <div style={{width:18,height:18,borderRadius:4,background:T.brand,flexShrink:0}}/>
                   <span style={{fontSize:11,fontWeight:700,color:T.textPrimary}}>invoiq</span>
                 </div>
-                {['Overview','Documents','Connectors','Archive','Settings'].map((item,i)=>(
-                  <div key={item} style={{padding:'5px 7px',borderRadius:5,marginBottom:2,background:i===heroTab?T.bgMuted:'transparent',fontSize:11,fontWeight:i===heroTab?600:400,color:i===heroTab?T.textPrimary:T.textMuted,cursor:'default',transition:'all .2s'}}>{item}</div>
+                {[['Overview',0],['Documents',1],['Dok.-Scanner',2],['Inbound',3],['Kanzlei',4],['Archive',5],['Settings',6]].map(([label,idx])=>(
+                  <div key={label} onClick={()=>setHeroTab(idx)} style={{padding:'5px 7px',borderRadius:5,fontSize:10.5,fontWeight:heroTab===idx?700:400,color:heroTab===idx?T.textPrimary:T.textMuted,background:heroTab===idx?T.bgMuted:'transparent',cursor:'pointer',transition:'all .15s',whiteSpace:'nowrap'}}>{label}</div>
                 ))}
               </div>
-              <div style={{flex:1,overflow:'hidden'}}>
-                <div style={{height:36,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px'}}>
-                  <div style={{display:'flex',gap:2}}>
-                    {heroTabs.map((t,i)=>(
-                      <span key={t.label} onClick={()=>setHeroTab(i)} style={{fontSize:11,fontWeight:i===heroTab?600:500,color:i===heroTab?T.textPrimary:T.textMuted,padding:'4px 8px',borderBottom:`2px solid ${i===heroTab?T.accent:'transparent'}`,cursor:'pointer',transition:'all .15s'}}>{t.label}</span>
-                    ))}
-                  </div>
+              {/* Content */}
+              <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+                <div style={{height:36,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px',flexShrink:0}}>
+                  <span style={{fontSize:11.5,fontWeight:600,color:T.textPrimary}}>{['Overview','Documents','Dok.-Scanner','Inbound','Kanzlei-Portal','Archive','Settings'][heroTab]}</span>
                   <div style={{width:7,height:7,borderRadius:'50%',background:T.green,animation:'pulse 2s ease-in-out infinite'}}/>
                 </div>
-                <div style={{overflow:'hidden',height:283}}>{heroTabs[heroTab].content}</div>
+                <div style={{flex:1,overflow:'hidden'}}>
+                  {heroTab===0&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:7,marginBottom:10}}>
+                      {[['41','Sent','▲ +8%',T.green],['28','Received','This week',T.accent],['1','Errors','Review',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
+                        <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'8px 10px',border:`1px solid ${T.bgBorder}`}}>
+                          <div style={{fontSize:9.5,color:T.textMuted,marginBottom:3}}>{l}</div>
+                          <div style={{fontSize:18,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1}}>{v}</div>
+                          <div style={{fontSize:9,color:c,marginTop:3,fontWeight:600}}>{s}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{display:'flex',alignItems:'flex-end',gap:3,height:48,marginBottom:10}}>
+                      {[22,28,24,36,31,40,41].map((v,i)=><div key={i} style={{flex:1,background:i===6?T.accent:`${T.accent}28`,borderRadius:'2px 2px 0 0',height:`${(v/41)*100}%`,minHeight:2}}/>)}
+                    </div>
+                    {visibleRows.map((r,i)=>(
+                      <div key={r.num+i} style={{display:'flex',alignItems:'center',gap:7,padding:'4px 0',borderBottom:i<2?`1px solid ${T.bgSubtle}`:'none'}}>
+                        <span style={{fontFamily:F.mono,fontSize:9.5,color:T.textPrimary,flex:'0 0 78px'}}>{r.num}</span>
+                        <span style={{fontSize:10,color:T.textSecondary,flex:1}}>{r.co}</span>
+                        <span style={{fontSize:10,fontWeight:600,color:T.textPrimary}}>{r.amt}</span>
+                        <div>{stBadge(r.st)}</div>
+                      </div>
+                    ))}
+                  </div>}
+                  {heroTab===1&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                      <span style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>Documents</span>
+                      <div style={{background:T.accent,color:'#fff',borderRadius:5,padding:'3px 9px',fontSize:9.5,fontWeight:700}}>+ New</div>
+                    </div>
+                    <div style={{display:'flex',gap:5,marginBottom:10}}>
+                      {['All','Delivered','Errors'].map((t,i)=><span key={t} style={{fontSize:9.5,padding:'2px 7px',borderRadius:4,background:i===0?T.accentLight:T.bgSubtle,color:i===0?T.accent:T.textMuted,border:`1px solid ${i===0?T.accentPale:T.bgBorder}`,fontWeight:i===0?700:500}}>{t}</span>)}
+                    </div>
+                    {liveRows.slice(0,5).map((r,i)=>(
+                      <div key={r.num} style={{display:'flex',alignItems:'center',gap:7,padding:'5px 0',borderBottom:i<4?`1px solid ${T.bgSubtle}`:'none'}}>
+                        <span style={{fontFamily:F.mono,fontSize:9.5,color:T.textPrimary,flex:'0 0 78px'}}>{r.num}</span>
+                        <span style={{fontSize:10,color:T.textSecondary,flex:1}}>{r.co}</span>
+                        <span style={{fontSize:10,fontWeight:600,flex:'0 0 52px',textAlign:'right'}}>{r.amt}</span>
+                        <div>{stBadge(r.st)}</div>
+                      </div>
+                    ))}
+                  </div>}
+                  {heroTab===2&&<div style={{padding:18,animation:'fadeIn .3s ease',textAlign:'center'}}>
+                    <div style={{width:52,height:52,borderRadius:12,background:T.brand,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}>
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="4" stroke="#fff" strokeWidth="1.8"/></svg>
+                    </div>
+                    <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:5}}>Dokumenten-Scanner</div>
+                    <div style={{fontSize:11,color:T.textMuted,marginBottom:14,lineHeight:1.5}}>PDF oder Foto → XRechnung</div>
+                    <div style={{background:T.brand,borderRadius:8,padding:'10px 14px',display:'flex',alignItems:'center',gap:10,textAlign:'left',marginBottom:8,cursor:'pointer'}}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="rgba(255,255,255,.8)" strokeWidth="1.8"/><circle cx="12" cy="13" r="4" stroke="rgba(255,255,255,.8)" strokeWidth="1.8"/></svg>
+                      <span style={{fontSize:11.5,fontWeight:600,color:'#fff'}}>Rechnung fotografieren</span>
+                    </div>
+                    <div style={{display:'flex',gap:5,justifyContent:'center',marginTop:10}}>
+                      {['DSGVO','TLS 1.3','EN 16931'].map(t=><span key={t} style={{fontSize:9,fontWeight:600,padding:'2px 6px',borderRadius:4,background:T.greenBg,color:T.green,border:`1px solid ${T.greenBdr}`}}>{t}</span>)}
+                    </div>
+                  </div>}
+                  {heroTab===3&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
+                      <span style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>Inbound</span>
+                      <span style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:4,background:T.redBg,color:T.red,border:`1px solid ${T.redBdr}`}}>Pflicht Jan 2025</span>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
+                      {[['3','Empfangen',T.accent],['2','Validiert',T.green],['1','Fehler',T.red]].map(([v,l,c])=>(
+                        <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'7px 8px',border:`1px solid ${T.bgBorder}`,textAlign:'center'}}>
+                          <div style={{fontSize:18,fontWeight:800,color:c,letterSpacing:'-.03em'}}>{v}</div>
+                          <div style={{fontSize:9.5,color:T.textMuted,marginTop:2}}>{l}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {[{n:'EINGANG-003',s:'Müller Lieferant',a:'4.284 €',v:true},{n:'EINGANG-002',s:'TechParts AG',a:'1.290 €',v:false},{n:'EINGANG-001',s:'SAP Partner',a:'8.900 €',v:true}].map((r,i)=>(
+                      <div key={r.n} style={{display:'flex',alignItems:'center',gap:7,padding:'5px 0',borderBottom:i<2?`1px solid ${T.bgSubtle}`:'none'}}>
+                        <div style={{width:6,height:6,borderRadius:'50%',background:r.v?T.green:T.red,flexShrink:0}}/>
+                        <span style={{fontFamily:F.mono,fontSize:9.5,color:T.textPrimary,flex:'0 0 72px'}}>{r.n}</span>
+                        <span style={{fontSize:10,color:T.textSecondary,flex:1}}>{r.s}</span>
+                        <span style={{fontSize:9.5,fontWeight:600}}>{r.a}</span>
+                      </div>
+                    ))}
+                    <div style={{marginTop:10,padding:'7px 10px',background:T.blueBg,border:`1px solid ${T.blueBdr}`,borderRadius:6,fontSize:9.5,color:T.blue}}>📧 rechnungen@invoiq.io · Peppol: 0190:DE...</div>
+                  </div>}
+                  {heroTab===4&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
+                      <span style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>Kanzlei-Portal</span>
+                      <span style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:4,background:T.purpleBg,color:T.purple,border:`1px solid ${T.purpleBdr}`}}>6 Mandanten</span>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
+                      {[['6','Mandanten',T.textPrimary],['423','Dok. Mai',T.accent],['98%','Compliance',T.green]].map(([v,l,c])=>(
+                        <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'7px 8px',border:`1px solid ${T.bgBorder}`,textAlign:'center'}}>
+                          <div style={{fontSize:18,fontWeight:800,color:c,letterSpacing:'-.03em'}}>{v}</div>
+                          <div style={{fontSize:9.5,color:T.textMuted,marginTop:2}}>{l}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {[{n:'Müller Bäckerei GmbH',p:14,l:100,e:0},{n:'TechVision AG',p:284,l:1000,e:0},{n:'Stadtwerke Süd',p:67,l:100,e:1}].map((m,i)=>(
+                      <div key={m.n} style={{padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgSubtle}`:'none'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:3,fontSize:10}}>
+                          <span style={{fontWeight:600,color:T.textPrimary,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:100}}>{m.n}</span>
+                          <span style={{color:m.e>0?T.red:T.textMuted,fontWeight:m.e>0?700:400}}>{m.e>0?'⚠ Fehler':`${m.p}/${m.l}`}</span>
+                        </div>
+                        <div style={{height:3,background:T.bgBorder,borderRadius:2,overflow:'hidden'}}>
+                          <div style={{height:'100%',width:`${Math.min(100,(m.p/m.l)*100)}%`,background:m.e>0?T.red:T.accent,borderRadius:2}}/>
+                        </div>
+                      </div>
+                    ))}
+                  </div>}
+                  {heroTab===5&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
+                    <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:10}}>GoBD-Archiv</div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6,marginBottom:10}}>
+                      {[['12.441','Archiviert'],['10 Jahre','Retention']].map(([v,l])=>(
+                        <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'8px 10px',border:`1px solid ${T.bgBorder}`}}>
+                          <div style={{fontSize:16,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em'}}>{v}</div>
+                          <div style={{fontSize:9.5,color:T.textMuted,marginTop:2}}>{l}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {[{n:'INV-2025-041',h:'a7f3d9c2...'},{n:'INV-2025-040',h:'b2e8f1a4...'},{n:'EINGANG-003',h:'c4f8b2e6...'}].map((d,i)=>(
+                      <div key={d.n} style={{display:'flex',alignItems:'center',gap:7,padding:'5px 0',borderBottom:i<2?`1px solid ${T.bgSubtle}`:'none'}}>
+                        <div style={{width:14,height:14,borderRadius:'50%',background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                          <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke={T.green} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        <span style={{fontFamily:F.mono,fontSize:9.5,color:T.textPrimary,flex:'0 0 70px'}}>{d.n}</span>
+                        <span style={{fontFamily:F.mono,fontSize:9,color:T.textMuted,flex:1}}>{d.h}</span>
+                        <span style={{fontSize:9,color:T.green,fontWeight:600}}>SHA-256 ✓</span>
+                      </div>
+                    ))}
+                  </div>}
+                  {heroTab===6&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
+                    <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:12}}>Einstellungen</div>
+                    {[{l:'Standard-Format',v:'XRechnung 3.0',t:'s'},{l:'GoBD-Archivierung',v:true,t:'t'},{l:'ViDA-Reporting (Beta)',v:false,t:'t'},{l:'Peppol aktiviert',v:true,t:'t'},{l:'Zustellweg',v:'E-Mail',t:'s'}].map((s,i)=>(
+                      <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`,marginBottom:6}}>
+                        <span style={{fontSize:10.5,color:T.textPrimary,fontWeight:500}}>{s.l}</span>
+                        {s.t==='t'
+                          ?<div style={{width:30,height:16,borderRadius:8,background:s.v?T.accent:T.bgBorder,position:'relative',flexShrink:0}}>
+                            <div style={{position:'absolute',top:2,left:s.v?14:2,width:12,height:12,borderRadius:'50%',background:'#fff'}}/>
+                          </div>
+                          :<span style={{fontSize:9.5,color:T.textMuted,fontFamily:F.mono}}>{s.v}</span>}
+                      </div>
+                    ))}
+                  </div>}
+                </div>
               </div>
             </div>
           </div>
-          <div style={{position:'absolute',bottom:-16,right:-12,background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'10px 14px',boxShadow:T.shadow3,display:'flex',alignItems:'center',gap:10}}>
+          {/* Floating notification */}
+          <div style={{position:'absolute',bottom:-18,right:-14,background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:9,padding:'10px 14px',boxShadow:T.shadow3,display:'flex',alignItems:'center',gap:10,zIndex:2}}>
             <div style={{width:28,height:28,borderRadius:6,background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div>
-              <div style={{fontSize:11.5,fontWeight:600,color:T.textPrimary}}>XRechnung generiert</div>
-              <div style={{fontSize:10.5,color:T.textMuted}}>EN 16931 · GoBD · ViDA-ready ✓</div>
+              <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>XRechnung generiert</div>
+              <div style={{fontSize:10,color:T.textMuted}}>EN 16931 · GoBD · ViDA-ready ✓</div>
             </div>
           </div>
         </div>
