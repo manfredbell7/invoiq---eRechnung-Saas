@@ -2078,6 +2078,394 @@ function AdminRevenue(){
   </div>);
 }
 
+// ══════════════════════════════════════════════════════════════
+// STEUERBERATER PORTAL — Multi-Mandanten Dashboard
+// ══════════════════════════════════════════════════════════════
+
+// Mock mandanten data
+const MOCK_MANDANTEN = [
+  { id:'m1', name:'Müller Bäckerei GmbH', vat:'DE123456789', plan:'starter', status:'active', docs_this_month:14, docs_limit:100, last_invoice:'2025-05-27', compliance:98, erp:'Lexware', open_errors:0, pending_inbound:2, contact:'hans@mueller-baeckerei.de' },
+  { id:'m2', name:'TechVision AG', vat:'DE987654321', plan:'business', status:'active', docs_this_month:284, docs_limit:1000, last_invoice:'2025-05-27', compliance:100, erp:'SAP S/4HANA', open_errors:0, pending_inbound:0, contact:'it@techvision.de' },
+  { id:'m3', name:'Stadtwerke Süd GmbH', vat:'DE456789123', plan:'starter', status:'active', docs_this_month:67, docs_limit:100, last_invoice:'2025-05-24', compliance:94, erp:'DATEV', open_errors:1, pending_inbound:5, contact:'buchhaltung@stadtwerke.de' },
+  { id:'m4', name:'Bauer Logistik KG', vat:'DE321654987', plan:'starter', status:'trial', docs_this_month:12, docs_limit:100, last_invoice:'2025-05-22', compliance:100, erp:'Lexware', open_errors:0, pending_inbound:1, contact:'k.bauer@logistik.de' },
+  { id:'m5', name:'Nord Express GmbH', vat:'DE789123456', plan:'starter', status:'active', docs_this_month:38, docs_limit:100, last_invoice:'2025-05-26', compliance:97, erp:'DATEV', open_errors:0, pending_inbound:0, contact:'info@nordexpress.de' },
+  { id:'m6', name:'Handwerk Schmidt', vat:'DE246813579', plan:'starter', status:'active', docs_this_month:8, docs_limit:100, last_invoice:'2025-05-20', compliance:100, erp:'Manuell', open_errors:0, pending_inbound:3, contact:'schmidt@handwerk.de' },
+];
+
+const MOCK_RECENT_ACTIVITY = [
+  { mandant:'TechVision AG', action:'XRechnung generiert', detail:'INV-2025-1840 · 22.900 €', time:'vor 12 Min.', type:'success' },
+  { mandant:'Stadtwerke Süd GmbH', action:'Validierungsfehler', detail:'Pflichtfeld LegalEntityID fehlt', time:'vor 28 Min.', type:'error' },
+  { mandant:'Müller Bäckerei GmbH', action:'Inbound empfangen', detail:'Lieferant Großhandel · 1.290 €', time:'vor 1 Std.', type:'info' },
+  { mandant:'Nord Express GmbH', action:'Peppol zugestellt', detail:'INV-2025-038 · 8.440 €', time:'vor 2 Std.', type:'success' },
+  { mandant:'Bauer Logistik KG', action:'ERP-Buchung', detail:'Kreditor 10042 in Lexware gebucht', time:'vor 3 Std.', type:'success' },
+  { mandant:'Handwerk Schmidt', action:'Inbound empfangen', detail:'Material Lieferant · 340 €', time:'vor 4 Std.', type:'info' },
+];
+
+function SteuerberaterPortal({ user, notify, onBack }) {
+  const [view, setView] = useState('overview'); // overview | mandant | add
+  const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [mandantTab, setMandantTab] = useState('overview');
+  const [inviteModal, setInviteModal] = useState(false);
+
+  const filtered = MOCK_MANDANTEN.filter(m => {
+    const matchSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) || m.vat.includes(search);
+    const matchFilter = filter === 'all' || m.status === filter || (filter === 'errors' && m.open_errors > 0) || (filter === 'limit' && m.docs_this_month / m.docs_limit > 0.8);
+    return matchSearch && matchFilter;
+  });
+
+  const totalDocs = MOCK_MANDANTEN.reduce((s, m) => s + m.docs_this_month, 0);
+  const totalErrors = MOCK_MANDANTEN.reduce((s, m) => s + m.open_errors, 0);
+  const totalPending = MOCK_MANDANTEN.reduce((s, m) => s + m.pending_inbound, 0);
+  const avgCompliance = Math.round(MOCK_MANDANTEN.reduce((s, m) => s + m.compliance, 0) / MOCK_MANDANTEN.length);
+
+  // ── MANDANT DETAIL VIEW ──────────────────────────────────────
+  if (view === 'mandant' && selected) {
+    const m = selected;
+    const pct = Math.round((m.docs_this_month / m.docs_limit) * 100);
+    return (
+      <div className="fi">
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setView('overview'); setSelected(null); setMandantTab('overview'); }}>← Alle Mandanten</button>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <h1 style={{ fontFamily: F.ui, fontSize: 20, fontWeight: 700, color: T.textPrimary, letterSpacing: '-.025em' }}>{m.name}</h1>
+              <StatusBadge status={m.status} />
+              {m.open_errors > 0 && <span className="badge badge-red">{m.open_errors} Fehler</span>}
+            </div>
+            <p style={{ fontSize: 12, color: T.textMuted, marginTop: 3 }}>{m.vat} · {m.erp} · {m.contact}</p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => notify(`E-Mail an ${m.contact} geöffnet`, 'info')}>✉ Kontaktieren</button>
+            <button className="btn btn-primary btn-sm" onClick={() => notify('Einloggen als Mandant...', 'info')}>Als Mandant einloggen →</button>
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
+          {[
+            { label: 'Dokumente Mai', value: m.docs_this_month, sub: `von ${m.docs_limit}` },
+            { label: 'Compliance', value: `${m.compliance}%`, sub: 'EN 16931', color: m.compliance >= 98 ? T.green : T.amber },
+            { label: 'Offene Fehler', value: m.open_errors, sub: m.open_errors > 0 ? 'Handlungsbedarf' : 'Alles OK', color: m.open_errors > 0 ? T.red : T.green },
+            { label: 'Inbound ausstehend', value: m.pending_inbound, sub: 'zu verarbeiten', color: m.pending_inbound > 0 ? T.amber : T.textPrimary },
+          ].map((s, i) => (
+            <div key={i} className="card" style={{ padding: 16 }}>
+              <div style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 600, letterSpacing: .4, textTransform: 'uppercase', marginBottom: 8 }}>{s.label}</div>
+              <div className="stat-num" style={{ fontSize: 26, color: s.color || T.textPrimary }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Kontingent bar */}
+        <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
+            <span style={{ fontWeight: 600, color: T.textPrimary }}>Dokumenten-Kontingent Mai 2025</span>
+            <span style={{ color: T.textMuted }}>{m.docs_this_month} / {m.docs_limit} ({pct}%)</span>
+          </div>
+          <div className="progress" style={{ height: 6 }}>
+            <div className="progress-fill" style={{ width: `${pct}%`, background: pct > 85 ? T.red : pct > 70 ? T.amber : T.accent }} />
+          </div>
+          {pct > 80 && (
+            <div style={{ marginTop: 10, padding: '8px 12px', background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 6, fontSize: 12.5, color: T.amber }}>
+              ⚠ Nähert sich dem Limit — <button style={{ background: 'none', border: 'none', color: T.accent, cursor: 'pointer', fontWeight: 600, fontSize: 12.5, fontFamily: F.ui }} onClick={() => notify('Upgrade-Anfrage für ' + m.name, 'success')}>Plan upgraden →</button>
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${T.bgBorder}`, marginBottom: 14 }}>
+          {[['overview', 'Übersicht'], ['invoices', 'Rechnungen'], ['inbound', 'Inbound'], ['settings', 'Einstellungen']].map(([k, l]) => (
+            <button key={k} className={`tab ${mandantTab === k ? 'active' : ''}`} onClick={() => setMandantTab(k)}>{l}</button>
+          ))}
+        </div>
+
+        {mandantTab === 'overview' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="card" style={{ padding: 18 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 14 }}>Letzte Aktivität</div>
+              {MOCK_RECENT_ACTIVITY.filter(a => a.mandant === m.name).slice(0, 4).map((a, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: i < 3 ? `1px solid ${T.bgSubtle}` : 'none', alignItems: 'flex-start' }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: a.type === 'success' ? T.green : a.type === 'error' ? T.red : T.accent, flexShrink: 0, marginTop: 4 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: T.textPrimary }}>{a.action}</div>
+                    <div style={{ fontSize: 11.5, color: T.textMuted }}>{a.detail}</div>
+                  </div>
+                  <div style={{ fontSize: 10.5, color: T.textMuted, flexShrink: 0 }}>{a.time}</div>
+                </div>
+              ))}
+              {MOCK_RECENT_ACTIVITY.filter(a => a.mandant === m.name).length === 0 && (
+                <div style={{ fontSize: 13, color: T.textMuted, textAlign: 'center', padding: 20 }}>Noch keine Aktivität</div>
+              )}
+            </div>
+            <div className="card" style={{ padding: 18 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 14 }}>Mandanten-Info</div>
+              {[
+                ['ERP-System', m.erp],
+                ['Plan', m.plan.charAt(0).toUpperCase() + m.plan.slice(1)],
+                ['USt-IdNr.', m.vat],
+                ['Letzte Rechnung', m.last_invoice],
+                ['Compliance-Score', `${m.compliance}%`],
+                ['Kontakt', m.contact],
+              ].map(([l, v]) => (
+                <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${T.bgSubtle}`, fontSize: 13 }}>
+                  <span style={{ color: T.textMuted }}>{l}</span>
+                  <span style={{ fontWeight: 500, color: T.textPrimary }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {mandantTab === 'invoices' && (
+          <div className="card">
+            <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.bgBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: T.textPrimary }}>Rechnungen</div>
+              <button className="btn btn-primary btn-sm" onClick={() => notify('Neue Rechnung für ' + m.name, 'success')}>+ Neue Rechnung</button>
+            </div>
+            <table className="table">
+              <thead><tr>{['Nummer', 'Betrag', 'Format', 'Status', 'Datum'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+              <tbody>
+                {[
+                  { num: 'INV-2025-014', amt: 1840, fmt: 'xrechnung', st: 'delivered', date: '2025-05-27' },
+                  { num: 'INV-2025-013', amt: 920, fmt: 'zugferd', st: 'archived', date: '2025-05-20' },
+                  { num: 'INV-2025-012', amt: 3400, fmt: 'xrechnung', st: 'delivered', date: '2025-05-14' },
+                ].map((inv, i) => (
+                  <tr key={i} className="tr-hover">
+                    <td style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 600, color: T.textPrimary }}>{inv.num}</td>
+                    <td style={{ fontWeight: 600 }}>{fmtEUR(inv.amt)}</td>
+                    <td><span style={{ background: T.bgMuted, color: T.textSecondary, borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700, fontFamily: F.mono }}>{inv.fmt.toUpperCase()}</span></td>
+                    <td><StatusBadge status={inv.st} /></td>
+                    <td style={{ fontSize: 12, color: T.textMuted }}>{inv.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {mandantTab === 'inbound' && (
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 14 }}>Eingehende Rechnungen</div>
+            {m.pending_inbound > 0 ? (
+              <div style={{ background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: T.amber }}>
+                ⚠ {m.pending_inbound} Eingang{m.pending_inbound > 1 ? 'änge' : ''} warte{m.pending_inbound === 1 ? 't' : 'n'} auf Verarbeitung
+              </div>
+            ) : (
+              <div style={{ background: T.greenBg, border: `1px solid ${T.greenBdr}`, borderRadius: 7, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: T.green }}>
+                ✓ Alle Eingänge verarbeitet
+              </div>
+            )}
+            <button className="btn btn-primary btn-sm" onClick={() => notify('Alle Eingänge von ' + m.name + ' verarbeitet ✓', 'success')}>Alle verarbeiten →</button>
+          </div>
+        )}
+
+        {mandantTab === 'settings' && (
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 16 }}>Mandanten-Einstellungen</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+              {[['Unternehmensname', m.name], ['USt-IdNr.', m.vat], ['ERP-System', m.erp], ['Kontakt-E-Mail', m.contact]].map(([l, v]) => (
+                <div key={l}><label className="label">{l}</label><input className="input" defaultValue={v} /></div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16, gap: 8 }}>
+              <button className="btn btn-danger btn-sm" onClick={() => notify(m.name + ' aus Portal entfernt', 'error')}>Mandant entfernen</button>
+              <button className="btn btn-primary" onClick={() => notify('Gespeichert ✓', 'success')}>Speichern</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── OVERVIEW ─────────────────────────────────────────────────
+  return (
+    <div className="fi">
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+            <h1 style={{ fontFamily: F.ui, fontSize: 22, fontWeight: 700, color: T.textPrimary, letterSpacing: '-.025em' }}>Steuerberater-Portal</h1>
+            <span className="badge badge-purple" style={{ fontSize: 10.5 }}>Kanzlei-Ansicht</span>
+          </div>
+          <p style={{ fontSize: 13, color: T.textMuted }}>{MOCK_MANDANTEN.length} Mandanten · Zentrales Dashboard für alle Ihre Mandanten</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => notify('Sammel-Report wird generiert...', 'info')}>↓ Monats-Report</button>
+          <button className="btn btn-primary btn-sm" onClick={() => setInviteModal(true)}>+ Mandant einladen</button>
+        </div>
+      </div>
+
+      {/* Platform KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 18 }}>
+        {[
+          { label: 'Mandanten gesamt', value: MOCK_MANDANTEN.length, sub: `${MOCK_MANDANTEN.filter(m => m.status === 'active').length} aktiv`, color: T.textPrimary },
+          { label: 'Dokumente Mai', value: fmtNum(totalDocs), sub: 'Alle Mandanten', color: T.textPrimary },
+          { label: 'Offene Fehler', value: totalErrors, sub: totalErrors > 0 ? 'Handlungsbedarf' : 'Alles OK', color: totalErrors > 0 ? T.red : T.green },
+          { label: 'Ø Compliance', value: `${avgCompliance}%`, sub: 'EN 16931', color: avgCompliance >= 97 ? T.green : T.amber },
+        ].map((s, i) => (
+          <div key={i} className="card" style={{ padding: 16 }}>
+            <div style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 600, letterSpacing: .4, textTransform: 'uppercase', marginBottom: 8 }}>{s.label}</div>
+            <div className="stat-num" style={{ fontSize: 26, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Alerts */}
+      {(totalErrors > 0 || totalPending > 0) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {totalErrors > 0 && (
+            <div style={{ padding: '10px 16px', background: T.redBg, border: `1px solid ${T.redBdr}`, borderRadius: 7, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: T.red, flexShrink: 0 }} />
+              <span style={{ color: T.red, fontWeight: 600 }}>{totalErrors} Validierungsfehler</span>
+              <span style={{ color: T.red }}> bei {MOCK_MANDANTEN.filter(m => m.open_errors > 0).map(m => m.name).join(', ')}</span>
+              <button className="btn btn-danger btn-sm" style={{ marginLeft: 'auto' }} onClick={() => { setFilter('errors'); }}>Alle anzeigen</button>
+            </div>
+          )}
+          {totalPending > 0 && (
+            <div style={{ padding: '10px 16px', background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: T.amber, flexShrink: 0 }} />
+              <span style={{ color: T.amber, fontWeight: 600 }}>{totalPending} eingehende Rechnungen</span>
+              <span style={{ color: T.amber }}>warten auf Verarbeitung</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Search + Filter */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+        <input className="input" style={{ maxWidth: 300 }} placeholder="Mandant suchen..." value={search} onChange={e => setSearch(e.target.value)} />
+        <select className="select" style={{ maxWidth: 200 }} value={filter} onChange={e => setFilter(e.target.value)}>
+          <option value="all">Alle Mandanten</option>
+          <option value="active">Aktiv</option>
+          <option value="trial">Trial</option>
+          <option value="errors">Mit Fehlern</option>
+          <option value="limit">Nahe Limit (&gt;80%)</option>
+        </select>
+      </div>
+
+      {/* Two-column layout: Mandanten cards + Activity feed */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 14 }}>
+
+        {/* Mandanten cards */}
+        <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filtered.map(m => {
+              const pct = Math.round((m.docs_this_month / m.docs_limit) * 100);
+              return (
+                <div key={m.id} className="card card-hover" style={{ padding: 16, cursor: 'pointer' }} onClick={() => { setSelected(m); setView('mandant'); }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    {/* Avatar */}
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: T.accentLight, border: `1px solid ${T.accentPale}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: T.accent, flexShrink: 0 }}>
+                      {m.name[0]}
+                    </div>
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: T.textPrimary }}>{m.name}</span>
+                        <StatusBadge status={m.status} />
+                        {m.open_errors > 0 && <span className="badge badge-red" style={{ fontSize: 10 }}>{m.open_errors} Fehler</span>}
+                        {m.pending_inbound > 0 && <span className="badge badge-amber" style={{ fontSize: 10 }}>{m.pending_inbound} Inbound</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 10 }}>{m.vat} · {m.erp}</div>
+                      {/* Progress bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.textMuted, marginBottom: 4 }}>
+                        <span>Dokumente Mai</span>
+                        <span style={{ fontWeight: 600, color: pct > 80 ? T.red : T.textPrimary }}>{m.docs_this_month}/{m.docs_limit} ({pct}%)</span>
+                      </div>
+                      <div className="progress">
+                        <div className="progress-fill" style={{ width: `${pct}%`, background: pct > 85 ? T.red : pct > 70 ? T.amber : T.accent }} />
+                      </div>
+                    </div>
+                    {/* Right side */}
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 4 }}>Compliance</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: m.compliance >= 98 ? T.green : T.amber, letterSpacing: '-.03em' }}>{m.compliance}%</div>
+                      <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 6 }}>Letzte Rechnung</div>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: T.textPrimary }}>{m.last_invoice}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 7, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.bgSubtle}` }} onClick={e => e.stopPropagation()}>
+                    <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setSelected(m); setView('mandant'); setMandantTab('invoices'); }}>Rechnungen</button>
+                    <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setSelected(m); setView('mandant'); setMandantTab('inbound'); }}>
+                      Inbound {m.pending_inbound > 0 && <span style={{ background: T.amber, color: '#fff', borderRadius: 8, padding: '0 5px', fontSize: 10, marginLeft: 3 }}>{m.pending_inbound}</span>}
+                    </button>
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => notify('Einloggen als ' + m.name, 'info')}>Öffnen →</button>
+                  </div>
+                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className="card" style={{ padding: 40, textAlign: 'center', color: T.textMuted }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>🔍</div>
+                <div style={{ fontSize: 14 }}>Keine Mandanten gefunden</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Activity feed */}
+        <div>
+          <div className="card" style={{ padding: 16, position: 'sticky', top: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 14 }}>Aktivitäten — heute</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {MOCK_RECENT_ACTIVITY.map((a, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: '9px 0', borderBottom: i < MOCK_RECENT_ACTIVITY.length - 1 ? `1px solid ${T.bgSubtle}` : 'none', alignItems: 'flex-start' }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: a.type === 'success' ? T.green : a.type === 'error' ? T.red : T.accent, flexShrink: 0, marginTop: 4 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: T.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.mandant}</div>
+                    <div style={{ fontSize: 11, color: T.textMuted }}>{a.action}</div>
+                    <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 1 }}>{a.detail}</div>
+                  </div>
+                  <div style={{ fontSize: 10, color: T.textMuted, flexShrink: 0, marginTop: 1 }}>{a.time}</div>
+                </div>
+              ))}
+            </div>
+            <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={() => notify('Vollständiges Protokoll wird geladen...', 'info')}>Alle Aktivitäten →</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Invite modal */}
+      {inviteModal && (
+        <div className="modal-overlay" onClick={() => setInviteModal(false)}>
+          <div className="modal sci" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: T.textPrimary }}>Mandant einladen</div>
+              <button onClick={() => setInviteModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: T.textMuted }}>×</button>
+            </div>
+            <p style={{ fontSize: 13.5, color: T.textSecondary, marginBottom: 18, lineHeight: 1.6 }}>
+              Der Mandant erhält eine Einladungs-E-Mail und wird automatisch mit Ihrer Kanzlei verknüpft. Sie sehen alle seine Rechnungen in diesem Portal.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+              {[['Unternehmensname', 'Müller Bäckerei GmbH', 'text'], ['USt-IdNr.', 'DE123456789', 'text'], ['Kontakt-E-Mail', 'buchhaltung@mandant.de', 'email']].map(([l, p, t]) => (
+                <div key={l}><label className="label">{l}</label><input className="input" type={t} placeholder={p} /></div>
+              ))}
+              <div>
+                <label className="label">ERP-System</label>
+                <select className="select">
+                  <option>Lexware</option><option>DATEV</option><option>SAP S/4HANA</option><option>SAP ECC</option><option>Odoo</option><option>Manuell</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ padding: '10px 14px', background: T.bgSubtle, border: `1px solid ${T.bgBorder}`, borderRadius: 7, fontSize: 12.5, color: T.textSecondary, marginBottom: 16 }}>
+              White-Label: Der Mandant sieht <strong style={{ color: T.textPrimary }}>Ihre Kanzlei</strong> als Absender, nicht invoiq.
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setInviteModal(false)}>Abbrechen</button>
+              <button className="btn btn-primary" onClick={() => { notify('Einladung an Mandant gesendet ✓', 'success'); setInviteModal(false); }}>Einladung senden →</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ── ROOT ──────────────────────────────────────────────────────
 export default function App(){
   const[screen,setScreen]=useState("landing");
@@ -2126,6 +2514,7 @@ export default function App(){
       {nav==="invoices"&&<Invoices notify={notify}/>}
       {nav==="connect"&&<ConnectorsView notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify}/>}
+          {nav==="steuerberater"&&<SteuerberaterPortal user={user} notify={notify} onBack={()=>setNav('dashboard')}/>}
       {nav==="archive"&&<ArchiveScreen notify={notify}/>}
       {nav==="webhooks"&&<Placeholder title="Webhooks" sub="invoice.created · invoice.sent · invoice.delivered" icon="⚡"/>}
       {nav==="settings"&&<SettingsScreen user={user} org={org} notify={notify}/>}
