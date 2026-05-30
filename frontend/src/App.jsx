@@ -64,6 +64,9 @@ const api={
   getStats:()=>api.get("/invoices/stats"),listInvoices:(q="")=>api.get(`/invoices${q}`),
   createInvoice:(b)=>api.post("/invoices",b),sendInvoice:(id,b)=>api.post(`/invoices/${id}/send`,b),
   getXML:(id)=>fetch(`${API_BASE}/invoices/${id}/xml`,{headers:{Authorization:`Bearer ${api._token}`}}).then(r=>r.text()),
+  createCheckout:(plan,billing='monthly')=>api.post('/payments/checkout',{plan,billing}),
+  openBillingPortal:(customer_id)=>api.post('/payments/portal',{customer_id}),
+  getPlans:()=>api.get('/payments/plans'),
 };
 
 const MOCK_ORGS=[
@@ -2457,7 +2460,18 @@ function SettingsScreen({user,org,notify}){
                     <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:4}}>{org?.plan?.toUpperCase()||'STARTER'}</div>
                     <div style={{fontSize:13.5,color:T.textSecondary}}>29€/Monat · 100 Rechnungen/Monat · Jährlich kündbar</div>
                   </div>
-                  <button className="btn btn-primary" onClick={async()=>{ try{ const d=await api.createCheckout('business','monthly'); if(d.checkout_url&&!d.demo) window.open(d.checkout_url,'_blank'); else notify('Stripe nicht konfiguriert — STRIPE_SECRET_KEY in Railway setzen','info'); }catch(e){notify(e.message,'error')} }}>Upgrade →</button>
+                  <button className="btn btn-primary" onClick={async()=>{
+                    try{
+                      const currentPlan = org?.plan || 'starter';
+                      const nextPlan = currentPlan==='free'?'starter':currentPlan==='starter'?'business':'enterprise';
+                      const d = await api.createCheckout(nextPlan,'monthly');
+                      if(d.checkout_url && !d.demo){
+                        window.open(d.checkout_url,'_blank');
+                      } else {
+                        notify('Demo-Modus: Stripe-Key in Railway setzen → STRIPE_SECRET_KEY','info');
+                      }
+                    }catch(e){notify(e.message,'error');}
+                  }}>Upgrade →</button>
                 </div>
                 <div style={{marginBottom:14}}>
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:T.textMuted,marginBottom:5}}>
