@@ -419,7 +419,7 @@ function MiniChart({data,color=T.accent,height=40}){
 }
 
 // ── LANDING ───────────────────────────────────────────────────
-function Landing({onEnter}){
+function Landing({onEnter,onLegal=()=>{}}){
   const[scrolled,setScrolled]=useState(false);
   const[tick,setTick]=useState(0);
   const[activeStep,setActiveStep]=useState(-1);
@@ -1216,7 +1216,7 @@ function Landing({onEnter}){
     <footer style={{background:T.bg,borderTop:`1px solid ${T.bgBorder}`,padding:'24px clamp(16px,4vw,56px)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
       <Wordmark size={18}/>
       <div style={{fontSize:12,color:T.textMuted}}>© 2025 invoiq · invoiq.io · EN 16931 · GoBD · ViDA-ready · DSGVO</div>
-      <div style={{display:'flex',gap:16}}>{['Impressum','Datenschutz','AGB'].map(l=><a key={l} href="#" style={{fontSize:12,color:T.textMuted,textDecoration:'none'}} onMouseEnter={e=>e.target.style.color=T.textPrimary} onMouseLeave={e=>e.target.style.color=T.textMuted}>{l}</a>)}</div>
+      <div style={{display:'flex',gap:16}}>{[['Impressum','impressum'],['Datenschutz','datenschutz'],['AGB','agb']].map(([l,s])=><button key={l} onClick={()=>onLegal(s)} style={{fontSize:12,color:T.textMuted,background:'none',border:'none',cursor:'pointer',fontFamily:F.ui}} onMouseEnter={e=>e.target.style.color=T.textPrimary} onMouseLeave={e=>e.target.style.color=T.textMuted}>{l}</button>)}</div>
     </footer>
   </div>);
 }
@@ -2457,7 +2457,7 @@ function SettingsScreen({user,org,notify}){
                     <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:4}}>{org?.plan?.toUpperCase()||'STARTER'}</div>
                     <div style={{fontSize:13.5,color:T.textSecondary}}>29€/Monat · 100 Rechnungen/Monat · Jährlich kündbar</div>
                   </div>
-                  <button className="btn btn-primary" onClick={()=>notify('Plan-Upgrade geöffnet','info')}>Upgrade →</button>
+                  <button className="btn btn-primary" onClick={async()=>{ try{ const d=await api.createCheckout('business','monthly'); if(d.checkout_url&&!d.demo) window.open(d.checkout_url,'_blank'); else notify('Stripe nicht konfiguriert — STRIPE_SECRET_KEY in Railway setzen','info'); }catch(e){notify(e.message,'error')} }}>Upgrade →</button>
                 </div>
                 <div style={{marginBottom:14}}>
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:T.textMuted,marginBottom:5}}>
@@ -2997,9 +2997,175 @@ function SteuerberaterPortal({ user, notify, onBack }) {
 }
 
 
+// ══════════════════════════════════════════════════════════════
+// LEGAL — Impressum, Datenschutz, AGB
+// ══════════════════════════════════════════════════════════════
+function LegalPage({ title, onBack, children }) {
+  return (
+    <div style={{ minHeight:'100vh', background:T.bgSubtle }}>
+      <header style={{ height:58, background:T.bg, borderBottom:`1px solid ${T.bgBorder}`, display:'flex', alignItems:'center', padding:'0 clamp(16px,4vw,56px)', gap:16 }}>
+        <button onClick={onBack} className="btn btn-ghost btn-sm">← invoiq.io</button>
+        <Wordmark size={20}/>
+      </header>
+      <div style={{ maxWidth:760, margin:'0 auto', padding:'48px clamp(16px,4vw,40px) 80px' }}>
+        <h1 style={{ fontFamily:F.ui, fontSize:28, fontWeight:800, color:T.textPrimary, letterSpacing:'-.03em', marginBottom:8 }}>{title}</h1>
+        <div style={{ fontSize:12.5, color:T.textMuted, marginBottom:36 }}>Stand: Mai 2025</div>
+        <div style={{ fontSize:14.5, color:T.textSecondary, lineHeight:1.85 }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function H({ children }) { return <h2 style={{ fontFamily:F.ui, fontSize:17, fontWeight:700, color:T.textPrimary, letterSpacing:'-.02em', marginTop:36, marginBottom:10 }}>{children}</h2>; }
+function P({ children }) { return <p style={{ marginBottom:14 }}>{children}</p>; }
+function Li({ items }) { return <ul style={{ paddingLeft:20, marginBottom:14, display:'flex', flexDirection:'column', gap:5 }}>{items.map((i,k)=><li key={k}>{i}</li>)}</ul>; }
+
+function Impressum({ onBack }) {
+  return (
+    <LegalPage title="Impressum" onBack={onBack}>
+      <H>Angaben gemäß § 5 TMG</H>
+      <P><strong>invoiq UG (haftungsbeschränkt)</strong> (in Gründung)<br/>
+      Musterstraße 1<br/>01234 Dresden<br/>Deutschland</P>
+
+      <H>Vertreten durch</H>
+      <P>Manfred Bell, Geschäftsführer</P>
+
+      <H>Kontakt</H>
+      <P>E-Mail: <a href="mailto:manfred@invoiq.io" style={{ color:T.accent }}>manfred@invoiq.io</a><br/>
+      Web: <a href="https://invoiq.io" style={{ color:T.accent }}>https://invoiq.io</a></P>
+
+      <H>Registereintrag</H>
+      <P>Registrierung beim Amtsgericht Dresden wird beantragt.<br/>
+      Handelsregisternummer: wird nach Eintragung ergänzt.</P>
+
+      <H>Umsatzsteuer-ID</H>
+      <P>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG:<br/>
+      wird nach Eintragung ergänzt.</P>
+
+      <H>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</H>
+      <P>Manfred Bell<br/>Musterstraße 1<br/>01234 Dresden</P>
+
+      <H>Streitschlichtung</H>
+      <P>Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: <a href="https://ec.europa.eu/consumers/odr/" style={{ color:T.accent }}>https://ec.europa.eu/consumers/odr/</a></P>
+      <P>Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</P>
+
+      <H>Haftung für Inhalte</H>
+      <P>Als Diensteanbieter sind wir gemäß § 7 Abs. 1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen.</P>
+    </LegalPage>
+  );
+}
+
+function Datenschutz({ onBack }) {
+  return (
+    <LegalPage title="Datenschutzerklärung" onBack={onBack}>
+      <P>Der Schutz Ihrer persönlichen Daten ist uns ein besonderes Anliegen. Wir verarbeiten Ihre Daten daher ausschließlich auf Grundlage der gesetzlichen Bestimmungen (DSGVO, TKG 2003).</P>
+
+      <H>1. Verantwortlicher</H>
+      <P>invoiq UG (haftungsbeschränkt) (i.G.), Manfred Bell, Musterstraße 1, 01234 Dresden<br/>
+      E-Mail: <a href="mailto:datenschutz@invoiq.io" style={{ color:T.accent }}>datenschutz@invoiq.io</a></P>
+
+      <H>2. Verarbeitete Daten & Zwecke</H>
+      <P><strong>Kontodaten:</strong> Name, E-Mail-Adresse, Unternehmensname, USt-IdNr. — zur Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO)</P>
+      <P><strong>Rechnungsdaten:</strong> Alle in der Plattform verarbeiteten Rechnungsdaten gehören Ihnen. Wir verarbeiten sie ausschließlich zur Erbringung unserer Dienstleistung. Keine Weitergabe an Dritte ohne Ihre Einwilligung.</P>
+      <P><strong>Nutzungsdaten:</strong> Server-Logs (IP-Adresse, Browser, Zeitstempel) für technischen Betrieb — Löschung nach 7 Tagen.</P>
+      <P><strong>Zahlungsdaten:</strong> Werden ausschließlich durch Stripe verarbeitet. invoiq speichert keine Kreditkartendaten.</P>
+
+      <H>3. Dokumenten-Scanner (KI-Verarbeitung)</H>
+      <P>Wenn Sie den Dokumenten-Scanner nutzen, wird Ihr Dokument einmalig zur Textextraktion an die Anthropic API (USA) übermittelt. Dabei gilt:</P>
+      <Li items={[
+        'Das Dokument wird nicht dauerhaft bei Anthropic gespeichert',
+        'Die Verarbeitung erfolgt auf Basis EU-Standardvertragsklauseln (Art. 46 DSGVO)',
+        'Ihre explizite Einwilligung wird vor jeder Übermittlung eingeholt (Art. 6 Abs. 1 lit. a DSGVO)',
+        'Einwilligung kann jederzeit widerrufen werden',
+      ]}/>
+
+      <H>4. GoBD-Archivierung</H>
+      <P>Archivierte Rechnungen werden gemäß §147 AO 10 Jahre aufbewahrt. Die Speicherung erfolgt in AWS Frankfurt (EU-Central-1), verschlüsselt mit SHA-256. Eine vorzeitige Löschung ist aus rechtlichen Gründen nicht möglich.</P>
+
+      <H>5. Auftragsverarbeitung</H>
+      <P>Wir nutzen folgende Auftragsverarbeiter mit AVV-Vereinbarungen:</P>
+      <Li items={[
+        'Railway Technologies Inc. — Server-Hosting (USA, EU-Standardvertragsklauseln)',
+        'Supabase Inc. — Datenbankhosting (AWS Frankfurt)',
+        'Stripe Inc. — Zahlungsabwicklung (EU-Standardvertragsklauseln)',
+        'Anthropic PBC — KI-Verarbeitung nur bei Scanner-Nutzung (EU-Standardvertragsklauseln)',
+      ]}/>
+
+      <H>6. Ihre Rechte</H>
+      <P>Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Wenden Sie sich an: <a href="mailto:datenschutz@invoiq.io" style={{ color:T.accent }}>datenschutz@invoiq.io</a></P>
+      <P>Sie haben zudem das Recht, Beschwerde bei einer Aufsichtsbehörde einzulegen. Zuständig: Sächsischer Datenschutzbeauftragter, <a href="https://www.saechsdsb.de" style={{ color:T.accent }}>www.saechsdsb.de</a></P>
+
+      <H>7. Cookies</H>
+      <P>invoiq.io verwendet ausschließlich technisch notwendige Cookies (Session-Token). Keine Tracking- oder Marketing-Cookies. Keine Cookie-Banner erforderlich.</P>
+
+      <H>8. Datensicherheit</H>
+      <P>Alle Datenübertragungen erfolgen verschlüsselt über TLS 1.3. Zugang zur Plattform ist passwortgeschützt mit bcrypt-Hashing. API-Keys werden nur gehashed gespeichert.</P>
+    </LegalPage>
+  );
+}
+
+function AGB({ onBack }) {
+  return (
+    <LegalPage title="Allgemeine Geschäftsbedingungen" onBack={onBack}>
+      <P><strong>invoiq UG (haftungsbeschränkt) (i.G.)</strong> — Stand: Mai 2025</P>
+
+      <H>§ 1 Geltungsbereich</H>
+      <P>Diese AGB gelten für alle Verträge zwischen invoiq UG (haftungsbeschränkt) i.G. (nachfolgend "invoiq") und Unternehmern (§ 14 BGB) über die Nutzung der SaaS-Plattform invoiq.io.</P>
+
+      <H>§ 2 Vertragsgegenstand</H>
+      <P>invoiq stellt eine cloudbasierte Software-as-a-Service-Plattform zur Erstellung, Versendung, Validierung und Archivierung von elektronischen Rechnungen gemäß EN 16931 bereit. Der Funktionsumfang richtet sich nach dem gebuchten Tarif.</P>
+
+      <H>§ 3 Vertragsschluss & Tarife</H>
+      <P>Der Vertrag kommt durch Registrierung und Buchung eines Tarifs zustande. Verfügbare Tarife:</P>
+      <Li items={[
+        'Free: 0 €/Monat, 10 Dokumente/Monat — kostenlos, keine Kündigung erforderlich',
+        'Starter: 29 €/Monat (25 € bei jährlicher Zahlung), 100 Dokumente/Monat',
+        'Business: 99 €/Monat (85 € jährlich), 500 Dokumente/Monat',
+        'Enterprise: 299 €/Monat (250 € jährlich), unbegrenzte Dokumente',
+      ]}/>
+      <P>Überschreitungen werden mit 0,50 € je zusätzlichem Dokument berechnet.</P>
+
+      <H>§ 4 Laufzeit & Kündigung</H>
+      <P>Monatliche Tarife können monatlich, jährliche Tarife zum Ende der Laufzeit gekündigt werden. Kündigung jederzeit im Kundenkonto unter Einstellungen → Abrechnung oder per E-Mail an <a href="mailto:kuendigung@invoiq.io" style={{ color:T.accent }}>kuendigung@invoiq.io</a>.</P>
+      <P>Nach Kündigung bleiben Daten 90 Tage abrufbar, danach werden sie gelöscht (ausgenommen GoBD-archivierte Dokumente, die gesetzlich 10 Jahre aufbewahrt werden müssen).</P>
+
+      <H>§ 5 Preise & Zahlung</H>
+      <P>Alle Preise sind Nettopreise zzgl. gesetzlicher Umsatzsteuer. Zahlung erfolgt per Kreditkarte oder SEPA-Lastschrift über Stripe. Rechnungen werden monatlich bzw. jährlich ausgestellt und per E-Mail zugesandt.</P>
+
+      <H>§ 6 Verfügbarkeit & SLA</H>
+      <P>invoiq strebt eine Verfügbarkeit von 99,5 % pro Monat an (gemessen ohne geplante Wartungsfenster). Kein Anspruch auf bestimmte Verfügbarkeit außer bei Enterprise-Tarif mit gesondertem SLA.</P>
+
+      <H>§ 7 Pflichten des Kunden</H>
+      <Li items={[
+        'Zugangsdaten vertraulich behandeln und nicht an Dritte weitergeben',
+        'Plattform nicht für rechtswidrige Zwecke nutzen',
+        'Korrekte Rechnungsdaten einpflegen — invoiq haftet nicht für inhaltliche Fehler',
+        'Bei Verdacht auf Missbrauch unverzüglich invoiq informieren',
+      ]}/>
+
+      <H>§ 8 Datenschutz & Auftragsverarbeitung</H>
+      <P>invoiq verarbeitet Rechnungsdaten als Auftragsverarbeiter im Sinne des Art. 28 DSGVO. Der Abschluss eines Auftragsverarbeitungsvertrags (AVV) ist auf Anfrage möglich: <a href="mailto:datenschutz@invoiq.io" style={{ color:T.accent }}>datenschutz@invoiq.io</a></P>
+
+      <H>§ 9 Haftung</H>
+      <P>invoiq haftet unbeschränkt für Vorsatz und grobe Fahrlässigkeit sowie für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit. Bei leichter Fahrlässigkeit haftet invoiq nur bei Verletzung wesentlicher Vertragspflichten, begrenzt auf den vorhersehbaren, vertragstypischen Schaden, maximal auf die in den letzten 12 Monaten gezahlten Entgelte.</P>
+      <P>invoiq übernimmt keine Haftung für die steuerrechtliche Richtigkeit erzeugter Rechnungen. Die Verantwortung für die inhaltliche Korrektheit liegt beim Kunden.</P>
+
+      <H>§ 10 Änderungen der AGB</H>
+      <P>invoiq behält sich vor, diese AGB mit einer Ankündigungsfrist von 30 Tagen per E-Mail zu ändern. Widerspricht der Kunde nicht innerhalb von 30 Tagen nach Zugang der Mitteilung, gelten die Änderungen als angenommen.</P>
+
+      <H>§ 11 Anwendbares Recht & Gerichtsstand</H>
+      <P>Es gilt deutsches Recht unter Ausschluss des UN-Kaufrechts. Gerichtsstand ist Dresden, soweit der Kunde Kaufmann ist.</P>
+
+      <H>§ 12 Salvatorische Klausel</H>
+      <P>Sollten einzelne Bestimmungen dieser AGB unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.</P>
+    </LegalPage>
+  );
+}
+
+
 // ── ROOT ──────────────────────────────────────────────────────
 export default function App(){
-  const[screen,setScreen]=useState("landing");
+  const[screen,setScreen]=useState("landing"); // landing|auth|app|admin|onboarding|impressum|datenschutz|agb
   const[mode,setMode]=useState("login");
   const[nav,setNav]=useState("dashboard");
   const[adminNav,setAdminNav]=useState("overview");
