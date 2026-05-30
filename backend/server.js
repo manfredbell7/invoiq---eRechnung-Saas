@@ -21,6 +21,7 @@ export async function buildServer() {
   const fastify = Fastify({
     logger: (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') ? { transport: { target: 'pino-pretty', options: { colorize: true } } } : false,
     ajv: { customOptions: { strict: 'log', keywords: ['kind', 'modifier'] } },
+    trustProxy: true,  // Required for Railway reverse proxy
   });
 
   // ── PLUGINS ────────────────────────────────────────────────
