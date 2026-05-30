@@ -56,7 +56,7 @@ const api={
     const headers={"Content-Type":"application/json"};
     if(this._token)headers["Authorization"]=`Bearer ${this._token}`;
     try{const res=await fetch(`${API_BASE}${path}`,{method,headers,body:body?JSON.stringify(body):undefined});const data=await res.json();if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);return data;}
-    catch(err){if(err.message.includes("fetch"))throw new Error("Backend nicht erreichbar");throw err;}
+    catch(err){if(err.message.includes("fetch"))throw new Error("");throw err;}
   },
   get:(p)=>api.req("GET",p),post:(p,b)=>api.req("POST",p,b),
   login:(b)=>api.post("/auth/login",b),register:(b)=>api.post("/auth/register",b),
@@ -1322,7 +1322,7 @@ function Dashboard({user,org,notify,onNav}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:22}}>
       <div>
-        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:"-.025em"}}>Good morning{user?.full_name?`, ${user.full_name.split(" ")[0]}`:""}.</h1>
+        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:"-.025em"}}>Guten Tag{user?.full_name?`, ${user.full_name.split(" ")[0]}`:""}.</h1>
         <p style={{color:T.textMuted,fontSize:12.5,marginTop:4}}>{new Date().toLocaleDateString("de-DE",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
       </div>
       <button className="btn btn-primary btn-sm" onClick={()=>onNav("invoices")}>+ New Document</button>
@@ -3217,7 +3217,7 @@ export default function App(){
   return(<>
     <style>{CSS}</style>
     {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
-    {screen==="landing"&&<Landing onEnter={()=>{setMode("login");setScreen("auth");}}/>}
+    {screen==="landing"&&<Landing onEnter={()=>{if(api._token){setScreen("app");}else{setMode("login");setScreen("auth");}}}/>}
     {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup complete — welcome to invoiq! 🎉","success");}}/>}
     {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
