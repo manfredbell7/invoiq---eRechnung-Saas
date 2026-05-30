@@ -84,19 +84,21 @@ export async function buildServer() {
     compliance: ['GoBD', 'DSGVO', '§147 AO'],
   }));
 
-  // ── WAIT FOR DB SEED ───────────────────────────────────────
-  await db.ready();
-
-  // ── ROUTES ─────────────────────────────────────────────────
+  // ── ROUTES — registered BEFORE db.ready() so server accepts traffic immediately
   fastify.register(authRoutes,    { prefix: `${API}/auth` });
   fastify.register(invoiceRoutes, { prefix: `${API}/invoices` });
   fastify.register(archiveRoutes, { prefix: `${API}/archive` });
   fastify.register(webhookRoutes, { prefix: `${API}/webhooks` });
   fastify.register(connectRoutes, { prefix: `${API}/connect` });
-  fastify.register(peppolRoutes, { prefix: `${API}/peppol` });
-  fastify.register(idocRoutes,   { prefix: `${API}/idoc` });
-  fastify.register(scannerRoutes,  { prefix: API });
-  fastify.register(paymentRoutes,  { prefix: API });
+  fastify.register(peppolRoutes,  { prefix: `${API}/peppol` });
+  fastify.register(idocRoutes,    { prefix: `${API}/idoc` });
+  fastify.register(scannerRoutes, { prefix: API });
+  fastify.register(paymentRoutes, { prefix: API });
+
+  // ── WAIT FOR DB — non-blocking, routes already registered ──
+  db.ready().catch(err => {
+    fastify.log.warn(err, 'DB not ready at startup — will retry on first request');
+  });
 
   // ── RATE LIMITING ───────────────────────────────────────────
   fastify.addHook('onRequest', async (req, reply) => {
