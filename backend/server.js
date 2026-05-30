@@ -25,7 +25,26 @@ export async function buildServer() {
 
   // ── PLUGINS ────────────────────────────────────────────────
   await fastify.register(cors, {
-    origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:3001'],
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      const allowed = [
+        'https://invoiq.io',
+        'https://www.invoiq.io',
+        process.env.FRONTEND_URL,
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:3001',
+      ].filter(Boolean);
+      if (
+        allowed.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.endsWith('.railway.app')
+      ) {
+        return cb(null, true);
+      }
+      fastify.log.warn({ origin }, 'CORS blocked');
+      return cb(new Error('CORS not allowed'), false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
