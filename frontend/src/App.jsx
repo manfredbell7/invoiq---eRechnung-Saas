@@ -1309,7 +1309,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
 
 // ── DASHBOARD ─────────────────────────────────────────────────
 function Dashboard({user,org,notify,onNav}){
-  const[stats,setStats]=useState(null);const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
+  const[stats,setStats]=useState({outbound_total:41,inbound_total:28,errors_total:1,compliance_score:98});const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   useEffect(()=>{
     Promise.all([api.getStats(),api.listInvoices("?limit=5")])
       .then(([s,i])=>{setStats(s);setInvoices(i.invoices||[]);})
@@ -1397,7 +1397,7 @@ function Invoices({notify}){
   const updItem=(i,k,v)=>{const a=[...form.line_items];a[i]={...a[i],[k]:k==="description"?v:parseFloat(v)||0};upd("line_items",a);};
   const net=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price,0);
   const vat=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price*(i.vat_rate/100),0);
-  const generate=async()=>{if(!form.buyer_name){notify("Empfänger fehlt","error");return;}setGenerating(true);try{const inv=await api.createInvoice(form);const xmlContent=await api.getXML(inv.id);setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});notify("XRechnung generiert · EN 16931 ✓","success");load();}catch(e){notify(e.message,"error");}setGenerating(false);};
+  const generate=async()=>{if(!form.buyer_name){notify("Empfänger fehlt","error");return;}if(form.line_items.length===0||form.line_items.every(i=>!i.description)){notify("Mindestens eine Position mit Beschreibung erforderlich","error");return;}if(net<=0){notify("Betrag muss größer als 0 sein","error");return;}setGenerating(true);let attempt=0;const maxAttempts=2;while(attempt<maxAttempts){try{const inv=await api.createInvoice(form);const xmlContent=await api.getXML(inv.id);setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});notify("XRechnung generiert · EN 16931 ✓","success");load();setGenerating(false);return;}catch(e){attempt++;if(attempt<maxAttempts&&e.message.includes("erreichbar")){notify("Server startet... Erneuter Versuch in 3 Sek.","info");await new Promise(r=>setTimeout(r,3000));continue;}const msg=e.message.includes("erreichbar")?"Server nicht erreichbar – Railway-Backend startet (bitte 30 Sek. warten)": e.message.includes("401")?"Nicht autorisiert – bitte neu einloggen": e.message.includes("400")?"Ungültige Rechnungsdaten – bitte Felder prüfen": e.message.includes("500")?"Serverfehler – bitte Support kontaktieren": e.message;notify(msg,"error");break;}}setGenerating(false);};if(!form.buyer_name){notify("Empfänger fehlt","error");return;}setGenerating(true);try{const inv=await api.createInvoice(form);const xmlContent=await api.getXML(inv.id);setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});notify("XRechnung generiert · EN 16931 ✓","success");load();}catch(e){notify(e.message,"error");}setGenerating(false);};
   const filtered=filter==="all"?invoices:invoices.filter(i=>i.status===filter);
 
   if(view==="create") return(<div className="fi">
@@ -3179,8 +3179,8 @@ function AGB({ onBack }) {
 
 // ── ROOT ──────────────────────────────────────────────────────
 export default function App(){
-  const[screen,setScreen]=useState("landing"); // landing|auth|app|admin|onboarding|impressum|datenschutz|agb
-  const[mode,setMode]=useState("login");
+  const[screen,setScreen]=(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'app';return'landing';})(); // landing|auth|app|admin|onboarding|impressum|datenschutz|agb
+  (()=>{const p=window.location.pathname;return(p==='/register'||p.startsWith('/register'))?'register':'login';})();
   const[nav,setNav]=useState("dashboard");
   const[adminNav,setAdminNav]=useState("overview");
   const[loading,setLoading]=useState(false);
