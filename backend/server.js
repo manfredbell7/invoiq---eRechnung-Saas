@@ -13,7 +13,7 @@ import { scannerRoutes }  from './routes/scanner/index.js';
 import { paymentRoutes }  from './routes/payments/index.js';
 
 const PORT = process.env.PORT || 3000;
-const API = `/api/v1`;
+const API = `/v1`;  // Changed from /api/v1 — Railway blocks /api/* prefix
 
 
 // ── BUILD SERVER ──────────────────────────────────────────────

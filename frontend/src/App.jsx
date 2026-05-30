@@ -48,7 +48,7 @@ const F={
   mono:   "'SF Mono','Fira Code','Fira Mono','Roboto Mono',monospace",
 };
 
-const API_BASE=(import.meta?.env?.VITE_API_URL)||"http://localhost:3000/api/v1";
+const API_BASE=(import.meta?.env?.VITE_API_URL)||"http://localhost:3000/v1";
 const api={
   _token:(typeof localStorage!=='undefined'&&localStorage.getItem("invoiq_token"))||null,
   setToken(t){this._token=t;if(typeof localStorage!=='undefined'){if(t)localStorage.setItem("invoiq_token",t);else localStorage.removeItem("invoiq_token");}},
