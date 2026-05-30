@@ -53,13 +53,18 @@ export async function buildServer() {
   await fastify.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
 
   // ── HEALTH ─────────────────────────────────────────────────
-  fastify.get('/health', async () => ({
+  // Health check on multiple paths for Railway compatibility
+  const healthHandler = async () => ({
     status: 'ok',
     service: 'invoiq-api',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || 'development',
-  }));
+  });
+
+  fastify.get('/health', healthHandler);
+  fastify.get(`${API}/health`, healthHandler);
+  fastify.get(`${API}/status`, healthHandler);
 
   // ── API INFO ───────────────────────────────────────────────
   fastify.get(`${API}`, async () => ({
