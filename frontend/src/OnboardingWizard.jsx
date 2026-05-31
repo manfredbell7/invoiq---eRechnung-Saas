@@ -851,11 +851,12 @@ export default function OnboardingWizard({ user, onComplete }) {
 
           {/* Skip entire onboarding */}
           {step === 1 && (
-              <button style={{ background: "none", border: "none", color: C.textLight, cursor: "pointer", fontSize: 13, fontFamily: F.ui }} onClick={() => onComplete?.({})}>
+                        <div style={{ textAlign: "center", marginTop: 16 }}>
+<button style={{ background: "none", border: "none", color: C.textLight, cursor: "pointer", fontSize: 13, fontFamily: F.ui }} onClick={() => onComplete?.({})}>
                 Onboarding überspringen — direkt zum Dashboard
               </button>
             </div>
-          )}
+                    
         </div>
       </div>
     </>
