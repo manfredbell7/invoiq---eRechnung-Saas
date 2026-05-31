@@ -3,10 +3,8 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../../config/database.js';
+import { db } from '../../config/db.js';
 import { authMiddleware } from '../../middleware/auth.js';
-
-
 
 
 
