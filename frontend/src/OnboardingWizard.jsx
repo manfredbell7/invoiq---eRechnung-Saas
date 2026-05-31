@@ -858,5 +858,5 @@ export default function OnboardingWizard({ user, onComplete }) {
             </div>
                     
         
-  );
+          )}
 }
