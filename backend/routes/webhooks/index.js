@@ -2,8 +2,12 @@
 import { randomBytes } from 'crypto';
 import { db } from '../../config/database.js';
 import { authMiddleware } from '../../middleware/auth.js';
+import stripeWebhookRoutes from './stripe.js';
 
 export async function webhookRoutes(fastify) {
+
+    // Mount Stripe webhook routes
+    fastify.use('/stripe', stripeWebhookRoutes);
 
   fastify.get('/', { preHandler: authMiddleware }, async (req) => {
     const whs = await db.findWebhooks(req.org.id);
