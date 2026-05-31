@@ -839,10 +839,14 @@ export default function OnboardingWizard({ user, onComplete }) {
                   </button>
                 )}
                 <button className="btn-primary" onClick={handleNext} disabled={!canAdvance()} style={{opacity:canAdvance()?1:0.55,cursor:canAdvance()?'pointer':'not-allowed'}}>
-                  {step === 4 ? (generatedXML ? "Weiter →" : "Ohne Rechnung fortfahren →") : "Weiter →"}</button>}}{!canAdvance()&&step<4&&<p style={{color:"#C0392B",fontSize:12,marginTop:6,textAlign:"center"}}>Bitte alle Pflichtfelder (*) ausfüllen</p>
-                </button>
+                                {step === 4 ? (generatedXML ? "Weiter →" : "Ohne Rechnung fortfahren →") : "Weiter →"}
+                 </button>
+                             {!canAdvance() && step < 4 && (
+                             <p style={{color:"#C0392B",fontSize:12,marginTop:6,textAlign:"center"}}>Bitte alle Pflichtfelder (*) ausfüllen</p>
+                           )}
+                          </div>
               </div>
-            </div>
+                  )}
           )}
 
           {/* Skip entire onboarding */}
