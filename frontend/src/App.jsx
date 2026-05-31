@@ -3179,8 +3179,8 @@ function AGB({ onBack }) {
 
 // ── ROOT ──────────────────────────────────────────────────────
 export default function App(){
-  const[screen,setScreen]=(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'app';return'landing';})(); // landing|auth|app|admin|onboarding|impressum|datenschutz|agb
-  (()=>{const p=window.location.pathname;return(p==='/register'||p.startsWith('/register'))?'register':'login';})();
+  const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'app';return'landing';}); // landing|auth|app|admin|onboarding|impressum|datenschutz|agb
+const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/register'||p.startsWith('/register'))?'register':'login';});
   const[nav,setNav]=useState("dashboard");
   const[adminNav,setAdminNav]=useState("overview");
   const[loading,setLoading]=useState(false);
