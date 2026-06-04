@@ -1,7 +1,6 @@
 // src/middleware/auth.js
 import jwt from 'jsonwebtoken';
-import { db } from '../config/database.js';
-
+import { db } from '../config/db.js';
 // ── JWT AUTH ──────────────────────────────────────────────────
 export async function authMiddleware(request, reply) {
   try {

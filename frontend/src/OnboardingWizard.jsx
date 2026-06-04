@@ -838,23 +838,29 @@ export default function OnboardingWizard({ user, onComplete }) {
                     Überspringen
                   </button>
                 )}
-                <button className="btn-primary" onClick={handleNext} disabled={!canAdvance()}>
-                  {step === 4 ? (generatedXML ? "Weiter →" : "Ohne Rechnung fortfahren →") : "Weiter →"}
-                </button>
+                <button className="btn-primary" onClick={handleNext} disabled={!canAdvance()} style={{opacity:canAdvance()?1:0.55,cursor:canAdvance()?'pointer':'not-allowed'}}>
+                                {step === 4 ? (generatedXML ? "Weiter →" : "Ohne Rechnung fortfahren →") : "Weiter →"}
+                 </button>
+                             {!canAdvance() && step < 4 && (
+                             <p style={{color:"#C0392B",fontSize:12,marginTop:6,textAlign:"center"}}>Bitte alle Pflichtfelder (*) ausfüllen</p>
+                           )}
+                          </div>
               </div>
-            </div>
+                  )}
           )}
 
           {/* Skip entire onboarding */}
           {step === 1 && (
-            <div style={{ textAlign: "center", marginTop: 16 }}>
-              <button style={{ background: "none", border: "none", color: C.textLight, cursor: "pointer", fontSize: 13, fontFamily: F.ui }} onClick={() => onComplete?.({})}>
+                        <div style={{ textAlign: "center", marginTop: 16 }}>
+<button style={{ background: "none", border: "none", color: C.textLight, cursor: "pointer", fontSize: 13, fontFamily: F.ui }} onClick={() => onComplete?.({})}>
                 Onboarding überspringen — direkt zum Dashboard
               </button>
             </div>
+                    
+        
           )}
-        </div>
       </div>
-    </>
+    </div>
+  </>
   );
 }

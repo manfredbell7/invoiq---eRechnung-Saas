@@ -56,7 +56,7 @@ const api={
     const headers={"Content-Type":"application/json"};
     if(this._token)headers["Authorization"]=`Bearer ${this._token}`;
     try{const res=await fetch(`${API_BASE}${path}`,{method,headers,body:body?JSON.stringify(body):undefined});const data=await res.json();if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);return data;}
-    catch(err){if(err.message.includes("fetch"))throw new Error("Backend nicht erreichbar");throw err;}
+    catch(err){if(err.message.includes("fetch"))throw new Error("");throw err;}
   },
   get:(p)=>api.req("GET",p),post:(p,b)=>api.req("POST",p,b),
   login:(b)=>api.post("/auth/login",b),register:(b)=>api.post("/auth/register",b),
@@ -64,6 +64,20 @@ const api={
   getStats:()=>api.get("/invoices/stats"),listInvoices:(q="")=>api.get(`/invoices${q}`),
   createInvoice:(b)=>api.post("/invoices",b),sendInvoice:(id,b)=>api.post(`/invoices/${id}/send`,b),
   getXML:(id)=>fetch(`${API_BASE}/invoices/${id}/xml`,{headers:{Authorization:`Bearer ${api._token}`}}).then(r=>r.text()),
+  // E-Mail Ausgang
+  sendInvoiceEmail:(id,recipient_email,message)=>api.post(`/invoices/${id}/send-email`,{recipient_email,message}),
+  // Peppol
+  sendViaPeppol:(id,peppol_id)=>api.post(`/invoices/${id}/send-peppol`,{peppol_id}),
+  lookupPeppol:(peppol_id)=>api.get(`/invoices/peppol/lookup?peppol_id=${encodeURIComponent(peppol_id)}`),
+  // DATEV Export
+  datevExport:()=>{ window.open(`${API_BASE}/invoices/datev-export?token=${api._token}`,'_blank'); },
+  datevExportInbound:(orgId,from,to)=>{ window.open(`${API_BASE}/inbound/datev-export?org_id=${orgId}&from=${from||''}&to=${to||''}`,'_blank'); },
+  // Inbound
+  listInbound:(params='')=>api.get(`/inbound${params}`),
+  getInboundPdf:(id)=>`${API_BASE}/inbound/${id}/pdf`,
+  markInboundPaid:(id)=>api.post(`/inbound/${id}/mark-paid`,{}),
+  forwardInbound:(id,email)=>api.post(`/inbound/${id}/forward`,{recipient_email:email}),
+  // createCheckout stays:
   createCheckout:(plan,billing='monthly')=>api.post('/payments/checkout',{plan,billing}),
   openBillingPortal:(customer_id)=>api.post('/payments/portal',{customer_id}),
   getPlans:()=>api.get('/payments/plans'),
@@ -1252,7 +1266,7 @@ function Auth({mode,onSwitch,onSuccess,loading}){
 
 // ── APP SHELL ─────────────────────────────────────────────────
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
-  const items=[{key:"dashboard",icon:"·",label:"Overview"},{key:"invoices",icon:"·",label:"Documents"},{key:"scanner",icon:"·",label:"Dok.-Scanner"},{key:"connect",icon:"·",label:"Connectors"},{key:"inbound",icon:"·",label:"Inbound"},{key:"steuerberater",icon:"·",label:"Kanzlei-Portal"},{key:"archive",icon:"·",label:"Archive"},{key:"webhooks",icon:"·",label:"Webhooks"},{key:"settings",icon:"·",label:"Settings"}];
+  const items=[{key:"dashboard",icon:"·",label:"Overview"},{key:"invoices",icon:"·",label:"Rechnungen"},{key:"scanner",icon:"·",label:"Dok.-Scanner"},{key:"inbound",icon:"·",label:"Eingang"},{key:"steuerberater",icon:"·",label:"Kanzlei-Portal"},{key:"archive",icon:"·",label:"Archiv"},{key:"settings",icon:"·",label:"Einstellungen"}];
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
   const isAdmin=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
@@ -1290,7 +1304,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
     </aside>
     <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
       <div className="topbar">
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Overview","invoices":"Documents","scanner":"Dok.-Scanner","connect":"Connectors","inbound":"Inbound","steuerberater":"Kanzlei-Portal","archive":"Archive","webhooks":"Webhooks","settings":"Settings"}[nav]||nav}</div>
+        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Overview","invoices":"Rechnungen","scanner":"Dok.-Scanner","inbound":"Eingang","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
         <div style={{flex:1,maxWidth:300,margin:"0 20px"}}>
           <div style={{position:"relative"}}>
             <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:T.textMuted,fontSize:12}}>🔍</span>
@@ -1309,7 +1323,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
 
 // ── DASHBOARD ─────────────────────────────────────────────────
 function Dashboard({user,org,notify,onNav}){
-  const[stats,setStats]=useState(null);const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
+  const[stats,setStats]=useState({outbound_total:41,inbound_total:28,errors_total:1,compliance_score:98});const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   useEffect(()=>{
     Promise.all([api.getStats(),api.listInvoices("?limit=5")])
       .then(([s,i])=>{setStats(s);setInvoices(i.invoices||[]);})
@@ -1322,7 +1336,7 @@ function Dashboard({user,org,notify,onNav}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:22}}>
       <div>
-        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:"-.025em"}}>Good morning{user?.full_name?`, ${user.full_name.split(" ")[0]}`:""}.</h1>
+        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:"-.025em"}}>Guten Tag{user?.full_name?`, ${user.full_name.split(" ")[0]}`:""}.</h1>
         <p style={{color:T.textMuted,fontSize:12.5,marginTop:4}}>{new Date().toLocaleDateString("de-DE",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
       </div>
       <button className="btn btn-primary btn-sm" onClick={()=>onNav("invoices")}>+ New Document</button>
@@ -1387,6 +1401,36 @@ function Dashboard({user,org,notify,onNav}){
 
 // ── DOCUMENTS ─────────────────────────────────────────────────
 function Invoices({notify}){
+  const [emailModal,setEmailModal] = useState(false);
+  const [emailTo,setEmailTo]       = useState('');
+  const [sending,setSending]       = useState(false);
+  const [peppolModal,setPeppolModal] = useState(false);
+  const [peppolId,setPeppolId]      = useState('');
+  const [currentInvId,setCurrentInvId] = useState(null);
+
+  const doSendEmail = async () => {
+    if (!emailTo) { notify('Empfänger-E-Mail fehlt','error'); return; }
+    setSending(true);
+    try {
+      await api.sendInvoiceEmail(currentInvId, emailTo, '');
+      notify(`Rechnung an ${emailTo} gesendet ✓`,'success');
+      setEmailModal(false); setEmailTo('');
+    } catch(e){ notify(e.message,'error'); }
+    setSending(false);
+  };
+
+  const doSendPeppol = async () => {
+    if (!peppolId) { notify('Peppol-ID fehlt','error'); return; }
+    setSending(true);
+    try {
+      const r = await api.sendViaPeppol(currentInvId, peppolId);
+      if (r.demo) notify('Demo-Modus: PEPPOLSOFT_API_KEY in Railway setzen','info');
+      else notify(`Peppol-Versand erfolgreich ✓ (ID: ${r.transmission_id})`,'success');
+      setPeppolModal(false); setPeppolId('');
+    } catch(e){ notify(e.message,'error'); }
+    setSending(false);
+  };
+
   const[view,setView]=useState("list");const[filter,setFilter]=useState("all");
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   const[generating,setGenerating]=useState(false);const[xml,setXml]=useState(null);
@@ -1397,7 +1441,7 @@ function Invoices({notify}){
   const updItem=(i,k,v)=>{const a=[...form.line_items];a[i]={...a[i],[k]:k==="description"?v:parseFloat(v)||0};upd("line_items",a);};
   const net=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price,0);
   const vat=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price*(i.vat_rate/100),0);
-  const generate=async()=>{if(!form.buyer_name){notify("Empfänger fehlt","error");return;}setGenerating(true);try{const inv=await api.createInvoice(form);const xmlContent=await api.getXML(inv.id);setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});notify("XRechnung generiert · EN 16931 ✓","success");load();}catch(e){notify(e.message,"error");}setGenerating(false);};
+  const generate=async()=>{if(!form.buyer_name){notify("Empfänger fehlt","error");return;}if(!form.line_items||form.line_items.every(i=>!i.description)){notify("Mindestens eine Position erforderlich","error");return;}if(net<=0){notify("Betrag muss größer als 0 sein","error");return;}setGenerating(true);try{const inv=await api.createInvoice(form);const xmlContent=await api.getXML(inv.id);setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});notify("XRechnung generiert · EN 16931 ✓","success");load();}catch(e){const msg=e.message.includes("erreichbar")?"Server nicht erreichbar – Railway startet, bitte 30 Sek. warten und erneut versuchen":e.message.includes("401")?"Nicht autorisiert – bitte neu einloggen":e.message.includes("400")?"Ungültige Rechnungsdaten – bitte Felder prüfen":e.message.includes("500")?"Serverfehler – bitte Support kontaktieren":e.message;notify(msg,"error");}setGenerating(false);};
   const filtered=filter==="all"?invoices:invoices.filter(i=>i.status===filter);
 
   if(view==="create") return(<div className="fi">
@@ -1946,167 +1990,167 @@ function DokumentenScanner({ notify }) {
 }
 
 function InboundScreen({notify}){
-  const[tab,setTab]=useState('received');
-  const[invoices,setInvoices]=useState([]);
-  const[loading,setLoading]=useState(true);
-  const[selected,setSelected]=useState(null);
-  const[uploading,setUploading]=useState(false);
-  const fileRef=useRef(null);
+  const [invoices,setInvoices] = useState([]);
+  const [loading,setLoading]   = useState(true);
+  const [filter,setFilter]     = useState('all');
+  const [fwdModal,setFwdModal] = useState(null); // invoice id
+  const [fwdEmail,setFwdEmail] = useState('');
+  const [emailSlug,setEmailSlug] = useState('');
+  const fileRef = useRef(null);
 
-  useEffect(()=>{
-    api.listInvoices('?direction=inbound&limit=20')
-      .then(d=>setInvoices(d.invoices||[]))
-      .catch(()=>setInvoices([
-        {id:'ib1',invoice_number:'EINGANG-2025-003',buyer_name:'invoiq GmbH',amount_gross:4284,format:'xrechnung',status:'validated',created_at:new Date(Date.now()-3600000).toISOString(),sender_name:'Müller Lieferant GmbH',validation_passed:true,archived:true},
-        {id:'ib2',invoice_number:'EINGANG-2025-002',buyer_name:'invoiq GmbH',amount_gross:1290,format:'zugferd',status:'error',created_at:new Date(Date.now()-86400000).toISOString(),sender_name:'TechParts AG',validation_passed:false,archived:false,last_error:'Pflichtfeld BuyerReference fehlt'},
-        {id:'ib3',invoice_number:'EINGANG-2025-001',buyer_name:'invoiq GmbH',amount_gross:8900,format:'peppol',status:'archived',created_at:new Date(Date.now()-172800000).toISOString(),sender_name:'SAP Partner GmbH',validation_passed:true,archived:true},
-      ]))
-      .finally(()=>setLoading(false));
-  },[]);
-
-  const handleUpload=async(e)=>{
-    const file=e.target.files?.[0];
-    if(!file)return;
-    setUploading(true);
-    // Simulate processing
-    await new Promise(r=>setTimeout(r,1400));
-    notify(`${file.name} empfangen & validiert ✓`,'success');
-    setUploading(false);
-    e.target.value='';
+  const load = () => {
+    setLoading(true);
+    api.listInbound()
+      .then(d => { setInvoices(d.invoices || []); setLoading(false); })
+      .catch(() => {
+        setInvoices([
+          {id:'ib1',invoice_number:'EINGANG-2025-003',sender_name:'Müller Lieferant GmbH',sender_email:'buchhaltung@mueller.de',amount:4284,format:'xrechnung',status:'empfangen',due_date:'2025-06-14',has_xml:true,validation_passed:true,created_at:new Date(Date.now()-3600000).toISOString()},
+          {id:'ib2',invoice_number:'EINGANG-2025-002',sender_name:'TechParts AG',sender_email:'rechnung@techparts.de',amount:1290,format:'zugferd',status:'empfangen',due_date:'2025-06-07',has_xml:true,validation_passed:false,created_at:new Date(Date.now()-86400000).toISOString()},
+          {id:'ib3',invoice_number:'EINGANG-2025-001',sender_name:'SAP Partner GmbH',sender_email:'ap@sappartner.de',amount:8900,format:'pdf_extracted',status:'bezahlt',due_date:'2025-05-30',has_xml:true,validation_passed:true,created_at:new Date(Date.now()-172800000).toISOString()},
+        ]);
+        setLoading(false);
+        // Get email slug from user org
+        setEmailSlug('meine-firma-abc12345');
+      });
   };
 
-  const stats=[
-    {label:'Empfangen',value:invoices.length,sub:'Gesamt',color:T.textPrimary},
-    {label:'Validiert',value:invoices.filter(i=>i.validation_passed).length,sub:'EN 16931 ✓',color:T.green},
-    {label:'Fehler',value:invoices.filter(i=>i.status==='error').length,sub:'Prüfen nötig',color:T.red},
-    {label:'Archiviert',value:invoices.filter(i=>i.archived).length,sub:'GoBD-konform',color:T.accent},
+  useEffect(()=>{ load(); },[]);
+
+  const filtered = invoices.filter(i =>
+    filter === 'all' ? true :
+    filter === 'ausstehend' ? i.status === 'empfangen' :
+    filter === 'bezahlt' ? i.status === 'bezahlt' :
+    filter === 'fehler' ? !i.validation_passed : true
+  );
+
+  const doForward = async () => {
+    if (!fwdEmail) { notify('E-Mail fehlt','error'); return; }
+    try {
+      await api.forwardInbound(fwdModal, fwdEmail);
+      notify(`Weitergeleitet an ${fwdEmail} ✓`,'success');
+      setFwdModal(null); setFwdEmail('');
+    } catch(e){ notify(e.message,'error'); }
+  };
+
+  const stats = [
+    {label:'Gesamt',     value:invoices.length,                                    color:T.textPrimary},
+    {label:'Ausstehend', value:invoices.filter(i=>i.status==='empfangen').length,  color:T.amber},
+    {label:'Bezahlt',    value:invoices.filter(i=>i.status==='bezahlt').length,    color:T.green},
+    {label:'Fehler',     value:invoices.filter(i=>!i.validation_passed).length,    color:T.red},
   ];
 
   return(
     <div className="fi">
       {/* Header */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18,flexWrap:'wrap',gap:10}}>
         <div>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
-            <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em'}}>Inbound</h1>
+            <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em'}}>Eingang</h1>
             <span className="badge badge-red" style={{fontSize:10.5}}>Pflicht seit Jan 2025</span>
           </div>
-          <p style={{fontSize:13,color:T.textMuted}}>Eingehende E-Rechnungen empfangen, validieren und in Ihr ERP buchen.</p>
+          <p style={{fontSize:13,color:T.textMuted}}>Eingehende Rechnungen per E-Mail oder Upload — automatisch konvertiert und archiviert.</p>
         </div>
-        <div style={{display:'flex',gap:8}}>
-          <input ref={fileRef} type="file" accept=".xml,.pdf" style={{display:'none'}} onChange={handleUpload}/>
-          <button className="btn btn-ghost btn-sm" onClick={()=>fileRef.current?.click()} disabled={uploading}>
-            {uploading?<><Spinner size={13}/>&nbsp;Verarbeite...</>:'↑ XML / PDF hochladen'}
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={()=>notify('Peppol-Adresse kopiert: DE:invoiq','success')}>
-            📋 Meine Peppol-ID
-          </button>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null)}>↓ DATEV-Export</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>{
+            navigator.clipboard.writeText(`rechnungen-${emailSlug}@invoiq.io`);
+            notify(`E-Mail-Adresse kopiert: rechnungen-${emailSlug}@invoiq.io`,'success');
+          }}>📋 Meine Eingangs-E-Mail</button>
         </div>
       </div>
 
+      {/* E-Mail Adresse Banner */}
+      <div style={{padding:'12px 16px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+        <div>
+          <div style={{fontSize:12.5,fontWeight:600,color:T.accent,marginBottom:2}}>Ihre Eingangs-E-Mail-Adresse</div>
+          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>rechnungen-{emailSlug||'...' }@invoiq.io</div>
+          <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Lieferanten schicken Rechnungen einfach an diese Adresse — invoiq verarbeitet alles automatisch.</div>
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={()=>{
+          navigator.clipboard.writeText(`rechnungen-${emailSlug}@invoiq.io`);
+          notify('Adresse kopiert ✓','success');
+        }}>Kopieren</button>
+      </div>
+
       {/* KPIs */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
         {stats.map((s,i)=>(
-          <div key={i} className="card" style={{padding:16}}>
-            <div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8}}>{s.label}</div>
-            <div className="stat-num" style={{fontSize:26,color:s.color}}>{s.value}</div>
-            <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>{s.sub}</div>
+          <div key={i} className="card" style={{padding:14}}>
+            <div style={{fontSize:10,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:6}}>{s.label}</div>
+            <div style={{fontSize:24,fontWeight:800,color:s.color,letterSpacing:'-.03em'}}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      {/* How to receive */}
-      <div className="card" style={{padding:18,marginBottom:16,background:'linear-gradient(135deg,#EFF6FF 0%,#F8FAFC 100%)',border:`1px solid ${T.blueBdr}`}}>
-        <div style={{fontSize:12,fontWeight:700,color:T.accent,letterSpacing:.4,textTransform:'uppercase',marginBottom:10}}>Wie Sie Rechnungen empfangen</div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
-          {[
-            {title:'Per E-Mail',desc:'Senden Sie Lieferanten Ihre Rechnungs-E-Mail:',value:'rechnungen@invoiq.io',action:'Kopieren'},
-            {title:'Per Peppol',desc:'Ihr Peppol-Identifier für direkte Netzwerk-Zustellung:',value:'0190:DE123456789',action:'Kopieren'},
-            {title:'Per Upload / API',desc:'Ziehen Sie XML-Dateien hier rein oder nutzen Sie die REST API:',value:'POST /api/v1/invoices/inbound',action:'Docs'},
-          ].map((m,i)=>(
-            <div key={i} style={{background:T.bg,borderRadius:7,padding:'12px 14px',border:`1px solid ${T.bgBorder}`}}>
-              <div style={{fontSize:12.5,fontWeight:700,color:T.textPrimary,marginBottom:4}}>{m.title}</div>
-              <div style={{fontSize:11.5,color:T.textMuted,marginBottom:8,lineHeight:1.5}}>{m.desc}</div>
-              <div style={{fontFamily:F.mono,fontSize:11,color:T.accent,background:T.bgSubtle,borderRadius:4,padding:'5px 8px',marginBottom:8,wordBreak:'break-all'}}>{m.value}</div>
-              <button className="btn btn-outline btn-sm" onClick={()=>notify(`${m.title}: ${m.value}`,'success')}>{m.action} →</button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{display:'flex',gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
-        {[['received','Empfangen'],['validated','Validiert'],['errors','Fehler'],['archived','Archiviert']].map(([k,l])=>(
-          <button key={k} className={`tab ${tab===k?'active':''}`} onClick={()=>setTab(k)}>
-            {l}
-            <span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:'1px 5px',borderRadius:7,color:T.textMuted}}>
-              {k==='received'?invoices.length:k==='validated'?invoices.filter(i=>i.validation_passed).length:k==='errors'?invoices.filter(i=>i.status==='error').length:invoices.filter(i=>i.archived).length}
-            </span>
+      {/* Filter */}
+      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+        {['all','ausstehend','bezahlt','fehler'].map(f=>(
+          <button key={f} className={`btn btn-sm ${filter===f?'btn-primary':'btn-ghost'}`} onClick={()=>setFilter(f)}>
+            {f==='all'?'Alle':f.charAt(0).toUpperCase()+f.slice(1)}
           </button>
         ))}
       </div>
 
       {/* Table */}
-      <div className="card">
-        <table className="table">
-          <thead><tr>{['Nummer','Absender','Betrag','Format','Validation','Status','Aktionen'].map(h=><th key={h}>{h}</th>)}</tr></thead>
-          <tbody>
-            {loading?[1,2,3].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
-            :(tab==='received'?invoices:tab==='validated'?invoices.filter(i=>i.validation_passed):tab==='errors'?invoices.filter(i=>i.status==='error'):invoices.filter(i=>i.archived)).map(inv=>(
-              <tr key={inv.id} className="tr-hover" onClick={()=>setSelected(inv)} style={{cursor:'pointer'}}>
-                <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12,color:T.textPrimary}}>{inv.invoice_number}</td>
-                <td style={{fontSize:13}}>{inv.sender_name||inv.buyer_name||'—'}</td>
-                <td style={{fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
-                <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:4,padding:'2px 7px',fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
-                <td>{inv.validation_passed!==false?<span className="badge badge-green">EN 16931 ✓</span>:<span className="badge badge-red">Fehler</span>}</td>
-                <td><StatusBadge status={inv.status}/></td>
-                <td>
-                  <div style={{display:'flex',gap:6}} onClick={e=>e.stopPropagation()}>
-                    {inv.status==='error'&&<button className="btn btn-danger btn-sm" onClick={()=>notify('Fehlerbericht geöffnet','info')}>Prüfen</button>}
-                    {inv.validation_passed&&<button className="btn btn-outline btn-sm" onClick={()=>notify('In SAP FI gebucht ✓','success')}>→ ERP buchen</button>}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {!loading&&invoices.length===0&&<tr><td colSpan={7} style={{textAlign:'center',color:T.textMuted,padding:28,fontSize:13}}>Noch keine eingehenden Rechnungen</td></tr>}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Detail modal */}
-      {selected&&(
-        <div className="modal-overlay" onClick={()=>setSelected(null)}>
-          <div className="modal sci" onClick={e=>e.stopPropagation()} style={{maxWidth:560}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
-              <div>
-                <div style={{fontFamily:F.mono,fontSize:13,color:T.accent,marginBottom:3}}>{selected.invoice_number}</div>
-                <div style={{fontSize:18,fontWeight:700,color:T.textPrimary,letterSpacing:'-.02em'}}>{selected.sender_name||selected.buyer_name}</div>
-              </div>
-              <button onClick={()=>setSelected(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:18,color:T.textMuted}}>×</button>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
-              {[['Betrag',fmtEUR(selected.amount_gross)],['Format',selected.format?.toUpperCase()],['Status',<StatusBadge status={selected.status}/>],['Validierung',selected.validation_passed?'✓ EN 16931':'✗ Fehler'],['Empfangen',fmtAgo(selected.created_at)],['Archiviert',selected.archived?'✓ GoBD':'—']].map(([l,v])=>(
-                <div key={l} style={{background:T.bgSubtle,borderRadius:6,padding:'10px 12px'}}>
-                  <div className="label" style={{marginBottom:4}}>{l}</div>
-                  <div style={{fontWeight:600,color:T.textPrimary,fontSize:13.5}}>{v}</div>
-                </div>
+      {loading ? (
+        <div style={{textAlign:'center',padding:40}}><Spinner size={24} color={T.accent}/></div>
+      ) : (
+        <div className="card">
+          <table className="table">
+            <thead><tr>
+              {['Absender','Rechnungsnr.','Betrag','Fälligkeit','Format','Status','Aktionen'].map(h=><th key={h}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {filtered.map((inv,i)=>(
+                <tr key={inv.id} className="tr-hover">
+                  <td>
+                    <div style={{fontWeight:600,fontSize:13,color:T.textPrimary}}>{inv.sender_name||'Unbekannt'}</div>
+                    <div style={{fontSize:11,color:T.textMuted}}>{inv.sender_email||''}</div>
+                  </td>
+                  <td style={{fontFamily:F.mono,fontSize:12,fontWeight:600}}>{inv.invoice_number||'-'}</td>
+                  <td style={{fontWeight:700}}>{inv.amount?fmtEUR(inv.amount):'-'}</td>
+                  <td style={{fontSize:12,color:inv.due_date&&new Date(inv.due_date)<new Date()?T.red:T.textMuted}}>
+                    {inv.due_date?new Date(inv.due_date).toLocaleDateString('de-DE'):'-'}
+                  </td>
+                  <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:4,padding:'2px 7px',fontSize:11,fontWeight:700,fontFamily:F.mono}}>{(inv.format||'?').toUpperCase()}</span></td>
+                  <td>
+                    <StatusBadge status={inv.status==='bezahlt'?'delivered':inv.validation_passed?'validated':'error'}/>
+                  </td>
+                  <td>
+                    <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+                      {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>window.open(api.getInboundPdf(inv.id),'_blank')}>↓ PDF</button>}
+                      <button className="btn btn-ghost btn-sm" onClick={()=>{setFwdModal(inv.id);setFwdEmail('');}}>✉ Weiterleiten</button>
+                      {inv.status!=='bezahlt'&&<button className="btn btn-ghost btn-sm" onClick={async()=>{ await api.markInboundPaid(inv.id); notify('Als bezahlt markiert ✓','success'); load(); }}>✓ Bezahlt</button>}
+                    </div>
+                  </td>
+                </tr>
               ))}
-            </div>
-            {selected.last_error&&<div style={{background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:6,padding:'10px 14px',fontSize:13,color:T.red,marginBottom:14}}>⚠ {selected.last_error}</div>}
-            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-              <button className="btn btn-ghost" onClick={()=>setSelected(null)}>Schließen</button>
-              {selected.validation_passed&&<button className="btn btn-primary" onClick={()=>{notify('In ERP gebucht ✓','success');setSelected(null);}}>→ In ERP buchen</button>}
-            </div>
-          </div>
+              {filtered.length===0&&<tr><td colSpan={7} style={{textAlign:'center',padding:32,color:T.textMuted}}>Keine Rechnungen</td></tr>}
+            </tbody>
+          </table>
         </div>
       )}
+
+      {/* Forward Modal */}
+      {fwdModal&&<div className="modal-overlay" onClick={()=>setFwdModal(null)}>
+        <div className="modal sci" onClick={e=>e.stopPropagation()}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
+            <div style={{fontSize:17,fontWeight:700,color:T.textPrimary}}>Rechnung weiterleiten</div>
+            <button onClick={()=>setFwdModal(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:T.textMuted}}>×</button>
+          </div>
+          <div style={{marginBottom:12}}><label className="label">Empfänger (z.B. Buchhalter)</label><input className="input" type="email" placeholder="buchhalter@firma.de" value={fwdEmail} onChange={e=>setFwdEmail(e.target.value)}/></div>
+          <div style={{fontSize:12.5,color:T.textSecondary,marginBottom:16}}>Die Rechnung wird als PDF + XML weitergeleitet.</div>
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+            <button className="btn btn-ghost" onClick={()=>setFwdModal(null)}>Abbrechen</button>
+            <button className="btn btn-primary" onClick={doForward}>Weiterleiten →</button>
+          </div>
+        </div>
+      </div>}
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════
-// ARCHIVE — GoBD-konformes Archiv
-// ══════════════════════════════════════════════════════════════
+
 function ArchiveScreen({notify}){
   const[docs,setDocs]=useState([]);
   const[loading,setLoading]=useState(true);
@@ -2185,7 +2229,7 @@ function ArchiveScreen({notify}){
           <option value="inbound">Eingehend</option>
           <option value="xrechnung">XRechnung</option>
           <option value="zugferd">ZUGFeRD</option>
-          <option value="peppol">Peppol</option>
+          
         </select>
       </div>
 
@@ -2684,6 +2728,7 @@ function SteuerberaterPortal({ user, notify, onBack }) {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={() => notify(`E-Mail an ${m.contact} geöffnet`, 'info')}>✉ Kontaktieren</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound(selected?.id,null,null)}>↓ DATEV-Export</button>
             <button className="btn btn-primary btn-sm" onClick={() => notify('Einloggen als Mandant...', 'info')}>Als Mandant einloggen →</button>
           </div>
         </div>
@@ -3179,8 +3224,8 @@ function AGB({ onBack }) {
 
 // ── ROOT ──────────────────────────────────────────────────────
 export default function App(){
-  const[screen,setScreen]=useState("landing"); // landing|auth|app|admin|onboarding|impressum|datenschutz|agb
-  const[mode,setMode]=useState("login");
+  const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'app';return'landing';}); // landing|auth|app|admin|onboarding|impressum|datenschutz|agb
+const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/register'||p.startsWith('/register'))?'register':'login';});
   const[nav,setNav]=useState("dashboard");
   const[adminNav,setAdminNav]=useState("overview");
   const[loading,setLoading]=useState(false);
@@ -3217,7 +3262,7 @@ export default function App(){
   return(<>
     <style>{CSS}</style>
     {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
-    {screen==="landing"&&<Landing onEnter={()=>{setMode("login");setScreen("auth");}}/>}
+    {screen==="landing"&&<Landing onEnter={()=>{if(api._token){setScreen("app");}else{setMode("login");setScreen("auth");}}}/>}
     {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup complete — welcome to invoiq! 🎉","success");}}/>}
     {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>

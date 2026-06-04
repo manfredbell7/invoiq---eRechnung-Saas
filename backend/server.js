@@ -11,6 +11,7 @@ import { peppolRoutes } from './routes/peppol/index.js';
 import { idocRoutes }   from './routes/idoc/index.js';
 import { scannerRoutes }  from './routes/scanner/index.js';
 import { paymentRoutes }  from './routes/payments/index.js';
+import { inboundRoutes }  from './routes/inbound/index.js';
 
 const PORT = process.env.PORT || 3000;
 const API = `/v1`;  // Changed from /api/v1 — Railway blocks /api/* prefix
@@ -94,6 +95,7 @@ export async function buildServer() {
   fastify.register(idocRoutes,    { prefix: `${API}/idoc` });
   fastify.register(scannerRoutes, { prefix: API });
   fastify.register(paymentRoutes, { prefix: API });
+  fastify.register(inboundRoutes,  { prefix: `${API}/inbound` });
 
   // ── WAIT FOR DB — non-blocking, routes already registered ──
   db.ready().catch(err => {

@@ -244,3 +244,51 @@ CREATE TRIGGER trg_invoice_doc_count
   FOR EACH ROW
   WHEN (NEW.direction = 'outbound')
   EXECUTE FUNCTION increment_doc_usage();
+
+-- ── INBOUND INVOICES ─────────────────────────────────────────────
+-- Eingehende Rechnungen über E-Mail-Eingang (rechnungen-[slug]@invoiq.io)
+CREATE TABLE IF NOT EXISTS inbound_invoices (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id             UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  sender_email       TEXT,
+  sender_name        TEXT,
+  subject            TEXT,
+  format             TEXT DEFAULT 'unknown', -- xrechnung | zugferd | pdf_extracted | unknown
+  raw_xml            TEXT,
+  xml_hash           TEXT,
+  rendered_pdf_url   TEXT,
+  status             TEXT DEFAULT 'empfangen', -- empfangen | verarbeitet | bezahlt
+  invoice_number     TEXT,
+  amount             DECIMAL(12,2),
+  due_date           DATE,
+  seller_name        TEXT,
+  seller_vat_id      TEXT,
+  buyer_name         TEXT,
+  validation_passed  BOOLEAN DEFAULT false,
+  paid_at            TIMESTAMPTZ,
+  created_at         TIMESTAMPTZ DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inbound_invoices_org_id ON inbound_invoices(org_id);
+CREATE INDEX IF NOT EXISTS idx_inbound_invoices_status  ON inbound_invoices(status);
+
+-- Inbound E-Mail Slug pro Organisation
+ALTER TABLE organizations
+  ADD COLUMN IF NOT EXISTS inbound_email_slug TEXT UNIQUE;
+
+-- Auto-generate slug on org creation (trigger)
+CREATE OR REPLACE FUNCTION set_inbound_email_slug()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.inbound_email_slug IS NULL THEN
+    NEW.inbound_email_slug := LOWER(REGEXP_REPLACE(NEW.name, '[^a-z0-9]', '-', 'g')) || '-' || SUBSTR(NEW.id::TEXT, 1, 8);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_set_inbound_slug ON organizations;
+CREATE TRIGGER trg_set_inbound_slug
+  BEFORE INSERT ON organizations
+  FOR EACH ROW EXECUTE FUNCTION set_inbound_email_slug();

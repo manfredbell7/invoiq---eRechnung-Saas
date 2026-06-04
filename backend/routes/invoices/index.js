@@ -1,6 +1,5 @@
 // src/routes/invoices/index.js
-import { db } from '../../config/database.js';
-import { authMiddleware, checkDocLimit } from '../../middleware/auth.js';
+'../../config/db.js';import { authMiddleware, checkDocLimit } from '../../middleware/auth.js';
 import { generateXML, validateEN16931, hashXML, parseInboundXML } from '../../services/xmlEngine.js';
 import { archiveService } from '../../services/archiveService.js';
 import { deliveryService } from '../../services/deliveryService.js';
@@ -292,6 +291,60 @@ export async function invoiceRoutes(fastify) {
   });
 }
 
+  // ── SEND INVOICE VIA EMAIL ───────────────────────────────────
+  fastify.post('/:id/send-email', { preHandler: authMiddleware }, async (req, reply) => {
+    const { recipient_email, message } = req.body || {};
+    if (!recipient_email) return reply.code(400).send({ error: 'Empfänger-E-Mail fehlt' });
+
+    const invoice = await db.findInvoiceById(req.params.id, req.org.id);
+    if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
+
+    // Get XML
+    const { data: xmlRow } = await import('../../config/database.js').then(m =>
+      m.supabase.from('invoices').select('xml_content').eq('id', invoice.id).single()
+    );
+    const xmlContent = xmlRow?.xml_content || generateXML(invoice, invoice.format || 'xrechnung');
+    const xmlBuffer = Buffer.from(xmlContent, 'utf-8');
+
+    // Send via Resend
+    const { sendInvoiceEmail } = await import('../../services/email.js');
+    await sendInvoiceEmail({
+      to: recipient_email,
+      invoice: {
+        invoice_number: invoice.invoice_number,
+        customer_name: invoice.buyer_name,
+        total_amount: invoice.amount_gross,
+        invoice_date: invoice.invoice_date,
+        due_date: invoice.due_date,
+        custom_message: message,
+      },
+      xmlBuffer,
+    });
+
+    // Update status
+    await db.updateInvoice(invoice.id, { status: 'delivered', delivery_method: 'email', recipient_email });
+    await db.createAuditLog({
+      org_id: req.org.id,
+      user_id: req.user?.id,
+      invoice_id: invoice.id,
+      action: 'sent_email',
+      details: { recipient_email },
+    });
+
+    return { success: true, message: `Rechnung an ${recipient_email} gesendet` };
+  });
+
+  // ── DATEV EXPORT (single invoice) ────────────────────────────
+  fastify.get('/:id/datev', { preHandler: authMiddleware }, async (req, reply) => {
+    const invoice = await db.findInvoiceById(req.params.id, req.org.id);
+    if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
+    const csv = buildDatevRow(invoice);
+    reply.header('Content-Type', 'text/csv; charset=utf-8');
+    reply.header('Content-Disposition', `attachment; filename="DATEV_${invoice.invoice_number}.csv"`);
+    return reply.send(DATEV_HEADER + csv);
+  });
+
+
 // ── SANITIZE (remove sensitive internal fields) ───────────────
 function sanitizeInvoice(inv) {
   const { xml_content, ...rest } = inv;
@@ -300,4 +353,91 @@ function sanitizeInvoice(inv) {
     has_xml: !!xml_content,
     xml_size_bytes: xml_content ? xml_content.length : 0,
   };
+}
+
+  // ── SEND VIA PEPPOL (PeppolSoft) ─────────────────────────────
+  fastify.post('/:id/send-peppol', { preHandler: authMiddleware }, async (req, reply) => {
+    const { peppol_id } = req.body || {};
+    if (!peppol_id) return reply.code(400).send({ error: 'Peppol-ID fehlt (Format: 0190:DE123456789)' });
+
+    const invoice = await db.findInvoiceById(req.params.id, req.org.id);
+    if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
+
+    // Get XML content
+    const { data: xmlRow } = await import('../../config/database.js').then(m =>
+      m.supabase.from('invoices').select('xml_content').eq('id', invoice.id).single()
+    );
+    const xmlContent = xmlRow?.xml_content || generateXML(invoice, 'xrechnung');
+
+    // Lookup Peppol-ID first
+    const { sendViaPeppol, lookupPeppolId } = await import('../../services/peppolSoftService.js');
+    const lookup = await lookupPeppolId(peppol_id);
+    if (!lookup.found && !lookup.demo) {
+      return reply.code(404).send({ error: `Peppol-ID ${peppol_id} nicht im Netzwerk gefunden` });
+    }
+
+    const result = await sendViaPeppol({
+      xmlContent,
+      receiverPeppolId: peppol_id,
+      invoiceNumber: invoice.invoice_number,
+    });
+
+    // Update status
+    await db.updateInvoice(invoice.id, {
+      status: 'delivered',
+      delivery_method: 'peppol',
+      peppol_transmission_id: result.transmission_id,
+    });
+
+    await db.createAuditLog({
+      org_id: req.org.id, user_id: req.user?.id, invoice_id: invoice.id,
+      action: 'sent_peppol',
+      details: { peppol_id, transmission_id: result.transmission_id, demo: result.demo },
+    });
+
+    return { success: true, ...result };
+  });
+
+  // ── PEPPOL-ID LOOKUP ─────────────────────────────────────────
+  fastify.get('/peppol/lookup', { preHandler: authMiddleware }, async (req, reply) => {
+    const { peppol_id } = req.query;
+    if (!peppol_id) return reply.code(400).send({ error: 'peppol_id Query-Parameter fehlt' });
+    const { lookupPeppolId } = await import('../../services/peppolSoftService.js');
+    return lookupPeppolId(peppol_id);
+  });
+
+  // ── DATEV EXPORT (alle Rechnungen einer Org) ──────────────────
+  fastify.get('/datev-export', { preHandler: authMiddleware }, async (req, reply) => {
+    const { from, to } = req.query;
+    let q = import('../../config/database.js').then(m =>
+      m.supabase.from('invoices').select('*')
+        .eq('org_id', req.org.id)
+        .neq('status', 'deleted')
+        .order('created_at', { ascending: true })
+    );
+    const { data } = await (await q);
+    const filtered = (data || []).filter(inv => {
+      if (from && inv.invoice_date < from) return false;
+      if (to && inv.invoice_date > to) return false;
+      return true;
+    });
+    const HEADER = 'Umsatz (ohne Soll/Haben-Kz);Soll/Haben-Kennzeichen;WKZ Umsatz;Kurs;Basis-Umsatz;WKZ Basis-Umsatz;Konto;Gegenkonto (ohne BU-Schlüssel);BU-Schlüssel;Belegdatum;Belegfeld 1;Buchungstext\n';
+    const rows = filtered.map(buildDatevRow).join('\n');
+    reply.header('Content-Type', 'text/csv; charset=utf-8');
+    reply.header('Content-Disposition', `attachment; filename="DATEV_${new Date().toISOString().slice(0,10)}.csv"`);
+    return reply.send(HEADER + rows);
+  });
+
+
+// ── DATEV HELPERS ─────────────────────────────────────────────
+const DATEV_HEADER = 'Umsatz (ohne Soll/Haben-Kz);Soll/Haben-Kennzeichen;WKZ Umsatz;Kurs;Basis-Umsatz;WKZ Basis-Umsatz;Konto;Gegenkonto (ohne BU-Schlüssel);BU-Schlüssel;Belegdatum;Belegfeld 1;Buchungstext\n';
+
+function buildDatevRow(inv) {
+  const date = new Date(inv.invoice_date);
+  const belegdatum = `${String(date.getDate()).padStart(2,'0')}${String(date.getMonth()+1).padStart(2,'0')}`;
+  const sh = inv.direction === 'inbound' ? 'H' : 'S';
+  const konto = inv.direction === 'inbound' ? '1600' : '8400';
+  const amount = String(parseFloat(inv.amount_gross || 0).toFixed(2)).replace('.', ',');
+  const text = `${inv.direction === 'inbound' ? inv.seller_name : inv.buyer_name} ${inv.invoice_number}`.slice(0, 60);
+  return `${amount};${sh};EUR;;;${konto};1200;;${belegdatum};${inv.invoice_number};${text}\n`;
 }

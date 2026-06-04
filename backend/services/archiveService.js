@@ -3,8 +3,7 @@
 // Production: AWS S3 eu-central-1 (Frankfurt)
 
 import { createHash } from 'crypto';
-import { db } from '../config/database.js';
-
+import { db } from '../config/db.js';
 // ── MOCK S3 (replace with real AWS S3 in production) ──────────
 class MockS3 {
   constructor() { this.store = new Map(); }
