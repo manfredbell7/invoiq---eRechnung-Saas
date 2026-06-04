@@ -2,7 +2,7 @@
 // invoiq — Vollständige ERP-Konnektoren
 // Alle Systeme: SAP, DATEV, Lexware, Dynamics, Odoo, Oracle, QuickBooks, Sage, Xero, Weclapp, sevDesk, lexoffice
 
-import { db } from '../config/database.js';
+import { db } from '../config/db.js';
 
 // ── KONNEKTOR-DEFINITIONEN ─────────────────────────────────────
 export const CONNECTORS = {

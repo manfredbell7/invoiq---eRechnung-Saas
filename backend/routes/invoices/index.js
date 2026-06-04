@@ -1,5 +1,6 @@
 // src/routes/invoices/index.js
-'../../config/db.js';import { authMiddleware, checkDocLimit } from '../../middleware/auth.js';
+import { db } from '../../config/db.js';
+import { authMiddleware, checkDocLimit } from '../../middleware/auth.js';
 import { generateXML, validateEN16931, hashXML, parseInboundXML } from '../../services/xmlEngine.js';
 import { archiveService } from '../../services/archiveService.js';
 import { deliveryService } from '../../services/deliveryService.js';

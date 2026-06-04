@@ -1,5 +1,5 @@
 // src/routes/archive/index.js
-import { db } from '../../config/database.js';
+import { db } from '../../config/db.js';
 import { authMiddleware } from '../../middleware/auth.js';
 import { archiveService } from '../../services/archiveService.js';
 

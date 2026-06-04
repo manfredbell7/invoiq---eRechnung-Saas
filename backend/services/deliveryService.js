@@ -2,7 +2,7 @@
 // Invoice delivery: Peppol (Storecove), Email (Resend), SFTP, API
 
 import { createHmac } from "crypto";
-import { db } from '../config/database.js';
+import { db } from '../config/db.js';
 
 // ── PEPPOL DELIVERY (Storecove) ───────────────────────────────
 async function deliverViaPeppol(invoice, xml) {

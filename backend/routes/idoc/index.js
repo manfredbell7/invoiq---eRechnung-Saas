@@ -5,7 +5,7 @@ import { parseIDoc, validateIDoc, generateStatusIDoc } from '../../services/idoc
 import { generateXML, hashXML, validateEN16931 } from '../../services/xmlEngine.js';
 import { archiveService } from '../../services/archiveService.js';
 import { deliveryService } from '../../services/deliveryService.js';
-import { db } from '../../config/database.js';
+import { db } from '../../config/db.js';
 
 export async function idocRoutes(fastify) {
 

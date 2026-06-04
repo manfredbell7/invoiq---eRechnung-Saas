@@ -1,6 +1,6 @@
 // src/routes/webhooks/index.js
 import { randomBytes } from 'crypto';
-import { db } from '../../config/database.js';
+import { db } from '../../config/db.js';
 import { authMiddleware } from '../../middleware/auth.js';
 import stripeWebhookRoutes from './stripe.js';
 

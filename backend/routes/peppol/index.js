@@ -8,7 +8,7 @@ import {
   registerSender,
   getPeppolStatus,
 } from '../../services/peppolService.js';
-import { db } from '../../config/database.js';
+import { db } from '../../config/db.js';
 
 export async function peppolRoutes(fastify) {
 
