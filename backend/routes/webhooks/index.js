@@ -2,7 +2,7 @@
 import { randomBytes } from 'crypto';
 import { db } from '../../config/db.js';
 import { authMiddleware } from '../../middleware/auth.js';
-import stripeWebhookRoutes from './stripe.js';
+import { stripeWebhookRoutes } from './stripe.js';
 
 export async function webhookRoutes(fastify) {
 
