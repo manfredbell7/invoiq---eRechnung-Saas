@@ -290,7 +290,6 @@ export async function invoiceRoutes(fastify) {
     await db.updateInvoice(invoice.id, { status: 'deleted', active: false });
     return { message: 'Entwurf gelöscht', invoice_id: invoice.id };
   });
-}
 
   // ── SEND INVOICE VIA EMAIL ───────────────────────────────────
   fastify.post('/:id/send-email', { preHandler: authMiddleware }, async (req, reply) => {
@@ -428,7 +427,7 @@ function sanitizeInvoice(inv) {
     reply.header('Content-Disposition', `attachment; filename="DATEV_${new Date().toISOString().slice(0,10)}.csv"`);
     return reply.send(HEADER + rows);
   });
-
+}
 
 // ── DATEV HELPERS ─────────────────────────────────────────────
 const DATEV_HEADER = 'Umsatz (ohne Soll/Haben-Kz);Soll/Haben-Kennzeichen;WKZ Umsatz;Kurs;Basis-Umsatz;WKZ Basis-Umsatz;Konto;Gegenkonto (ohne BU-Schlüssel);BU-Schlüssel;Belegdatum;Belegfeld 1;Buchungstext\n';

@@ -1,4 +1,5 @@
-// src/server.js — invoiq Backend
+// src/server.js — invoiq Backend v2.0
+// Updated: db imports fixed, inbound routes, peppol, datev
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
@@ -97,10 +98,7 @@ export async function buildServer() {
   fastify.register(paymentRoutes, { prefix: API });
   fastify.register(inboundRoutes,  { prefix: `${API}/inbound` });
 
-  // ── WAIT FOR DB — non-blocking, routes already registered ──
-  db.ready().catch(err => {
-    fastify.log.warn(err, 'DB not ready at startup — will retry on first request');
-  });
+  // DB (Supabase client) — no ready() needed, connects on first query
 
   // ── RATE LIMITING ───────────────────────────────────────────
   fastify.addHook('onRequest', async (req, reply) => {

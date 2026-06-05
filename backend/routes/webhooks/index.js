@@ -7,7 +7,7 @@ import { stripeWebhookRoutes } from './stripe.js';
 export async function webhookRoutes(fastify) {
 
     // Mount Stripe webhook routes
-    fastify.use('/stripe', stripeWebhookRoutes);
+    fastify.register(stripeWebhookRoutes);
 
   fastify.get('/', { preHandler: authMiddleware }, async (req) => {
     const whs = await db.findWebhooks(req.org.id);
