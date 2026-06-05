@@ -2397,7 +2397,7 @@ function SettingsScreen({user,org,notify}){
                   {[
                     {key:'auto_archive',label:'Automatische GoBD-Archivierung',sub:'Jedes Dokument wird sofort nach Generierung archiviert'},
                     {key:'en16931_strict',label:'EN 16931 Strict Mode',sub:'Rechnungen werden vor dem Versand gegen den vollen Standard validiert'},
-                    {key:'peppol_enabled',label:'Peppol-Netzwerk aktivieren',sub:'Direkte Zustellung über das europäische Peppol-Netzwerk (Storecove)'},
+                    {key:'peppol_enabled',label:'Peppol-Netzwerk aktivieren',sub:'Direkte Zustellung über das europäische Peppol-Netzwerk (PeppolSoft, $0.10/Dok.)'},
                     {key:'vida_reporting',label:'ViDA Transaction Reporting (Beta)',sub:'Vorbereitung für EU-Meldepflicht ab 2028 — jetzt aktivieren und Daten sammeln'},
                   ].map(({key,label,sub})=>(
                     <div key={key} style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,padding:'12px 14px',background:T.bgSubtle,borderRadius:7,border:`1px solid ${T.bgBorder}`}}>
@@ -2502,27 +2502,39 @@ function SettingsScreen({user,org,notify}){
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
                   <div>
                     <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:4}}>{org?.plan?.toUpperCase()||'STARTER'}</div>
-                    <div style={{fontSize:13.5,color:T.textSecondary}}>29€/Monat · 100 Rechnungen/Monat · Jährlich kündbar</div>
+                    <div style={{fontSize:13.5,color:T.textSecondary}}>{org?.plan==="business"?"99€/Monat · 500 Rechnungen":org?.plan==="enterprise"?"299€/Monat · Unbegrenzt":"49€/Monat · 100 Rechnungen"}/Monat · Jährlich kündbar</div>
                   </div>
-                  <button className="btn btn-primary" onClick={async()=>{
-                    try{
-                      const currentPlan = org?.plan || 'starter';
-                      const nextPlan = currentPlan==='free'?'starter':currentPlan==='starter'?'business':'enterprise';
-                      const d = await api.createCheckout(nextPlan,'monthly');
-                      if(d.checkout_url && !d.demo){
-                        window.open(d.checkout_url,'_blank');
-                      } else {
-                        notify('Demo-Modus: Stripe-Key in Railway setzen → STRIPE_SECRET_KEY','info');
-                      }
-                    }catch(e){notify(e.message,'error');}
-                  }}>Upgrade →</button>
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="btn btn-ghost" onClick={async()=>{
+                      try{
+                        const d = await api.openBillingPortal(org?.stripe_customer_id);
+                        if(d.portal_url && !d.demo) window.open(d.portal_url,'_blank');
+                        else notify('Stripe Portal: STRIPE_SECRET_KEY in Railway setzen','info');
+                      }catch(e){notify(e.message,'error');}
+                    }}>Abrechnung verwalten</button>
+                    <button className="btn btn-primary" onClick={async()=>{
+                      try{
+                        const currentPlan = org?.plan || 'free';
+                        const nextPlan = currentPlan==='free'?'starter':currentPlan==='starter'?'business':'enterprise';
+                        if(nextPlan==='enterprise'&&currentPlan==='enterprise'){
+                          notify('Sie haben bereits den höchsten Plan','info'); return;
+                        }
+                        const d = await api.createCheckout(nextPlan,'monthly');
+                        if(d.checkout_url && !d.demo){
+                          window.open(d.checkout_url,'_blank');
+                        } else {
+                          notify('Demo-Modus — STRIPE_SECRET_KEY in Railway setzen','info');
+                        }
+                      }catch(e){notify(e.message,'error');}
+                    }}>Upgrade →</button>
+                  </div>
                 </div>
                 <div style={{marginBottom:14}}>
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:T.textMuted,marginBottom:5}}>
                     <span>Dokumente diesen Monat</span>
                     <span style={{fontWeight:600,color:T.textPrimary}}>{org?.plan_doc_used||41} / {org?.plan_doc_limit||100}</span>
                   </div>
-                  <div className="progress"><div className="progress-fill" style={{width:`${Math.min(100,((org?.plan_doc_used||41)/(org?.plan_doc_limit||100))*100)}%`}}/></div>
+                  <div className="progress"><div className="progress-fill" style={{width:`${Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||10))*100)}%`}}/></div>
                 </div>
                 <div style={{background:T.bgSubtle,borderRadius:6,padding:'10px 14px',fontSize:12.5,color:T.textSecondary,border:`1px solid ${T.bgBorder}`}}>
                   <strong style={{color:T.textPrimary}}>Überschreitung:</strong> Zusätzliche Rechnungen werden mit 0,50€/Rechnung berechnet — kein Zwangsupgrade.
@@ -3283,7 +3295,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
       {adminNav==="users"&&<AdminUsers notify={notify}/>}
       {adminNav==="myusers"&&<AdminUsers notify={notify}/>}
       {adminNav==="revenue"&&<AdminRevenue/>}
-      {["mysettings","billing","peppol","apilogs"].includes(adminNav)&&<Placeholder title={{mysettings:"Settings",billing:"Billing",peppol:"Peppol Status",apilogs:"Audit Logs"}[adminNav]} sub={{mysettings:"Company · API keys · Integrations",billing:"Plan · Payment history",peppol:"Storecove · Peppol BIS 3.0",apilogs:"GoBD-compliant audit trail"}[adminNav]}/>}
+      {["mysettings","billing","peppol","apilogs"].includes(adminNav)&&<Placeholder title={{mysettings:"Settings",billing:"Billing",peppol:"Peppol Status",apilogs:"Audit Logs"}[adminNav]} sub={{mysettings:"Company · API keys · Integrations",billing:"Plan · Payment history",peppol:"PeppolSoft · Peppol BIS 3.0 · $0.10/Dokument",apilogs:"GoBD-compliant audit trail"}[adminNav]}/>}
     </AdminShell>}
   </>);
 }
