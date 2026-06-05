@@ -331,6 +331,34 @@ export function hashXML(xml) {
   return createHash('sha256').update(xml, 'utf8').digest('hex');
 }
 
+// ── SKONTO PARSER ─────────────────────────────────────────────
+// Liest Skonto aus XRechnung-Freitext-Note oder ZUGFeRD Description
+// Format: "#SKONTO#TAGE=7#PROZENT=2.00#" (CIUS XRechnung DE)
+// Oder einfacher Text: "2% Skonto innerhalb 7 Tage"
+export function parseSkonto(text) {
+  if (!text) return null;
+  // CIUS-Format: #SKONTO#TAGE=7#PROZENT=2.00#
+  const ciusMatch = text.match(/#SKONTO#TAGE=(\d+)#PROZENT=([\d.]+)/i);
+  if (ciusMatch) {
+    return { days: parseInt(ciusMatch[1]), percent: parseFloat(ciusMatch[2]) };
+  }
+  // Freitext: "2% Skonto innerhalb 7 Tage" oder "2,00 % bei Zahlung innerhalb 14 Tagen"
+  const freiMatch = text.match(/([\d.,]+)\s*%.*?(\d+)\s*Tag/i);
+  if (freiMatch) {
+    return {
+      days:    parseInt(freiMatch[2]),
+      percent: parseFloat(freiMatch[1].replace(',', '.')),
+    };
+  }
+  return null;
+}
+
+// ZUGFeRD Datum "20250605" → "2025-06-05"
+function formatZugferdDate(str) {
+  if (!str || str.length !== 8) return str;
+  return `${str.slice(0,4)}-${str.slice(4,6)}-${str.slice(6,8)}`;
+}
+
 // ── PARSE INBOUND XML ─────────────────────────────────────────
 export function parseInboundXML(xmlString) {
   try {
@@ -349,30 +377,65 @@ export function parseInboundXML(xmlString) {
     };
 
     if (isUBL) {
+      // Skonto aus PaymentTerms Note, z.B. "#SKONTO#TAGE=7#PROZENT=2.00#"
+      const skonto = parseSkonto(extract(/<cbc:Note>([^<]+)<\/cbc:Note>/));
+      // IBAN aus PaymentMeans
+      const iban = extract(/<cac:PaymentMeans>[\s\S]*?<cbc:ID>([A-Z]{2}[0-9]{2}[A-Z0-9]+)<\/cbc:ID>/)
+               || extract(/<cbc:PaymentAccountID>([^<]+)<\/cbc:PaymentAccountID>/);
+      const bic  = extract(/<cac:FinancialInstitutionBranch>[\s\S]*?<cbc:ID>([^<]+)<\/cbc:ID>/);
+      const amountNet = parseFloat(extract(/<cbc:TaxExclusiveAmount[^>]*>([^<]+)<\/cbc:TaxExclusiveAmount>/) || '0');
+      // Verwendungszweck: Rechnungsnummer oder BuyerReference
+      const reference = extract(/<cbc:BuyerReference>([^<]+)<\/cbc:BuyerReference>/)
+                     || extract(/<cbc:ID>([^<]+)<\/cbc:ID>/);
+
       return {
         success: true,
         format: 'xrechnung',
         data: {
-          invoice_number: extract(/<cbc:ID>([^<]+)<\/cbc:ID>/),
-          invoice_date: extract(/<cbc:IssueDate>([^<]+)<\/cbc:IssueDate>/),
-          due_date: extract(/<cbc:DueDate>([^<]+)<\/cbc:DueDate>/),
-          seller_name: extract(/<cac:AccountingSupplierParty>[\s\S]*?<cbc:Name>([^<]+)<\/cbc:Name>/),
-          buyer_name: extract(/<cac:AccountingCustomerParty>[\s\S]*?<cbc:Name>([^<]+)<\/cbc:Name>/),
-          amount_gross: parseFloat(extract(/<cbc:PayableAmount[^>]*>([^<]+)<\/cbc:PayableAmount>/) || '0'),
+          invoice_number:   extract(/<cbc:ID>([^<]+)<\/cbc:ID>/),
+          invoice_date:     extract(/<cbc:IssueDate>([^<]+)<\/cbc:IssueDate>/),
+          due_date:         extract(/<cbc:DueDate>([^<]+)<\/cbc:DueDate>/),
+          seller_name:      extract(/<cac:AccountingSupplierParty>[\s\S]*?<cbc:Name>([^<]+)<\/cbc:Name>/),
+          buyer_name:       extract(/<cac:AccountingCustomerParty>[\s\S]*?<cbc:Name>([^<]+)<\/cbc:Name>/),
+          seller_vat_id:    extract(/<cac:AccountingSupplierParty>[\s\S]*?<cbc:CompanyID>([^<]+)<\/cbc:CompanyID>/),
+          amount_gross:     parseFloat(extract(/<cbc:PayableAmount[^>]*>([^<]+)<\/cbc:PayableAmount>/) || '0'),
+          amount_net:       amountNet,
+          seller_iban:      iban ? iban.replace(/\s/g, '') : null,
+          seller_bic:       bic  || null,
+          discount_percent: skonto?.percent || null,
+          discount_days:    skonto?.days    || null,
+          payment_reference: reference,
         }
       };
     }
 
     if (isZUGFeRD) {
+      // Skonto aus SpecifiedTradePaymentTerms Description
+      const skontoNote = extract(/<ram:SpecifiedTradePaymentTerms>[\s\S]*?<ram:Description>([^<]+)<\/ram:Description>/);
+      const skonto = parseSkonto(skontoNote);
+      // IBAN aus CreditorFinancialAccount
+      const iban = extract(/<ram:CreditorFinancialAccount>[\s\S]*?<ram:IBANID>([^<]+)<\/ram:IBANID>/)
+               || extract(/<ram:IBANID>([^<]+)<\/ram:IBANID>/);
+      const bic  = extract(/<ram:CreditorFinancialInstitution>[\s\S]*?<ram:BICID>([^<]+)<\/ram:BICID>/)
+               || extract(/<ram:BICID>([^<]+)<\/ram:BICID>/);
+      const amountNet = parseFloat(extract(/<ram:TaxBasisTotalAmount>([^<]+)<\/ram:TaxBasisTotalAmount>/) || '0');
+
       return {
         success: true,
         format: 'zugferd',
         data: {
-          invoice_number: extract(/<ram:ID>([^<]+)<\/ram:ID>/),
-          invoice_date: extract(/<udt:DateTimeString format="102">([^<]+)<\/udt:DateTimeString>/),
-          seller_name: extract(/<ram:SellerTradeParty>[\s\S]*?<ram:Name>([^<]+)<\/ram:Name>/),
-          buyer_name: extract(/<ram:BuyerTradeParty>[\s\S]*?<ram:Name>([^<]+)<\/ram:Name>/),
-          amount_gross: parseFloat(extract(/<ram:GrandTotalAmount>([^<]+)<\/ram:GrandTotalAmount>/) || '0'),
+          invoice_number:   extract(/<ram:ID>([^<]+)<\/ram:ID>/),
+          invoice_date:     extract(/<udt:DateTimeString format="102">([^<]+)<\/udt:DateTimeString>/),
+          due_date:         formatZugferdDate(extract(/<ram:DueDateDateTime>[\s\S]*?<udt:DateTimeString[^>]*>([^<]+)<\/udt:DateTimeString>/)),
+          seller_name:      extract(/<ram:SellerTradeParty>[\s\S]*?<ram:Name>([^<]+)<\/ram:Name>/),
+          buyer_name:       extract(/<ram:BuyerTradeParty>[\s\S]*?<ram:Name>([^<]+)<\/ram:Name>/),
+          amount_gross:     parseFloat(extract(/<ram:GrandTotalAmount>([^<]+)<\/ram:GrandTotalAmount>/) || '0'),
+          amount_net:       amountNet,
+          seller_iban:      iban ? iban.replace(/\s/g, '') : null,
+          seller_bic:       bic  || null,
+          discount_percent: skonto?.percent || null,
+          discount_days:    skonto?.days    || null,
+          payment_reference: extract(/<ram:ID>([^<]+)<\/ram:ID>/),
         }
       };
     }

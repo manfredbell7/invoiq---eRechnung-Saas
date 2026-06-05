@@ -77,10 +77,17 @@ export async function inboundRoutes(fastify) {
           raw_xml:           xmlContent,
           xml_hash:          hashXML(xmlContent),
           status:            'empfangen',
-          invoice_number:    parsed?.data?.invoice_number || null,
-          amount:            parsed?.data?.amount_gross   || null,
+          invoice_number:    parsed?.data?.invoice_number  || null,
+          amount:            parsed?.data?.amount_gross    || null,
+          amount_net:        parsed?.data?.amount_net      || null,
           due_date:          parsed?.data?.due_date        || null,
-          seller_name:       parsed?.data?.seller_name    || extractName(sender),
+          seller_name:       parsed?.data?.seller_name     || extractName(sender),
+          seller_vat_id:     parsed?.data?.seller_vat_id  || null,
+          seller_iban:       parsed?.data?.seller_iban     || null,
+          seller_bic:        parsed?.data?.seller_bic      || null,
+          discount_percent:  parsed?.data?.discount_percent || null,
+          discount_days:     parsed?.data?.discount_days   || null,
+          payment_reference: parsed?.data?.payment_reference || null,
           validation_passed: validation.passed,
         });
 
@@ -128,6 +135,51 @@ export async function inboundRoutes(fastify) {
     reply.header('Content-Type', 'application/pdf');
     reply.header('Content-Disposition', `inline; filename="Rechnung_${data.invoice_number || data.id}.pdf"`);
     return reply.send(pdfBuffer);
+  });
+
+  // ── SEPA pain.001 DOWNLOAD ────────────────────────────────────
+  // GET /v1/inbound/:id/sepa-pain001?discount=true
+  fastify.get('/:id/sepa-pain001', { preHandler: authMiddleware }, async (req, reply) => {
+    const applyDiscount = req.query.discount === 'true';
+
+    const { data: inv } = await supabase
+      .from('inbound_invoices').select('*')
+      .eq('id', req.params.id).eq('org_id', req.org.id).single();
+    if (!inv) return reply.code(404).send({ error: 'Nicht gefunden' });
+    if (!inv.seller_iban) return reply.code(400).send({ error: 'Keine IBAN in der Rechnung gefunden' });
+
+    // Org-Daten für Auftraggeber (Zahler)
+    const { data: org } = await supabase
+      .from('organizations').select('name, iban, bic').eq('id', req.org.id).single();
+
+    const { generateSEPAPain001 } = await import('../../services/sepaService.js');
+    const result = generateSEPAPain001({
+      invoice:       inv,
+      payerName:     org?.name || 'invoiq Nutzer',
+      payerIban:     org?.iban || '',
+      payerBic:      org?.bic  || '',
+      applyDiscount,
+    });
+
+    // Timestamp speichern
+    await supabase.from('inbound_invoices')
+      .update({ sepa_generated_at: new Date().toISOString() })
+      .eq('id', req.params.id);
+
+    reply.header('Content-Type', 'application/xml');
+    reply.header('Content-Disposition', `attachment; filename="${result.filename}"`);
+    return reply.send(result.xml);
+  });
+
+  // ── SKONTO CHECK ──────────────────────────────────────────────
+  // GET /v1/inbound/:id/discount-check
+  fastify.get('/:id/discount-check', { preHandler: authMiddleware }, async (req, reply) => {
+    const { data: inv } = await supabase
+      .from('inbound_invoices').select('*')
+      .eq('id', req.params.id).eq('org_id', req.org.id).single();
+    if (!inv) return reply.code(404).send({ error: 'Nicht gefunden' });
+    const { checkDiscount } = await import('../../services/sepaService.js');
+    return checkDiscount(inv);
   });
 
   // ── MARK AS PAID ──────────────────────────────────────────────

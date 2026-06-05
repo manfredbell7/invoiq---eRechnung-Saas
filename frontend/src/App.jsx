@@ -77,6 +77,8 @@ const api={
   getInboundPdf:(id)=>`${API_BASE}/inbound/${id}/pdf`,
   markInboundPaid:(id)=>api.post(`/inbound/${id}/mark-paid`,{}),
   forwardInbound:(id,email)=>api.post(`/inbound/${id}/forward`,{recipient_email:email}),
+  getSepaDownloadUrl:(id,discount=false)=>`${API_BASE}/inbound/${id}/sepa-pain001?discount=${discount}&token=${api._token}`,
+  checkDiscount:(id)=>api.get(`/inbound/${id}/discount-check`),
   // createCheckout stays:
   createCheckout:(plan,billing='monthly')=>api.post('/payments/checkout',{plan,billing}),
   openBillingPortal:(customer_id)=>api.post('/payments/portal',{customer_id}),
@@ -1990,26 +1992,32 @@ function DokumentenScanner({ notify }) {
 }
 
 function InboundScreen({notify}){
-  const [invoices,setInvoices] = useState([]);
-  const [loading,setLoading]   = useState(true);
-  const [filter,setFilter]     = useState('all');
-  const [fwdModal,setFwdModal] = useState(null); // invoice id
-  const [fwdEmail,setFwdEmail] = useState('');
+  const [invoices,setInvoices]   = useState([]);
+  const [loading,setLoading]     = useState(true);
+  const [filter,setFilter]       = useState('all');
+  const [fwdModal,setFwdModal]   = useState(null);
+  const [fwdEmail,setFwdEmail]   = useState('');
   const [emailSlug,setEmailSlug] = useState('');
-  const fileRef = useRef(null);
+  const [sepaModal,setSepaModal] = useState(null); // invoice object
+  const [discountInfo,setDiscountInfo] = useState({}); // id → {active,daysLeft,savingEur}
 
   const load = () => {
     setLoading(true);
     api.listInbound()
-      .then(d => { setInvoices(d.invoices || []); setLoading(false); })
-      .catch(() => {
-        setInvoices([
-          {id:'ib1',invoice_number:'EINGANG-2025-003',sender_name:'Müller Lieferant GmbH',sender_email:'buchhaltung@mueller.de',amount:4284,format:'xrechnung',status:'empfangen',due_date:'2025-06-14',has_xml:true,validation_passed:true,created_at:new Date(Date.now()-3600000).toISOString()},
-          {id:'ib2',invoice_number:'EINGANG-2025-002',sender_name:'TechParts AG',sender_email:'rechnung@techparts.de',amount:1290,format:'zugferd',status:'empfangen',due_date:'2025-06-07',has_xml:true,validation_passed:false,created_at:new Date(Date.now()-86400000).toISOString()},
-          {id:'ib3',invoice_number:'EINGANG-2025-001',sender_name:'SAP Partner GmbH',sender_email:'ap@sappartner.de',amount:8900,format:'pdf_extracted',status:'bezahlt',due_date:'2025-05-30',has_xml:true,validation_passed:true,created_at:new Date(Date.now()-172800000).toISOString()},
-        ]);
+      .then(d => {
+        const invs = d.invoices || [];
+        setInvoices(invs);
         setLoading(false);
-        // Get email slug from user org
+        // Skonto-Check für alle ausstehenden Rechnungen mit discount_percent
+        invs.filter(i=>i.status==='empfangen'&&i.discount_percent).forEach(inv=>{
+          api.checkDiscount(inv.id).then(info=>{
+            setDiscountInfo(prev=>({...prev,[inv.id]:info}));
+          }).catch(()=>{});
+        });
+      })
+      .catch(() => {
+        setInvoices([]);
+        setLoading(false);
         setEmailSlug('meine-firma-abc12345');
       });
   };
@@ -2017,10 +2025,10 @@ function InboundScreen({notify}){
   useEffect(()=>{ load(); },[]);
 
   const filtered = invoices.filter(i =>
-    filter === 'all' ? true :
-    filter === 'ausstehend' ? i.status === 'empfangen' :
-    filter === 'bezahlt' ? i.status === 'bezahlt' :
-    filter === 'fehler' ? !i.validation_passed : true
+    filter==='all'       ? true :
+    filter==='ausstehend'? i.status==='empfangen' :
+    filter==='bezahlt'   ? i.status==='bezahlt' :
+    filter==='fehler'    ? !i.validation_passed : true
   );
 
   const doForward = async () => {
@@ -2032,11 +2040,14 @@ function InboundScreen({notify}){
     } catch(e){ notify(e.message,'error'); }
   };
 
+  // Aktive Skonto-Warnungen (nur ausstehende mit aktivem Skonto)
+  const skontoAlerts = invoices.filter(i=>i.status==='empfangen'&&discountInfo[i.id]?.active);
+
   const stats = [
-    {label:'Gesamt',     value:invoices.length,                                    color:T.textPrimary},
-    {label:'Ausstehend', value:invoices.filter(i=>i.status==='empfangen').length,  color:T.amber},
-    {label:'Bezahlt',    value:invoices.filter(i=>i.status==='bezahlt').length,    color:T.green},
-    {label:'Fehler',     value:invoices.filter(i=>!i.validation_passed).length,    color:T.red},
+    {label:'Gesamt',     value:invoices.length,                                   color:T.textPrimary},
+    {label:'Ausstehend', value:invoices.filter(i=>i.status==='empfangen').length, color:T.amber},
+    {label:'Bezahlt',    value:invoices.filter(i=>i.status==='bezahlt').length,   color:T.green},
+    {label:'Skonto aktiv',value:skontoAlerts.length,                              color:'#f59e0b'},
   ];
 
   return(
@@ -2048,13 +2059,13 @@ function InboundScreen({notify}){
             <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em'}}>Eingang</h1>
             <span className="badge badge-red" style={{fontSize:10.5}}>Pflicht seit Jan 2025</span>
           </div>
-          <p style={{fontSize:13,color:T.textMuted}}>Eingehende Rechnungen per E-Mail oder Upload — automatisch konvertiert und archiviert.</p>
+          <p style={{fontSize:13,color:T.textMuted}}>Eingehende Rechnungen per E-Mail — automatisch geparst, mit SEPA-Zahlung per Klick.</p>
         </div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null)}>↓ DATEV-Export</button>
           <button className="btn btn-ghost btn-sm" onClick={()=>{
             navigator.clipboard.writeText(`rechnungen-${emailSlug}@invoiq.io`);
-            notify(`E-Mail-Adresse kopiert: rechnungen-${emailSlug}@invoiq.io`,'success');
+            notify(`E-Mail-Adresse kopiert ✓`,'success');
           }}>📋 Meine Eingangs-E-Mail</button>
         </div>
       </div>
@@ -2063,14 +2074,35 @@ function InboundScreen({notify}){
       <div style={{padding:'12px 16px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
         <div>
           <div style={{fontSize:12.5,fontWeight:600,color:T.accent,marginBottom:2}}>Ihre Eingangs-E-Mail-Adresse</div>
-          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>rechnungen-{emailSlug||'...' }@invoiq.io</div>
+          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>rechnungen-{emailSlug||'...'}@invoiq.io</div>
           <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Lieferanten schicken Rechnungen einfach an diese Adresse — invoiq verarbeitet alles automatisch.</div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>{
-          navigator.clipboard.writeText(`rechnungen-${emailSlug}@invoiq.io`);
-          notify('Adresse kopiert ✓','success');
-        }}>Kopieren</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`rechnungen-${emailSlug}@invoiq.io`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
       </div>
+
+      {/* Skonto-Alerts */}
+      {skontoAlerts.map(inv=>{
+        const d = discountInfo[inv.id];
+        return (
+          <div key={inv.id} style={{padding:'12px 16px',background:'#fffbeb',border:'1px solid #fcd34d',borderRadius:9,marginBottom:10,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:18}}>💰</span>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:'#92400e'}}>
+                  Skonto verfügbar — spare {fmtEUR(d.savingEur)} ({d.percent}%)
+                </div>
+                <div style={{fontSize:12,color:'#b45309'}}>
+                  {inv.seller_name} · Rechnung {inv.invoice_number} · noch {d.daysLeft} {d.daysLeft===1?'Tag':'Tage'} (bis {new Date(d.deadline).toLocaleDateString('de-DE')})
+                </div>
+              </div>
+            </div>
+            <button className="btn btn-sm" style={{background:'#f59e0b',color:'#fff',border:'none',fontWeight:700}}
+              onClick={()=>setSepaModal({...inv,_applyDiscount:true})}>
+              💳 Jetzt zahlen + Skonto
+            </button>
+          </div>
+        );
+      })}
 
       {/* KPIs */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
@@ -2101,35 +2133,105 @@ function InboundScreen({notify}){
               {['Absender','Rechnungsnr.','Betrag','Fälligkeit','Format','Status','Aktionen'].map(h=><th key={h}>{h}</th>)}
             </tr></thead>
             <tbody>
-              {filtered.map((inv,i)=>(
+              {filtered.map((inv)=>{
+                const dk = discountInfo[inv.id];
+                return (
                 <tr key={inv.id} className="tr-hover">
                   <td>
                     <div style={{fontWeight:600,fontSize:13,color:T.textPrimary}}>{inv.sender_name||'Unbekannt'}</div>
                     <div style={{fontSize:11,color:T.textMuted}}>{inv.sender_email||''}</div>
+                    {dk?.active&&<span style={{fontSize:10,background:'#fef3c7',color:'#92400e',borderRadius:3,padding:'1px 5px',fontWeight:700}}>💰 Skonto</span>}
                   </td>
                   <td style={{fontFamily:F.mono,fontSize:12,fontWeight:600}}>{inv.invoice_number||'-'}</td>
-                  <td style={{fontWeight:700}}>{inv.amount?fmtEUR(inv.amount):'-'}</td>
+                  <td>
+                    <div style={{fontWeight:700}}>{inv.amount?fmtEUR(inv.amount):'-'}</div>
+                    {dk?.active&&<div style={{fontSize:11,color:'#16a34a',fontWeight:600}}>-{fmtEUR(dk.savingEur)} Skonto</div>}
+                  </td>
                   <td style={{fontSize:12,color:inv.due_date&&new Date(inv.due_date)<new Date()?T.red:T.textMuted}}>
                     {inv.due_date?new Date(inv.due_date).toLocaleDateString('de-DE'):'-'}
                   </td>
                   <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:4,padding:'2px 7px',fontSize:11,fontWeight:700,fontFamily:F.mono}}>{(inv.format||'?').toUpperCase()}</span></td>
-                  <td>
-                    <StatusBadge status={inv.status==='bezahlt'?'delivered':inv.validation_passed?'validated':'error'}/>
-                  </td>
+                  <td><StatusBadge status={inv.status==='bezahlt'?'delivered':inv.validation_passed?'validated':'error'}/></td>
                   <td>
                     <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
                       {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>window.open(api.getInboundPdf(inv.id),'_blank')}>↓ PDF</button>}
-                      <button className="btn btn-ghost btn-sm" onClick={()=>{setFwdModal(inv.id);setFwdEmail('');}}>✉ Weiterleiten</button>
-                      {inv.status!=='bezahlt'&&<button className="btn btn-ghost btn-sm" onClick={async()=>{ await api.markInboundPaid(inv.id); notify('Als bezahlt markiert ✓','success'); load(); }}>✓ Bezahlt</button>}
+                      {inv.status!=='bezahlt'&&inv.seller_iban&&(
+                        <button className="btn btn-sm btn-primary" style={{fontSize:11,padding:'3px 8px'}}
+                          onClick={()=>setSepaModal({...inv,_applyDiscount:dk?.active||false})}>
+                          💳 Zahlen
+                        </button>
+                      )}
+                      <button className="btn btn-ghost btn-sm" onClick={()=>{setFwdModal(inv.id);setFwdEmail('');}}>✉</button>
+                      {inv.status!=='bezahlt'&&<button className="btn btn-ghost btn-sm" onClick={async()=>{ await api.markInboundPaid(inv.id); notify('Als bezahlt markiert ✓','success'); load(); }}>✓</button>}
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
               {filtered.length===0&&<tr><td colSpan={7} style={{textAlign:'center',padding:32,color:T.textMuted}}>Keine Rechnungen</td></tr>}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* SEPA Modal */}
+      {sepaModal&&<div className="modal-overlay" onClick={()=>setSepaModal(null)}>
+        <div className="modal sci" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
+            <div style={{fontSize:17,fontWeight:700,color:T.textPrimary}}>💳 SEPA-Zahlung vorbereiten</div>
+            <button onClick={()=>setSepaModal(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:T.textMuted}}>×</button>
+          </div>
+
+          {/* Zahlungsdetails */}
+          <div style={{background:T.bgMuted,borderRadius:8,padding:14,marginBottom:16,fontSize:13}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              <div><div style={{fontSize:11,color:T.textMuted,marginBottom:2}}>EMPFÄNGER</div><div style={{fontWeight:600,color:T.textPrimary}}>{sepaModal.seller_name||'Lieferant'}</div></div>
+              <div><div style={{fontSize:11,color:T.textMuted,marginBottom:2}}>BETRAG</div>
+                <div style={{fontWeight:700,fontSize:15,color:sepaModal._applyDiscount?'#16a34a':T.textPrimary}}>
+                  {sepaModal._applyDiscount&&sepaModal.discount_percent
+                    ? fmtEUR(sepaModal.amount*(1-sepaModal.discount_percent/100))
+                    : fmtEUR(sepaModal.amount)
+                  }
+                  {sepaModal._applyDiscount&&sepaModal.discount_percent&&(
+                    <span style={{fontSize:11,color:'#16a34a',marginLeft:6}}>(-{sepaModal.discount_percent}% Skonto)</span>
+                  )}
+                </div>
+              </div>
+              <div><div style={{fontSize:11,color:T.textMuted,marginBottom:2}}>IBAN</div><div style={{fontFamily:F.mono,fontSize:12}}>{sepaModal.seller_iban||'—'}</div></div>
+              <div><div style={{fontSize:11,color:T.textMuted,marginBottom:2}}>VERWENDUNGSZWECK</div><div style={{fontSize:12}}>{sepaModal.payment_reference||sepaModal.invoice_number||'—'}</div></div>
+            </div>
+          </div>
+
+          {/* Skonto Toggle */}
+          {sepaModal.discount_percent&&discountInfo[sepaModal.id]?.active&&(
+            <div style={{padding:'10px 12px',background:'#fffbeb',border:'1px solid #fcd34d',borderRadius:7,marginBottom:14,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div style={{fontSize:12.5,color:'#92400e'}}>
+                <strong>Skonto anwenden:</strong> spare {fmtEUR(discountInfo[sepaModal.id].savingEur)} ({sepaModal.discount_percent}%)<br/>
+                <span style={{fontSize:11}}>Frist: noch {discountInfo[sepaModal.id].daysLeft} Tage</span>
+              </div>
+              <button className="btn btn-sm" style={{background:sepaModal._applyDiscount?'#16a34a':'#e5e7eb',color:sepaModal._applyDiscount?'#fff':'#374151',border:'none',fontWeight:700,minWidth:60}}
+                onClick={()=>setSepaModal(p=>({...p,_applyDiscount:!p._applyDiscount}))}>
+                {sepaModal._applyDiscount?'✓ An':'Aus'}
+              </button>
+            </div>
+          )}
+
+          <div style={{fontSize:12,color:T.textMuted,marginBottom:16,lineHeight:1.5}}>
+            📥 Die SEPA-Datei (pain.001 XML) wird heruntergeladen. Laden Sie diese in Ihr Online-Banking hoch — alle Felder sind vorausgefüllt. Nur noch PIN eingeben.
+          </div>
+
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+            <button className="btn btn-ghost" onClick={()=>setSepaModal(null)}>Abbrechen</button>
+            <button className="btn btn-primary" onClick={()=>{
+              const url = api.getSepaDownloadUrl(sepaModal.id, sepaModal._applyDiscount||false);
+              window.open(url,'_blank');
+              notify('SEPA-Datei wird heruntergeladen ✓','success');
+              setSepaModal(null);
+            }}>
+              ↓ SEPA-Datei herunterladen
+            </button>
+          </div>
+        </div>
+      </div>}
 
       {/* Forward Modal */}
       {fwdModal&&<div className="modal-overlay" onClick={()=>setFwdModal(null)}>
