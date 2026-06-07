@@ -1274,9 +1274,22 @@ function Auth({mode,onSwitch,onSuccess,loading}){
 
 // ── APP SHELL ─────────────────────────────────────────────────
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
-  const items=[{key:"dashboard",icon:"·",label:"Overview"},{key:"invoices",icon:"·",label:"Rechnungen"},{key:"scanner",icon:"·",label:"Dok.-Scanner"},{key:"inbound",icon:"·",label:"Eingang"},{key:"steuerberater",icon:"·",label:"Kanzlei-Portal"},{key:"archive",icon:"·",label:"Archiv"},{key:"settings",icon:"·",label:"Einstellungen"}];
+  // Kanzlei-Portal nur für Business/Enterprise
+  const plan = org?.plan || 'starter';
+  const hasKanzlei = plan === 'business' || plan === 'enterprise' || plan === 'pro';
+
+  const items=[
+    {key:"dashboard",   label:"Übersicht"},
+    {key:"invoices",    label:"Ausgang"},
+    {key:"inbound",     label:"Eingang"},
+    {key:"scanner",     label:"Scan & Import"},
+    {key:"archive",     label:"Archiv"},
+    {key:"settings",    label:"Einstellungen"},
+  ];
+
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
   const isAdmin=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
+
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
     <aside className="sidebar">
       <div style={{padding:"14px 14px 10px",borderBottom:`1px solid ${T.bgBorder}`}}>
@@ -1285,9 +1298,24 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
       </div>
       <nav style={{flex:1,padding:"6px 8px 0"}}>
         <div className="nav-section">Workspace</div>
-        {items.map(({key,icon,label})=><button key={key} className={`nav-item ${nav===key?"active":""}`} onClick={()=>setNav(key)}>
-          <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav===key?T.accent:"transparent",border:`1px solid ${nav===key?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}>{icon}</span>{label}
+        {items.map(({key,label})=><button key={key} className={`nav-item ${nav===key?"active":""}`} onClick={()=>setNav(key)}>
+          <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav===key?T.accent:"transparent",border:`1px solid ${nav===key?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
+          {label}
         </button>)}
+
+        {/* Kanzlei-Portal — nur für Business/Enterprise */}
+        {hasKanzlei
+          ? <button className={`nav-item ${nav==="steuerberater"?"active":""}`} onClick={()=>setNav("steuerberater")}>
+              <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav==="steuerberater"?T.accent:"transparent",border:`1px solid ${nav==="steuerberater"?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
+              Kanzlei-Portal
+            </button>
+          : <button className="nav-item" style={{opacity:.45,cursor:'default'}} title="Verfügbar ab Business-Plan">
+              <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:"transparent",border:`1px solid ${T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
+              Kanzlei-Portal
+              <span style={{marginLeft:'auto',fontSize:9,background:T.accent,color:'#fff',borderRadius:3,padding:'1px 4px',fontWeight:700}}>PRO</span>
+            </button>
+        }
+
         {isAdmin&&<><div className="nav-section" style={{marginTop:6}}>Admin</div>
           <button className="nav-item" onClick={onAdmin} style={{color:T.red,fontSize:12}}><span style={{fontSize:8,width:8,height:8,borderRadius:"50%",background:T.red,display:"inline-block",flexShrink:0}}/>Admin Panel</button>
         </>}
@@ -1312,7 +1340,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
     </aside>
     <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
       <div className="topbar">
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Overview","invoices":"Rechnungen","scanner":"Dok.-Scanner","inbound":"Eingang","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
+        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
         <div style={{flex:1,maxWidth:300,margin:"0 20px"}}>
           <div style={{position:"relative"}}>
             <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:T.textMuted,fontSize:12}}>🔍</span>
@@ -1392,17 +1420,22 @@ function Dashboard({user,org,notify,onNav}){
       <button className="btn btn-primary btn-sm" onClick={()=>onNav('invoices')}>+ Neue Rechnung</button>
     </div>
 
-    {/* KPIs — echte Daten */}
+    {/* KPIs — klickbar */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
       {loading?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:96}}><div className="skeleton" style={{height:'100%'}}/></div>)
       :[
-        {label:'Versandt',     value:stats?.outbound_total||0,     delta:'Ausgangsrechnungen',   color:T.textPrimary,  chart:weekData},
-        {label:'Empfangen',    value:stats?.inbound_total||0,      delta:'Eingangsrechnungen',   color:T.textPrimary,  chart:weekData.map(v=>Math.floor(v*.7))},
-        {label:'Fehler',       value:stats?.errors_total||0,       delta:stats?.errors_total>0?'⚠ Offen':'✓ Alles OK', color:stats?.errors_total>0?T.red:T.green},
-        {label:'Compliance',   value:`${stats?.compliance_score||100}%`, delta:'EN 16931 ✓',    color:T.green},
+        {label:'Versandt',   value:stats?.outbound_total||0, delta:'Ausgangsrechnungen', color:T.textPrimary, chart:weekData,                          nav:'invoices'},
+        {label:'Empfangen',  value:stats?.inbound_total||0,  delta:'Eingangsrechnungen', color:T.textPrimary, chart:weekData.map(v=>Math.floor(v*.7)), nav:'inbound'},
+        {label:'Fehler',     value:stats?.errors_total||0,   delta:stats?.errors_total>0?'⚠ Offen':'✓ Alles OK', color:stats?.errors_total>0?T.red:T.green, nav:'invoices'},
+        {label:'Compliance', value:`${stats?.compliance_score||100}%`, delta:'EN 16931 ✓', color:T.green,     nav:'archive'},
       ].map((s,i)=>(
-        <div key={i} className="card" style={{padding:18}}>
-          <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,marginBottom:10,textTransform:'uppercase'}}>{s.label}</div>
+        <div key={i} className="card" style={{padding:18,cursor:'pointer',transition:'box-shadow .15s'}}
+          onClick={()=>onNav(s.nav)}
+          onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.accent}`}
+          onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
+          <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,marginBottom:10,textTransform:'uppercase',display:'flex',justifyContent:'space-between'}}>
+            {s.label}<span style={{fontSize:10,color:T.accent,opacity:.7}}>→</span>
+          </div>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
             <div>
               <div className="stat-num" style={{color:s.color,fontSize:28}}>{s.value}</div>
@@ -1414,25 +1447,40 @@ function Dashboard({user,org,notify,onNav}){
       ))}
     </div>
 
-    {/* Cashflow-Cockpit */}
+    {/* Cashflow-Cockpit — klickbar */}
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}}>
-      {/* Offene Forderungen */}
-      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.green}`}}>
-        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8}}>Offene Forderungen</div>
+      {/* Offene Forderungen → Ausgang */}
+      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.green}`,cursor:'pointer',transition:'box-shadow .15s'}}
+        onClick={()=>onNav('invoices')}
+        onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.green}`}
+        onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
+        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8,display:'flex',justifyContent:'space-between'}}>
+          Offene Forderungen<span style={{fontSize:10,color:T.green,opacity:.8}}>→ Ausgang</span>
+        </div>
         <div style={{fontSize:26,fontWeight:800,color:T.green,letterSpacing:'-.03em'}}>{loading?'—':fmtEUR(cashflow?.open_receivables||0)}</div>
         <div style={{fontSize:11.5,color:T.textMuted,marginTop:4}}>Ausgangsrechnungen, noch nicht bezahlt</div>
         {cashflow?.due_this_week_in>0&&<div style={{marginTop:8,fontSize:11.5,color:T.green,fontWeight:600}}>↑ {fmtEUR(cashflow.due_this_week_in)} fällig diese Woche</div>}
       </div>
-      {/* Offene Verbindlichkeiten */}
-      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.red}`}}>
-        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8}}>Offene Verbindlichkeiten</div>
+      {/* Offene Verbindlichkeiten → Eingang */}
+      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.red}`,cursor:'pointer',transition:'box-shadow .15s'}}
+        onClick={()=>onNav('inbound')}
+        onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.red}`}
+        onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
+        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8,display:'flex',justifyContent:'space-between'}}>
+          Offene Verbindlichkeiten<span style={{fontSize:10,color:T.red,opacity:.8}}>→ Eingang</span>
+        </div>
         <div style={{fontSize:26,fontWeight:800,color:T.red,letterSpacing:'-.03em'}}>{loading?'—':fmtEUR(cashflow?.open_payables||0)}</div>
         <div style={{fontSize:11.5,color:T.textMuted,marginTop:4}}>Eingangsrechnungen, noch nicht bezahlt</div>
         {cashflow?.due_this_week_out>0&&<div style={{marginTop:8,fontSize:11.5,color:T.red,fontWeight:600}}>↓ {fmtEUR(cashflow.due_this_week_out)} fällig diese Woche</div>}
       </div>
-      {/* Netto-Cashflow */}
-      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.accent}`}}>
-        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8}}>Netto-Cashflow (offen)</div>
+      {/* Netto-Cashflow → Archiv */}
+      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.accent}`,cursor:'pointer',transition:'box-shadow .15s'}}
+        onClick={()=>onNav('archive')}
+        onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.accent}`}
+        onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
+        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8,display:'flex',justifyContent:'space-between'}}>
+          Netto-Cashflow<span style={{fontSize:10,color:T.accent,opacity:.8}}>→ Archiv</span>
+        </div>
         <div style={{fontSize:26,fontWeight:800,letterSpacing:'-.03em',color:(cashflow?.open_receivables||0)-(cashflow?.open_payables||0)>=0?T.green:T.red}}>
           {loading?'—':fmtEUR((cashflow?.open_receivables||0)-(cashflow?.open_payables||0))}
         </div>
