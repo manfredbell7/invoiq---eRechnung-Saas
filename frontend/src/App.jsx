@@ -2582,8 +2582,7 @@ function SettingsScreen({user,org,notify}){
                     <div><label className="label">BIC / SWIFT</label><input className="input" value={form.bic} onChange={e=>upd('bic',e.target.value)} placeholder="COBADEFFXXX" style={{fontFamily:F.mono}}/><div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Optional — für ältere Banksysteme</div></div>
                   </div>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}
-                </div>
+
               </div>
               <div style={{display:'flex',justifyContent:'flex-end',marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bgBorder}`}}>
                 <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?<><Spinner color="#fff" size={13}/>&nbsp;Speichern...</>:'Speichern'}</button>
