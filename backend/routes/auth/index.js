@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../config/db.js';
+import { supabase } from '../../config/database.js';
 import { authMiddleware } from '../../middleware/auth.js';
 
 
@@ -200,12 +201,14 @@ export async function authRoutes(fastify) {
     }
     updates.updated_at = new Date().toISOString();
 
-    const supabase = db._client;
     const { error } = await supabase
       .from('organizations')
       .update(updates)
       .eq('id', req.org.id);
-    if(error) return reply.code(500).send({ error: 'Fehler beim Speichern' });
+    if(error) {
+      fastify.log.error(error, 'Settings update error');
+      return reply.code(500).send({ error: `Fehler beim Speichern: ${error.message}` });
+    }
 
     await db.createAuditLog({ org_id: req.org.id, user_id: req.user?.id, action: 'settings_updated', details: { fields: Object.keys(updates) } });
     return { success: true };

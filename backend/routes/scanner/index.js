@@ -5,6 +5,7 @@
 
 import { authMiddleware } from '../../middleware/auth.js';
 import { db } from '../../config/db.js';
+import { supabase } from '../../config/database.js';
 
 export async function scannerRoutes(fastify) {
 
@@ -171,7 +172,7 @@ Regeln:
       const attachments = parseInt(body['attachment-count'] || '0');
       if(attachments === 0) return reply.send({ status: 'ignored', reason: 'no attachments' });
 
-      const supabase = db._client;
+      // supabase direkt verfügbar via import
       const { data: user } = await supabase.from('users').select('id, org_id').ilike('email', sender).single();
       if(!user) return reply.send({ status: 'ignored', reason: 'sender unknown' });
 

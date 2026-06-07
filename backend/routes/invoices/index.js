@@ -1,5 +1,6 @@
 // src/routes/invoices/index.js
 import { db } from '../../config/db.js';
+import { supabase } from '../../config/database.js';
 import { authMiddleware, checkDocLimit } from '../../middleware/auth.js';
 import { generateXML, validateEN16931, hashXML, parseInboundXML } from '../../services/xmlEngine.js';
 import { archiveService } from '../../services/archiveService.js';
@@ -44,7 +45,7 @@ export async function invoiceRoutes(fastify) {
   // Liefert: offene Forderungen, Verbindlichkeiten, 30-Tage-Prognose
   fastify.get('/cashflow-stats', { preHandler: authMiddleware }, async (req) => {
     const orgId = req.org.id;
-    const supabase = db._client; // Supabase direkt für komplexere Queries
+    // supabase direkt verfügbar via import
 
     // Offene Forderungen (Ausgang, nicht bezahlt)
     const { data: outbound } = await supabase
