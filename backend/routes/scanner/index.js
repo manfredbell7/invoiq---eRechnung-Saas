@@ -1,6 +1,10 @@
 // routes/scanner/index.js — Dokumenten-Scanner
 // PDF/Bild → Anthropic Claude → Strukturierte Rechnungsfelder
 // DSGVO: keine Datei-Speicherung, nur Durchleitung
+// WhatsApp/E-Mail Foto: POST /v1/scanner/from-email (Mailgun Inbound Hook)
+
+import { authMiddleware } from '../../middleware/auth.js';
+import { db } from '../../config/db.js';
 
 export async function scannerRoutes(fastify) {
 
@@ -156,4 +160,76 @@ Regeln:
       return reply.code(500).send({ error: 'Interner Fehler bei der Verarbeitung' });
     }
   });
+  // ── FOTO PER E-MAIL / WHATSAPP ────────────────────────────────
+  // POST /v1/scanner/from-email
+  // Mailgun Inbound: User schickt Foto/PDF an scanner@invoiq.io
+  // → KI extrahiert Felder → als Entwurf in Rechnungen gespeichert
+  fastify.post('/scanner/from-email', async (req, reply) => {
+    try {
+      const body        = req.body || {};
+      const sender      = (body.sender || body.from || '').replace(/.*<(.+)>/, '$1').trim();
+      const attachments = parseInt(body['attachment-count'] || '0');
+      if(attachments === 0) return reply.send({ status: 'ignored', reason: 'no attachments' });
+
+      const supabase = db._client;
+      const { data: user } = await supabase.from('users').select('id, org_id').ilike('email', sender).single();
+      if(!user) return reply.send({ status: 'ignored', reason: 'sender unknown' });
+
+      const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+      if(!ANTHROPIC_KEY) return reply.send({ status: 'ignored', reason: 'no api key' });
+
+      // Attachment von Mailgun holen
+      const attachUrl = body['attachment-url-1'];
+      if(!attachUrl) return reply.send({ status: 'ignored', reason: 'no url' });
+
+      const imgRes = await fetch(attachUrl);
+      if(!imgRes.ok) return reply.send({ status: 'error', reason: 'fetch failed' });
+
+      const imgBuffer   = Buffer.from(await imgRes.arrayBuffer());
+      const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+      const base64Data  = imgBuffer.toString('base64');
+      const isPdf       = contentType.includes('pdf');
+
+      const contentBlock = isPdf
+        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
+        : { type: 'image',    source: { type: 'base64', media_type: contentType,        data: base64Data } };
+
+      const aRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514', max_tokens: 1200,
+          messages: [{ role: 'user', content: [
+            contentBlock,
+            { type: 'text', text: 'Extrahiere alle Rechnungsfelder. Antworte NUR mit JSON (kein Markdown):\n{"invoice_number":"","invoice_date":"YYYY-MM-DD","due_date":"YYYY-MM-DD","seller_name":"","seller_vat_id":"","seller_iban":"","buyer_name":"","line_items":[{"description":"","quantity":1,"unit_price":0,"vat_rate":19}],"currency":"EUR","discount_percent":null,"discount_days":null,"confidence":0.0}' }
+          ]}],
+        }),
+      });
+
+      const aData   = await aRes.json();
+      const rawText = aData.content?.[0]?.text || '{}';
+      let parsed;
+      try { parsed = JSON.parse(rawText.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim()); }
+      catch { return reply.send({ status: 'error', reason: 'parse failed' }); }
+
+      const net = (parsed.line_items||[]).reduce((s,i)=>s+(i.quantity||1)*(i.unit_price||0), 0);
+      const vat = (parsed.line_items||[]).reduce((s,i)=>s+(i.quantity||1)*(i.unit_price||0)*((i.vat_rate||19)/100), 0);
+
+      await supabase.from('invoices').insert({
+        org_id: user.org_id, invoice_number: parsed.invoice_number||`FOTO-${Date.now()}`,
+        invoice_date: parsed.invoice_date||new Date().toISOString().slice(0,10),
+        due_date: parsed.due_date||null, seller_name: parsed.seller_name||'',
+        buyer_name: parsed.buyer_name||'', line_items: JSON.stringify(parsed.line_items||[]),
+        amount_net: net, amount_vat: vat, amount_gross: net+vat, currency: 'EUR',
+        format: 'draft_scan', status: 'draft', source: 'email_scan', created_by: user.id,
+      });
+
+      fastify.log.info({ sender, org_id: user.org_id }, 'Foto-Rechnung per E-Mail verarbeitet');
+      return reply.send({ status: 'ok', invoice_number: parsed.invoice_number });
+    } catch(err) {
+      fastify.log.error(err, 'from-email error');
+      return reply.send({ status: 'error', reason: err.message });
+    }
+  });
+
 }

@@ -79,13 +79,7 @@ const api={
   forwardInbound:(id,email)=>api.post(`/inbound/${id}/forward`,{recipient_email:email}),
   getSepaDownloadUrl:(id,discount=false)=>`${API_BASE}/inbound/${id}/sepa-pain001?discount=${discount}&token=${api._token}`,
   checkDiscount:(id)=>api.get(`/inbound/${id}/discount-check`),
-  // Einstellungen
-  saveSettings:(b)=>api.post('/auth/settings',b),
-  getOrgSettings:()=>api.get('/auth/settings'),
-  // Cashflow & Stats
-  getCashflowStats:()=>api.get('/invoices/cashflow-stats'),
-  getInboundStats:()=>api.get('/inbound/stats'),
-  // Payments
+  // createCheckout stays:
   createCheckout:(plan,billing='monthly')=>api.post('/payments/checkout',{plan,billing}),
   openBillingPortal:(customer_id)=>api.post('/payments/portal',{customer_id}),
   getPlans:()=>api.get('/payments/plans'),
@@ -1331,167 +1325,76 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
 
 // ── DASHBOARD ─────────────────────────────────────────────────
 function Dashboard({user,org,notify,onNav}){
-  const[stats,setStats]       = useState(null);
-  const[cashflow,setCashflow] = useState(null);
-  const[invoices,setInvoices] = useState([]);
-  const[loading,setLoading]   = useState(true);
-
+  const[stats,setStats]=useState({outbound_total:41,inbound_total:28,errors_total:1,compliance_score:98});const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   useEffect(()=>{
-    Promise.all([
-      api.getStats(),
-      api.listInvoices('?limit=5'),
-      api.getCashflowStats(),
-    ]).then(([s,i,cf])=>{
-      setStats(s);
-      setInvoices(i.invoices||[]);
-      setCashflow(cf);
-    }).catch(()=>{
-      // Fallback: leere Zustände — keine Fake-Daten
-      setStats({outbound_total:0,inbound_total:0,errors_total:0,compliance_score:100,week_data:[0,0,0,0,0,0,0]});
-      setInvoices([]);
-      setCashflow({open_receivables:0,open_payables:0,due_this_week_in:0,due_this_week_out:0,forecast:[]});
-    }).finally(()=>setLoading(false));
+    Promise.all([api.getStats(),api.listInvoices("?limit=5")])
+      .then(([s,i])=>{setStats(s);setInvoices(i.invoices||[]);})
+      .catch(()=>{
+        setStats({outbound_total:41,inbound_total:28,errors_total:1,compliance_score:98});
+        setInvoices([{id:"1",invoice_number:"INV-2025-041",buyer_name:"Müller GmbH",amount_gross:4284,format:"xrechnung",status:"delivered",created_at:new Date(Date.now()-720000).toISOString()},{id:"2",invoice_number:"INV-2025-040",buyer_name:"TechVision AG",amount_gross:12900,format:"zugferd",status:"validated",created_at:new Date(Date.now()-3600000).toISOString()},{id:"3",invoice_number:"INV-2025-039",buyer_name:"Bauer & Partner",amount_gross:780,format:"peppol",status:"error",created_at:new Date(Date.now()-10800000).toISOString()}]);
+      }).finally(()=>setLoading(false));
   },[]);
-
-  const weekData = stats?.week_data || [0,0,0,0,0,0,0];
-  const forecast = cashflow?.forecast || [];
-
-  // Cashflow-Prognose: 30-Tage Balkendiagramm
-  const CashflowChart = ()=>{
-    if(!forecast.length) return(
-      <div style={{textAlign:'center',padding:'20px 0',color:T.textMuted,fontSize:12.5}}>
-        Noch keine Daten — erstelle Rechnungen um die Prognose zu sehen.
-      </div>
-    );
-    const maxVal = Math.max(...forecast.map(d=>Math.abs(d.balance)),1);
-    return(
-      <div style={{display:'flex',alignItems:'flex-end',gap:3,height:72,paddingTop:8}}>
-        {forecast.slice(0,30).map((d,i)=>{
-          const h = Math.max(4, (Math.abs(d.balance)/maxVal)*64);
-          const col = d.balance>=0 ? T.green : T.red;
-          return(
-            <div key={i} title={`${new Date(d.date).toLocaleDateString('de-DE')}: ${fmtEUR(d.balance)}`}
-              style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2,cursor:'default'}}>
-              <div style={{width:'100%',background:col,borderRadius:'2px 2px 0 0',height:`${h}px`,opacity:.85,transition:'height .3s'}}/>
-              {i%7===0&&<div style={{fontSize:8,color:T.textMuted,whiteSpace:'nowrap'}}>{new Date(d.date).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}</div>}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
+  const weekData=[28,35,31,42,38,45,41];
   return(<div className="fi">
-    {/* Header */}
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:22}}>
       <div>
-        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em'}}>
-          Guten Tag{user?.full_name?`, ${user.full_name.split(' ')[0]}`:''}.</h1>
-        <p style={{color:T.textMuted,fontSize:12.5,marginTop:4}}>{new Date().toLocaleDateString('de-DE',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:"-.025em"}}>Guten Tag{user?.full_name?`, ${user.full_name.split(" ")[0]}`:""}.</h1>
+        <p style={{color:T.textMuted,fontSize:12.5,marginTop:4}}>{new Date().toLocaleDateString("de-DE",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
       </div>
-      <button className="btn btn-primary btn-sm" onClick={()=>onNav('invoices')}>+ Neue Rechnung</button>
+      <button className="btn btn-primary btn-sm" onClick={()=>onNav("invoices")}>+ New Document</button>
     </div>
-
-    {/* KPIs — echte Daten */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
-      {loading?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:96}}><div className="skeleton" style={{height:'100%'}}/></div>)
-      :[
-        {label:'Versandt',     value:stats?.outbound_total||0,     delta:'Ausgangsrechnungen',   color:T.textPrimary,  chart:weekData},
-        {label:'Empfangen',    value:stats?.inbound_total||0,      delta:'Eingangsrechnungen',   color:T.textPrimary,  chart:weekData.map(v=>Math.floor(v*.7))},
-        {label:'Fehler',       value:stats?.errors_total||0,       delta:stats?.errors_total>0?'⚠ Offen':'✓ Alles OK', color:stats?.errors_total>0?T.red:T.green},
-        {label:'Compliance',   value:`${stats?.compliance_score||100}%`, delta:'EN 16931 ✓',    color:T.green},
-      ].map((s,i)=>(
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+      {loading?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:96}}><div className="skeleton" style={{height:"100%"}}/></div>)
+      :[{label:"Sent",value:stats.outbound_total,delta:"+8%",color:T.textPrimary,chart:weekData},{label:"Received",value:stats.inbound_total,delta:"+3%",color:T.textPrimary,chart:[18,22,19,25,21,27,28]},{label:"Errors",value:stats.errors_total,delta:stats.errors_total>0?"⚠ Open":"✓ Clean",color:stats.errors_total>0?T.red:T.green},{label:"Compliance",value:`${stats.compliance_score}%`,delta:"EN 16931 ✓",color:T.green}].map((s,i)=>(
         <div key={i} className="card" style={{padding:18}}>
-          <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,marginBottom:10,textTransform:'uppercase'}}>{s.label}</div>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
-            <div>
-              <div className="stat-num" style={{color:s.color,fontSize:28}}>{s.value}</div>
-              <div style={{fontSize:11,color:s.color===T.green?T.green:s.color===T.red?T.red:T.textMuted,marginTop:4,fontWeight:600}}>{s.delta}</div>
-            </div>
+          <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,marginBottom:10,textTransform:"uppercase"}}>{s.label}</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+            <div><div className="stat-num" style={{color:s.color,fontSize:28}}>{s.value}</div><div style={{fontSize:11,color:s.color===T.green?T.green:s.color===T.red?T.red:T.textMuted,marginTop:4,fontWeight:600}}>{s.delta}</div></div>
             {s.chart&&<MiniChart data={s.chart} height={32} color={T.accent}/>}
           </div>
         </div>
       ))}
     </div>
-
-    {/* Cashflow-Cockpit */}
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}}>
-      {/* Offene Forderungen */}
-      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.green}`}}>
-        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8}}>Offene Forderungen</div>
-        <div style={{fontSize:26,fontWeight:800,color:T.green,letterSpacing:'-.03em'}}>{loading?'—':fmtEUR(cashflow?.open_receivables||0)}</div>
-        <div style={{fontSize:11.5,color:T.textMuted,marginTop:4}}>Ausgangsrechnungen, noch nicht bezahlt</div>
-        {cashflow?.due_this_week_in>0&&<div style={{marginTop:8,fontSize:11.5,color:T.green,fontWeight:600}}>↑ {fmtEUR(cashflow.due_this_week_in)} fällig diese Woche</div>}
-      </div>
-      {/* Offene Verbindlichkeiten */}
-      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.red}`}}>
-        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8}}>Offene Verbindlichkeiten</div>
-        <div style={{fontSize:26,fontWeight:800,color:T.red,letterSpacing:'-.03em'}}>{loading?'—':fmtEUR(cashflow?.open_payables||0)}</div>
-        <div style={{fontSize:11.5,color:T.textMuted,marginTop:4}}>Eingangsrechnungen, noch nicht bezahlt</div>
-        {cashflow?.due_this_week_out>0&&<div style={{marginTop:8,fontSize:11.5,color:T.red,fontWeight:600}}>↓ {fmtEUR(cashflow.due_this_week_out)} fällig diese Woche</div>}
-      </div>
-      {/* Netto-Cashflow */}
-      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.accent}`}}>
-        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8}}>Netto-Cashflow (offen)</div>
-        <div style={{fontSize:26,fontWeight:800,letterSpacing:'-.03em',color:(cashflow?.open_receivables||0)-(cashflow?.open_payables||0)>=0?T.green:T.red}}>
-          {loading?'—':fmtEUR((cashflow?.open_receivables||0)-(cashflow?.open_payables||0))}
-        </div>
-        <div style={{fontSize:11.5,color:T.textMuted,marginTop:4}}>Forderungen minus Verbindlichkeiten</div>
-      </div>
-    </div>
-
-    {/* Cashflow-Prognose 30 Tage + Aktivität */}
-    <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:12,marginBottom:16}}>
+    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12,marginBottom:16}}>
       <div className="card" style={{padding:18}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-          <div>
-            <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Cashflow-Prognose — nächste 30 Tage</div>
-            <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Basierend auf Fälligkeitsdaten deiner Rechnungen</div>
-          </div>
-          <div style={{display:'flex',gap:8,fontSize:11}}>
-            <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:T.green,display:'inline-block'}}/>Einnahmen</span>
-            <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:T.red,display:'inline-block'}}/>Ausgaben</span>
-          </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Documents — last 7 days</div>
+          <span className="badge badge-green" style={{fontSize:11}}>▲ +23% vs last week</span>
         </div>
-        {loading?<div className="skeleton" style={{height:72}}/>:<CashflowChart/>}
+        <div style={{display:"flex",alignItems:"flex-end",gap:5,height:64}}>
+          {weekData.map((v,i)=><div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+            <div style={{width:"100%",background:i===6?T.accent:`${T.accent}30`,borderRadius:"2px 2px 0 0",height:`${(v/Math.max(...weekData))*56}px`,transition:"height .3s"}}/>
+            <div style={{fontSize:9.5,color:T.textMuted}}>{"MTWDFSSU".split("")[i]}</div>
+          </div>)}
+        </div>
       </div>
       <div className="card" style={{padding:18}}>
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Format-Verteilung</div>
-        {loading?<div className="skeleton" style={{height:80}}/>:
-          (stats?.format_breakdown||[['XRechnung',0,T.accent],['ZUGFeRD',0,T.purple],['Peppol',0,T.green]]).map(([f,pct,c],i)=>(
-            <div key={i} style={{marginBottom:11}}>
-              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,fontSize:12.5}}>
-                <span style={{color:T.textSecondary}}>{f}</span>
-                <span style={{fontWeight:600,color:T.textPrimary}}>{pct}%</span>
-              </div>
-              <div className="progress"><div className="progress-fill" style={{width:`${pct}%`,background:c}}/></div>
-            </div>
-          ))
-        }
+        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Format Breakdown</div>
+        {[["XRechnung","58%",T.accent],["ZUGFeRD","32%",T.purple],["Peppol","10%",T.green]].map(([f,p,c])=>(
+          <div key={f} style={{marginBottom:11}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{color:T.textSecondary}}>{f}</span><span style={{fontWeight:600,color:T.textPrimary}}>{p}</span></div>
+            <div className="progress"><div className="progress-fill" style={{width:p,background:c}}/></div>
+          </div>
+        ))}
       </div>
     </div>
-
-    {/* Letzte Dokumente */}
     <div className="card">
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:`1px solid ${T.bgBorder}`}}>
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Letzte Dokumente</div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>onNav('invoices')}>Alle anzeigen →</button>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",borderBottom:`1px solid ${T.bgBorder}`}}>
+        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Recent Documents</div>
+        <button className="btn btn-ghost btn-sm" onClick={()=>onNav("invoices")}>View all →</button>
       </div>
       <table className="table">
-        <thead><tr>{['Nummer','Empfänger','Betrag','Format','Status','Zeit'].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <thead><tr>{["Number","Recipient","Amount","Format","Status","Time"].map(h=><th key={h}>{h}</th>)}</tr></thead>
         <tbody>
-          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14,margin:'6px 0'}}/></td></tr>)
-          :invoices.length===0
-            ?<tr><td colSpan={6} style={{textAlign:'center',padding:28,color:T.textMuted,fontSize:13}}>Noch keine Rechnungen — <button className="btn btn-ghost btn-sm" onClick={()=>onNav('invoices')}>Erste Rechnung erstellen →</button></td></tr>
-            :invoices.map(inv=><tr key={inv.id} className="tr-hover" style={{cursor:'pointer'}}>
-              <td style={{fontWeight:600,color:T.textPrimary,fontFamily:F.mono,fontSize:12.5}}>{inv.invoice_number}</td>
-              <td style={{color:T.textPrimary}}>{inv.buyer_name||'—'}</td>
-              <td style={{fontWeight:600,color:T.textPrimary}}>{fmtEUR(inv.amount_gross)}</td>
-              <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:'2px 7px',fontSize:11.5,fontWeight:600,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
-              <td><StatusBadge status={inv.status}/></td>
-              <td style={{color:T.textMuted,fontSize:12}}>{fmtAgo(inv.created_at)}</td>
-            </tr>)
-          }
+          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14,margin:"6px 0"}}/></td></tr>)
+          :invoices.map(inv=><tr key={inv.id} className="tr-hover" style={{cursor:"pointer"}}>
+            <td style={{fontWeight:600,color:T.textPrimary,fontFamily:F.mono,fontSize:12.5}}>{inv.invoice_number}</td>
+            <td style={{color:T.textPrimary}}>{inv.buyer_name||"—"}</td>
+            <td style={{fontWeight:600,color:T.textPrimary}}>{fmtEUR(inv.amount_gross)}</td>
+            <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11.5,fontWeight:600,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
+            <td><StatusBadge status={inv.status}/></td>
+            <td style={{color:T.textMuted,fontSize:12}}>{fmtAgo(inv.created_at)}</td>
+          </tr>)}
         </tbody>
       </table>
     </div>
@@ -2493,46 +2396,32 @@ function ArchiveScreen({notify}){
 // SETTINGS — Firmendaten, API, Plan, Team
 // ══════════════════════════════════════════════════════════════
 function SettingsScreen({user,org,notify}){
-  const[tab,setTab]   = useState('company');
-  const[saving,setSaving] = useState(false);
-  const[form,setForm] = useState({
-    name:             org?.name||'',
-    vat_id:           org?.vat_id||'',
-    address:          org?.address||'',
-    city:             org?.city||'',
-    zip:              org?.zip||'',
-    country:          org?.country||'DE',
-    iban:             org?.iban||'',
-    bic:              org?.bic||'',
-    email:            user?.email||'',
-    phone:            org?.phone||'',
-    default_format:   org?.default_format||'xrechnung',
-    default_delivery: org?.default_delivery||'email',
-    auto_archive:     org?.auto_archive!==false,
-    en16931_strict:   org?.en16931_strict!==false,
-    peppol_enabled:   org?.peppol_enabled||false,
-    vida_reporting:   org?.vida_reporting||false,
+  const[tab,setTab]=useState('company');
+  const[saving,setSaving]=useState(false);
+  const[form,setForm]=useState({
+    name:org?.name||'',
+    vat_id:'DE123456789',
+    address:'Musterstraße 1',
+    city:'Berlin',
+    zip:'10115',
+    country:'DE',
+    iban:'DE89 3704 0044 0532 0130 00',
+    email:user?.email||'',
+    phone:'',
+    default_format:'xrechnung',
+    default_delivery:'email',
+    auto_archive:true,
+    en16931_strict:true,
+    peppol_enabled:false,
+    vida_reporting:false,
   });
-
-  // Org-Daten beim Laden holen
-  useEffect(()=>{
-    api.getOrgSettings().then(d=>{
-      if(d) setForm(p=>({...p,...d}));
-    }).catch(()=>{});
-  },[]);
-
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
 
   const save=async()=>{
     setSaving(true);
-    try{
-      await api.saveSettings(form);
-      notify('Gespeichert ✓','success');
-    }catch(e){
-      notify(e.message||'Fehler beim Speichern','error');
-    }finally{
-      setSaving(false);
-    }
+    await new Promise(r=>setTimeout(r,800));
+    setSaving(false);
+    notify('Gespeichert ✓','success');
   };
 
   const TABS=[['company','Unternehmen'],['formats','Formate & Versand'],['api','API & Webhooks'],['team','Team'],['billing','Plan & Abrechnung']];
@@ -2573,16 +2462,7 @@ function SettingsScreen({user,org,notify}){
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                   <div><label className="label">E-Mail (Rechnungseingang)</label><input className="input" type="email" value={form.email} onChange={e=>upd('email',e.target.value)}/></div>
-                  <div><label className="label">Telefon</label><input className="input" value={form.phone} onChange={e=>upd('phone',e.target.value)} placeholder="+49 30 123456"/></div>
-                </div>
-                <div style={{background:T.bgSubtle,borderRadius:8,padding:'14px 16px',border:`1px solid ${T.bgBorder}`,marginTop:4}}>
-                  <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:12,letterSpacing:.4,textTransform:'uppercase'}}>Bankverbindung (für SEPA-Zahlungen)</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                    <div><label className="label">IBAN (eigene)</label><input className="input" value={form.iban} onChange={e=>upd('iban',e.target.value)} placeholder="DE89 3704 0044 0532 0130 00" style={{fontFamily:F.mono}}/><div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Wird als Auftraggeber in SEPA-Dateien verwendet</div></div>
-                    <div><label className="label">BIC / SWIFT</label><input className="input" value={form.bic} onChange={e=>upd('bic',e.target.value)} placeholder="COBADEFFXXX" style={{fontFamily:F.mono}}/><div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Optional — für ältere Banksysteme</div></div>
-                  </div>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}
+                  <div><label className="label">IBAN (für Zahlungsziel)</label><input className="input" value={form.iban} onChange={e=>upd('iban',e.target.value)}/></div>
                 </div>
               </div>
               <div style={{display:'flex',justifyContent:'flex-end',marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bgBorder}`}}>

@@ -39,6 +39,61 @@ export async function invoiceRoutes(fastify) {
     };
   });
 
+  // ── CASHFLOW STATS ───────────────────────────────────────────
+  // GET /v1/invoices/cashflow-stats
+  // Liefert: offene Forderungen, Verbindlichkeiten, 30-Tage-Prognose
+  fastify.get('/cashflow-stats', { preHandler: authMiddleware }, async (req) => {
+    const orgId = req.org.id;
+    const supabase = db._client; // Supabase direkt für komplexere Queries
+
+    // Offene Forderungen (Ausgang, nicht bezahlt)
+    const { data: outbound } = await supabase
+      .from('invoices')
+      .select('amount_gross, due_date, status')
+      .eq('org_id', orgId)
+      .not('status', 'eq', 'paid')
+      .not('status', 'eq', 'archived');
+
+    // Offene Verbindlichkeiten (Eingang, nicht bezahlt)
+    const { data: inbound } = await supabase
+      .from('inbound_invoices')
+      .select('amount, due_date, status')
+      .eq('org_id', orgId)
+      .neq('status', 'bezahlt');
+
+    const open_receivables  = (outbound||[]).reduce((s,i)=>s+(parseFloat(i.amount_gross)||0),0);
+    const open_payables     = (inbound||[]).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+
+    // Fällig diese Woche
+    const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate()+7);
+    const due_this_week_in  = (outbound||[]).filter(i=>i.due_date&&new Date(i.due_date)<=weekEnd).reduce((s,i)=>s+(parseFloat(i.amount_gross)||0),0);
+    const due_this_week_out = (inbound||[]).filter(i=>i.due_date&&new Date(i.due_date)<=weekEnd).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+
+    // 30-Tage Prognose: tagesweise Cashflow
+    const forecast = [];
+    let runningBalance = 0;
+    for(let d=0; d<30; d++){
+      const date = new Date(); date.setDate(date.getDate()+d);
+      const dateStr = date.toISOString().slice(0,10);
+      const dayIn  = (outbound||[]).filter(i=>i.due_date?.slice(0,10)===dateStr).reduce((s,i)=>s+(parseFloat(i.amount_gross)||0),0);
+      const dayOut = (inbound||[]).filter(i=>i.due_date?.slice(0,10)===dateStr).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+      runningBalance += dayIn - dayOut;
+      forecast.push({ date: dateStr, in: dayIn, out: dayOut, balance: runningBalance });
+    }
+
+    // Format-Verteilung aus Ausgangsrechnungen
+    const allFormats = (outbound||[]).map(i=>i.format).filter(Boolean);
+    const total = allFormats.length || 1;
+    const fmtCount = allFormats.reduce((acc,f)=>({...acc,[f]:(acc[f]||0)+1}),{});
+    const format_breakdown = [
+      ['XRechnung', Math.round((fmtCount['xrechnung']||0)/total*100), null],
+      ['ZUGFeRD',   Math.round((fmtCount['zugferd']||0)/total*100),   null],
+      ['Peppol',    Math.round((fmtCount['peppol']||0)/total*100),    null],
+    ];
+
+    return { open_receivables, open_payables, due_this_week_in, due_this_week_out, forecast, format_breakdown };
+  });
+
   // ── GET SINGLE INVOICE ───────────────────────────────────────
   fastify.get('/:id', { preHandler: authMiddleware }, async (req, reply) => {
     const invoice = await db.findInvoiceById(req.params.id, req.org.id);

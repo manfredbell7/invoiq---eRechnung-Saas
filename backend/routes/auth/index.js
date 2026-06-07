@@ -166,4 +166,48 @@ export async function authRoutes(fastify) {
       org: { id: org.id, name: org.name, slug: org.slug, plan: org.plan, plan_doc_limit: org.plan_doc_limit, plan_doc_used: org.plan_doc_used, api_key: org.api_key },
     };
   });
+
+  // ── SETTINGS GET ─────────────────────────────────────────────
+  fastify.get('/settings', { preHandler: authMiddleware }, async (req) => {
+    const { org } = req;
+    return {
+      name:             org.name             || '',
+      vat_id:           org.vat_id           || '',
+      address:          org.address          || '',
+      city:             org.city             || '',
+      zip:              org.zip              || '',
+      country:          org.country          || 'DE',
+      iban:             org.iban             || '',
+      bic:              org.bic              || '',
+      phone:            org.phone            || '',
+      default_format:   org.default_format   || 'xrechnung',
+      default_delivery: org.default_delivery || 'email',
+      auto_archive:     org.auto_archive     !== false,
+      en16931_strict:   org.en16931_strict   !== false,
+      peppol_enabled:   org.peppol_enabled   || false,
+      vida_reporting:   org.vida_reporting   || false,
+    };
+  });
+
+  // ── SETTINGS POST ────────────────────────────────────────────
+  fastify.post('/settings', { preHandler: authMiddleware }, async (req, reply) => {
+    const allowed = ['name','vat_id','address','city','zip','country','iban','bic','phone',
+                     'default_format','default_delivery','auto_archive','en16931_strict',
+                     'peppol_enabled','vida_reporting'];
+    const updates = {};
+    for(const key of allowed){
+      if(req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+    updates.updated_at = new Date().toISOString();
+
+    const supabase = db._client;
+    const { error } = await supabase
+      .from('organizations')
+      .update(updates)
+      .eq('id', req.org.id);
+    if(error) return reply.code(500).send({ error: 'Fehler beim Speichern' });
+
+    await db.createAuditLog({ org_id: req.org.id, user_id: req.user?.id, action: 'settings_updated', details: { fields: Object.keys(updates) } });
+    return { success: true };
+  });
 }
