@@ -497,7 +497,7 @@ function Landing({onEnter,onLegal=()=>{}}){
     {label:'Overview',content:(
       <div style={{padding:16}}>
         <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:12}}>
-          {[['41','Sent','▲ +8%',T.green],['28','Received','This week',T.accent],['1','Errors','Review',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
+          {[['41','Versendet','▲ +8%',T.green],['28','Empfangen','Diese Woche',T.accent],['1','Fehler','Prüfen',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
             <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'9px 10px',border:`1px solid ${T.bgBorder}`}}>
               <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{l}</div>
               <div style={{fontSize:20,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1}}>{v}</div>
@@ -736,7 +736,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                 <div style={{flex:1,overflow:'hidden'}}>
                   {heroTab===0&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
                     <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:7,marginBottom:10}}>
-                      {[['41','Sent','▲ +8%',T.green],['28','Received','This week',T.accent],['1','Errors','Review',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
+                      {[['41','Versendet','▲ +8%',T.green],['28','Empfangen','Diese Woche',T.accent],['1','Fehler','Prüfen',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
                         <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'8px 10px',border:`1px solid ${T.bgBorder}`}}>
                           <div style={{fontSize:9.5,color:T.textMuted,marginBottom:3}}>{l}</div>
                           <div style={{fontSize:18,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1}}>{v}</div>
@@ -1335,7 +1335,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
             <div style={{fontSize:11,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
           </div>
         </div>
-        <button className="btn btn-ghost btn-sm" style={{width:"100%",justifyContent:"center",fontSize:12}} onClick={onLogout}>Sign out</button>
+        <button className="btn btn-ghost btn-sm" style={{width:"100%",justifyContent:"center",fontSize:12}} onClick={onLogout}>Abmelden</button>
       </div>
     </aside>
     <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
@@ -1344,7 +1344,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
         <div style={{flex:1,maxWidth:300,margin:"0 20px"}}>
           <div style={{position:"relative"}}>
             <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:T.textMuted,fontSize:12}}>🔍</span>
-            <input style={{width:"100%",background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:7,padding:"6px 12px 6px 28px",fontSize:13,color:T.textPrimary,outline:"none",fontFamily:F.ui}} placeholder="Search..."/>
+            <input style={{width:"100%",background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:7,padding:"6px 12px 6px 28px",fontSize:13,color:T.textPrimary,outline:"none",fontFamily:F.ui}} placeholder="Suchen..."/>
           </div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -1581,7 +1581,7 @@ function Invoices({notify}){
   const[view,setView]=useState("list");const[filter,setFilter]=useState("all");
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   const[generating,setGenerating]=useState(false);const[xml,setXml]=useState(null);
-  const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",delivery_method:"email",seller_name:"Demo GmbH",seller_vat_id:"DE123456789",seller_address:"Musterstraße 1",seller_city:"Berlin",buyer_name:"",buyer_address:"",buyer_city:"",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
+  const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",delivery_method:"email",seller_name:"",seller_vat_id:"",seller_address:"",seller_city:"",buyer_name:"",buyer_address:"",buyer_city:"",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
   const load=useCallback(()=>{setLoading(true);api.listInvoices().then(d=>setInvoices(d.invoices||[])).catch(()=>setInvoices([])).finally(()=>setLoading(false));},[]);
   useEffect(()=>load(),[load]);
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1594,7 +1594,7 @@ function Invoices({notify}){
   if(view==="create") return(<div className="fi">
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>
       <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setXml(null);}}>← Back</button>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:400,color:T.textPrimary}}>New Document</h1><p style={{fontSize:12,color:T.textMuted}}>Generate an EN 16931-compliant e-invoice</p></div>
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:400,color:T.textPrimary}}>Neue Rechnung</h1><p style={{fontSize:12,color:T.textMuted}}>EN 16931-konforme E-Rechnung erstellen</p></div>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
       <div className="card" style={{padding:20}}>
@@ -1631,12 +1631,12 @@ function Invoices({notify}){
       </div>
     </div>
     <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginBottom:16}}>
-      <button className="btn btn-primary" style={{fontSize:13.5,padding:"10px 24px"}} onClick={generate} disabled={generating}>{generating?<><Spinner color="#fff" size={14}/>&nbsp;Generating...</>:"⚡ Generate XRechnung"}</button>
+      <button className="btn btn-primary" style={{fontSize:13.5,padding:"10px 24px"}} onClick={generate} disabled={generating}>{generating?<><Spinner color="#fff" size={14}/>&nbsp;Wird generiert...</>:"⚡ XRechnung generieren"}</button>
     </div>
     {xml&&<div className="card fi" style={{padding:20}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{display:"flex",gap:7}}><span className="badge badge-green">✓ EN 16931</span><span className="badge badge-green">GoBD ✓</span><span style={{fontSize:12.5,color:T.textMuted,fontFamily:F.mono}}>{xml.number}</span></div>
-        <button className="btn btn-primary btn-sm" onClick={()=>{const b=new Blob([xml.content],{type:"application/xml"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`${xml.number}.xml`;a.click();}}>↓ Download</button>
+        <button className="btn btn-primary btn-sm" onClick={()=>{const b=new Blob([xml.content],{type:"application/xml"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`${xml.number}.xml`;a.click();}}>↓ Herunterladen</button>
       </div>
       <pre style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:14,fontSize:11,color:T.textSecondary,overflow:"auto",maxHeight:300,lineHeight:1.6,fontFamily:F.mono}}>{xml.content.substring(0,1500)}…</pre>
     </div>}
@@ -1645,17 +1645,17 @@ function Invoices({notify}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
       <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Documents</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} documents total</p></div>
-      <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export started","success")}>↓ Export</button><button className="btn btn-primary btn-sm" onClick={()=>setView("create")}>+ New</button></div>
+      <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Exportieren</button><button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontSize:13.5,fontWeight:700}} onClick={()=>setView("create")}>+ Neue Rechnung</button></div>
     </div>
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
       {["all","delivered","validated","sent","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
-        {{all:"All",delivered:"Delivered",validated:"Validated",sent:"Sent",error:"Errors",archived:"Archived"}[s]}
+        {{all:"Alle",delivered:"Zugestellt",validated:"Validiert",sent:"Gesendet",error:"Fehler",archived:"Archiviert"}[s]}
         {s!=="all"&&<span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:"1px 5px",borderRadius:7,color:T.textMuted}}>{invoices.filter(i=>i.status===s).length}</span>}
       </button>)}
     </div>
     <div className="card">
       <table className="table">
-        <thead><tr>{["Number","Recipient","Amount","Format","Status","Actions"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <thead><tr>{["Nummer","Empfänger","Betrag","Format","Status","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
         <tbody>
           {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14}}/></td></tr>)
           :filtered.map(inv=><tr key={inv.id} className="tr-hover">
@@ -1665,11 +1665,11 @@ function Invoices({notify}){
             <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
             <td><StatusBadge status={inv.status}/></td>
             <td><div style={{display:"flex",gap:5}}>
-              {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>api.sendInvoice(inv.id,{delivery_method:"email"}).then(()=>{notify("Sent ✓","success");load();}).catch(e=>notify(e.message,"error"))}>Send</button>}
+              {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>api.sendInvoice(inv.id,{delivery_method:"email"}).then(()=>{notify("Gesendet ✓","success");load();}).catch(e=>notify(e.message,"error"))}>Send</button>}
               {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
             </div></td>
           </tr>)}
-          {!loading&&filtered.length===0&&<tr><td colSpan={6} style={{textAlign:"center",color:T.textMuted,padding:28,fontSize:13}}>No documents found</td></tr>}
+          {!loading&&filtered.length===0&&<tr><td colSpan={6} style={{textAlign:"center",color:T.textMuted,padding:28,fontSize:13}}>Keine Dokumente gefunden</td></tr>}
         </tbody>
       </table>
     </div>
@@ -1677,7 +1677,7 @@ function Invoices({notify}){
       <div className="modal fi" onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div style={{display:"flex",gap:7}}><span className="badge badge-green">EN 16931 ✓</span><span style={{fontSize:12,color:T.textMuted,fontFamily:F.mono}}>{xml.number}</span></div>
-          <div style={{display:"flex",gap:7}}><button className="btn btn-primary btn-sm" onClick={()=>{const b=new Blob([xml.content],{type:"application/xml"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`${xml.number}.xml`;a.click();}}>↓ Download</button><button className="btn btn-ghost btn-sm" onClick={()=>setXml(null)}>×</button></div>
+          <div style={{display:"flex",gap:7}}><button className="btn btn-primary btn-sm" onClick={()=>{const b=new Blob([xml.content],{type:"application/xml"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`${xml.number}.xml`;a.click();}}>↓ Herunterladen</button><button className="btn btn-ghost btn-sm" onClick={()=>setXml(null)}>×</button></div>
         </div>
         <pre style={{background:T.bgSubtle,borderRadius:8,padding:14,fontSize:10.5,color:T.textSecondary,overflow:"auto",maxHeight:420,lineHeight:1.55,fontFamily:F.mono}}>{xml.content}</pre>
       </div>
@@ -1719,7 +1719,7 @@ function ConnectorsView({notify}){
           <div style={{fontWeight:600,fontSize:13.5,color:T.textPrimary,marginBottom:3}}>{conn.name}</div>
           <div style={{fontSize:11.5,color:T.textMuted,marginBottom:9}}>{conn.method}</div>
           <span className="badge badge-gray" style={{fontSize:10.5}}>{conn.cat}</span>
-          <button className="btn btn-primary btn-sm" style={{width:"100%",justifyContent:"center",marginTop:12}}>Connect →</button>
+          <button className="btn btn-primary btn-sm" style={{width:"100%",justifyContent:"center",marginTop:12}}>Verbinden →</button>
         </div>)}
       </div>
     </div>
@@ -1735,7 +1735,7 @@ function ConnectorsView({notify}){
         </div>
         <div style={{display:"flex",gap:9,justifyContent:"flex-end"}}>
           <button className="btn btn-ghost" onClick={()=>setModal(null)}>Cancel</button>
-          <button className="btn btn-primary" onClick={()=>{setConnected(p=>({...p,[modal.type]:true}));notify(`${modal.name} connected ✓`,"success");setModal(null);}}>Save & Connect</button>
+          <button className="btn btn-primary" onClick={()=>{setConnected(p=>({...p,[modal.type]:true}));notify(`${modal.name} connected ✓`,"success");setModal(null);}}>Speichern & Verbinden</button>
         </div>
       </div>
     </div>}
@@ -2408,12 +2408,7 @@ function ArchiveScreen({notify}){
   useEffect(()=>{
     api.listInvoices('?archived=true&limit=30')
       .then(d=>setDocs(d.invoices||[]))
-      .catch(()=>setDocs([
-        {id:'a1',invoice_number:'INV-2025-041',buyer_name:'Müller GmbH',amount_gross:4284,format:'xrechnung',direction:'outbound',archived_at:'2025-05-27T09:14:05Z',archive_hash:'a7f3d9c2b1e8f4a2c9d1b3e7f5a8c2d4',xml_hash:'b2e8f1a4c7d9e3f6a1b5c8d2e4f7a9b3',status:'archived'},
-        {id:'a2',invoice_number:'EINGANG-2025-003',buyer_name:'invoiq GmbH',amount_gross:1290,format:'zugferd',direction:'inbound',archived_at:'2025-05-26T14:22:11Z',archive_hash:'c4f8b2e6a1d9c3f7b5e2a8d6c1f4b9e7',xml_hash:'d6a2c9f4b8e1d3a7c2f5b8e4a1d7c3f9',status:'archived'},
-        {id:'a3',invoice_number:'INV-2025-040',buyer_name:'TechVision AG',amount_gross:12900,format:'xrechnung',direction:'outbound',archived_at:'2025-05-25T16:08:33Z',archive_hash:'e8b4f1c6a3d9e2f7c1b6e4a9d3f8c2b7',xml_hash:'f1c5a8d3b7e2c6a4d8b1f5c9a2d6b4e8',status:'archived'},
-        {id:'a4',invoice_number:'INV-2025-039',buyer_name:'Stadtwerke Nord',amount_gross:780,format:'peppol',direction:'outbound',archived_at:'2025-05-24T11:44:17Z',archive_hash:'a3d7f2c8b5e1a9d4c7f3b8e6a2d1c5f9',xml_hash:'b6e4c1f8a5d2b9e3c7f1a4d8b2e5c9f3',status:'archived'},
-      ]))
+      .catch(()=>setDocs([]))
       .finally(()=>setLoading(false));
   },[]);
 
@@ -2497,7 +2492,7 @@ function ArchiveScreen({notify}){
                 <td style={{fontFamily:F.mono,fontSize:10,color:T.textMuted}}>{doc.archive_hash?.substring(0,12)}...</td>
                 <td onClick={e=>e.stopPropagation()}>
                   <div style={{display:'flex',gap:5}}>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>notify('Hash verifiziert ✓','success')}>Verify</button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>notify('Hash verifiziert ✓','success')}>Prüfen</button>
                     <button className="btn btn-outline btn-sm" onClick={()=>notify('Download gestartet','success')}>↓ XML</button>
                   </div>
                 </td>
@@ -2840,7 +2835,7 @@ function Placeholder({title,sub,icon="📋"}){return(<div className="fi"><h1 sty
 // ── ADMIN SHELL ───────────────────────────────────────────────
 function AdminShell({user,org,nav,setNav,onBack,children}){
   const isSuper=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
-  const items=isSuper?[{section:"Platform"},{key:"overview",icon:"·",label:"Overview"},{key:"allinvoices",icon:"·",label:"All Documents"},{key:"users",icon:"·",label:"Users"},{key:"revenue",icon:"·",label:"Revenue"},{section:"System"},{key:"peppol",icon:"·",label:"Peppol"},{key:"apilogs",icon:"·",label:"Audit Logs"}]:[{section:org?.name||"Company"},{key:"overview",icon:"▦",label:"Overview"},{key:"myinvoices",icon:"·",label:"Documents"},{key:"myusers",icon:"·",label:"Team"},{key:"billing",icon:"·",label:"Billing"}];
+  const items=isSuper?[{section:"Platform"},{key:"overview",icon:"·",label:"Übersicht"},{key:"allinvoices",icon:"·",label:"All Documents"},{key:"users",icon:"·",label:"Users"},{key:"revenue",icon:"·",label:"Revenue"},{section:"System"},{key:"peppol",icon:"·",label:"Peppol"},{key:"apilogs",icon:"·",label:"Audit Logs"}]:[{section:org?.name||"Company"},{key:"overview",icon:"▦",label:"Übersicht"},{key:"myinvoices",icon:"·",label:"Documents"},{key:"myusers",icon:"·",label:"Team"},{key:"billing",icon:"·",label:"Billing"}];
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
     <aside className="sidebar" style={{background:T.brand}}>
       <div style={{padding:"14px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.1)"}}><Wordmark size={20} inverted/><div style={{fontSize:10,color:"rgba(255,255,255,.35)",marginTop:7,fontWeight:700,letterSpacing:.5,textTransform:"uppercase"}}>{isSuper?"Super Admin":"Customer Admin"}</div></div>
@@ -2860,14 +2855,35 @@ function AdminShell({user,org,nav,setNav,onBack,children}){
 }
 
 function AdminOverview({notify,isSuper}){
-  const mrr=MOCK_ORGS.filter(o=>o.status==="active").reduce((s,o)=>s+o.mrr,0);
+  const [adminStats,setAdminStats] = React.useState(null);
+  const [orgs,setOrgs]             = React.useState([]);
+  const [loadingA,setLoadingA]     = React.useState(true);
+
+  React.useEffect(()=>{
+    // Echte Daten aus API laden
+    Promise.all([
+      api.get('/admin/stats').catch(()=>null),
+      api.get('/admin/orgs').catch(()=>null),
+    ]).then(([stats,orgsData])=>{
+      if(stats) setAdminStats(stats);
+      if(orgsData?.orgs) setOrgs(orgsData.orgs);
+    }).finally(()=>setLoadingA(false));
+  },[]);
+
+  const mrr = orgs.filter(o=>o.status==="active").reduce((s,o)=>s+(o.mrr||0),0);
+  const totalDocs = orgs.reduce((s,o)=>s+(o.plan_doc_used||0),0);
+  const openErrors = adminStats?.open_errors || 0;
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Platform Overview":"Overview"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super Admin":MOCK_ORGS[0].name}</p></div>
-      {isSuper&&<button className="btn btn-ghost btn-sm" onClick={()=>notify("Export started","success")}>↓ Export</button>}
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super-Admin":MOCK_ORGS[0].name}</p></div>
+      {isSuper&&<button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Export</button>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
-      {(isSuper?[["MRR",fmtEUR(mrr),"▲ +12%"],["Active Customers",MOCK_ORGS.filter(o=>o.status==="active").length,`${MOCK_ORGS.length} total`],["Documents",fmtNum(MOCK_ORGS.reduce((s,o)=>s+o.docs_used,0)),"This month"],["Open Errors",MOCK_INV.filter(i=>i.status==="error").length,"Review"]]:[["Docs Used",MOCK_ORGS[0].docs_used,"of "+MOCK_ORGS[0].docs_limit],["Users",MOCK_ORGS[0].users,"Active"],["Errors",MOCK_ORGS[0].errors,"Open"],["Compliance","98%","EN 16931 ✓"]]).map(([l,v,s])=>(
+      {loadingA?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:90}}><div className="skeleton" style={{height:"100%"}}/></div>)
+      :(isSuper
+        ?[["MRR",fmtEUR(mrr),"Monatlich wiederkehrend"],["Aktive Kunden",orgs.filter(o=>o.status==="active").length,`${orgs.length} gesamt`],["Dokumente",fmtNum(totalDocs),"Diesen Monat"],["Offene Fehler",openErrors,openErrors>0?"⚠ Prüfen":"✓ Alles OK"]]
+        :[["Dokumente",adminStats?.docs_used||0,"von "+(adminStats?.docs_limit||100)],["Nutzer",adminStats?.users||0,"Aktiv"],["Fehler",adminStats?.errors||0,"Offen"],["Compliance","100%","EN 16931 ✓"]]
+      ).map(([l,v,s])=>(
         <div key={l} className="card" style={{padding:18}}>
           <div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:9}}>{l}</div>
           <div className="stat-num" style={{fontSize:28}}>{v}</div>
@@ -2876,55 +2892,86 @@ function AdminOverview({notify,isSuper}){
       ))}
     </div>
     <div className="card">
-      <div style={{padding:"13px 18px",borderBottom:`1px solid ${T.bgBorder}`,fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Customers</div>
-      <table className="table"><thead><tr>{["Customer","Plan","Status","Docs","MRR"].map(h=><th key={h}>{h}</th>)}</tr></thead>
-        <tbody>{MOCK_ORGS.map(org=><tr key={org.id} className="tr-hover">
-          <td><div style={{display:"flex",alignItems:"center",gap:8}}><div className="avatar">{org.name[0]}</div><div><div style={{fontWeight:600,fontSize:13}}>{org.name}</div><div style={{fontSize:10.5,color:T.textMuted}}>{org.vat_id}</div></div></div></td>
-          <td><StatusBadge status={org.plan}/></td>
-          <td><StatusBadge status={org.status}/></td>
-          <td><div style={{fontSize:12.5}}>{fmtNum(org.docs_used)}/{fmtNum(org.docs_limit)}</div><div className="progress" style={{width:60,marginTop:3}}><div className="progress-fill" style={{width:`${Math.min(100,(org.docs_used/org.docs_limit)*100)}%`}}/></div></td>
-          <td style={{fontWeight:600}}>{fmtEUR(org.mrr)}</td>
-        </tr>)}</tbody>
-      </table>
+      <div style={{padding:"13px 18px",borderBottom:`1px solid ${T.bgBorder}`,fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Kunden</div>
+      {loadingA
+        ? <div style={{padding:20}}><div className="skeleton" style={{height:60}}/></div>
+        : orgs.length===0
+          ? <div style={{padding:28,textAlign:"center",color:T.textMuted,fontSize:13}}>Noch keine Kunden registriert.</div>
+          : <table className="table"><thead><tr>{["Kunde","Plan","Status","Dokumente","MRR"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+              <tbody>{orgs.map(org=><tr key={org.id} className="tr-hover">
+                <td><div style={{display:"flex",alignItems:"center",gap:8}}><div className="avatar">{(org.name||"?")[0]}</div><div><div style={{fontWeight:600,fontSize:13}}>{org.name}</div><div style={{fontSize:10.5,color:T.textMuted}}>{org.vat_id||org.slug}</div></div></div></td>
+                <td><StatusBadge status={org.plan}/></td>
+                <td><StatusBadge status={org.status||"active"}/></td>
+                <td><div style={{fontSize:12.5}}>{fmtNum(org.plan_doc_used||0)}/{fmtNum(org.plan_doc_limit||100)}</div><div className="progress" style={{width:60,marginTop:3}}><div className="progress-fill" style={{width:`${Math.min(100,((org.plan_doc_used||0)/(org.plan_doc_limit||100))*100)}%`}}/></div></td>
+                <td style={{fontWeight:600}}>{fmtEUR(org.mrr||0)}</td>
+              </tr>)}</tbody>
+            </table>
+      }
     </div>
   </div>);
 }
 
 function AdminDocs({notify}){
-  const[filter,setFilter]=useState("all");
-  const filtered=filter==="all"?MOCK_INV:MOCK_INV.filter(i=>i.status===filter);
+  const[filter,setFilter] = useState("all");
+  const[invoices,setInvoices] = useState([]);
+  const[loading,setLoading]   = useState(true);
+  useEffect(()=>{
+    api.listInvoices("?limit=50").then(d=>setInvoices(d.invoices||[])).catch(()=>setInvoices([])).finally(()=>setLoading(false));
+  },[]);
+  const filtered = filter==="all" ? invoices : invoices.filter(i=>i.status===filter);
   return(<div className="fi">
-    <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:18}}>All Documents</h1>
+    <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:18}}>Alle Dokumente</h1>
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
-      {["all","delivered","validated","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>{{all:"All",delivered:"Delivered",validated:"Validated",error:"Errors",archived:"Archived"}[s]}<span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:"1px 5px",borderRadius:7,color:T.textMuted}}>{s==="all"?MOCK_INV.length:MOCK_INV.filter(i=>i.status===s).length}</span></button>)}
+      {["all","delivered","validated","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
+        {{all:"Alle",delivered:"Zugestellt",validated:"Validiert",error:"Fehler",archived:"Archiviert"}[s]}
+        <span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:"1px 5px",borderRadius:7,color:T.textMuted}}>{s==="all"?invoices.length:invoices.filter(i=>i.status===s).length}</span>
+      </button>)}
     </div>
-    <div className="card"><table className="table"><thead><tr>{["Number","Customer","Amount","Format","Status","Date","Action"].map(h=><th key={h}>{h}</th>)}</tr></thead>
-      <tbody>{filtered.map(inv=><tr key={inv.id} className="tr-hover">
-        <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12}}>{inv.number}</td>
-        <td style={{fontSize:13}}>{inv.org}</td>
-        <td style={{fontWeight:600}}>{fmtEUR(inv.amount)}</td>
-        <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format.toUpperCase()}</span></td>
-        <td><StatusBadge status={inv.status}/></td>
-        <td style={{color:T.textMuted,fontSize:12}}>{inv.date}</td>
-        <td>{inv.status==="error"&&<button className="btn btn-danger btn-sm" onClick={()=>notify("Reviewing","info")}>Review</button>}</td>
-      </tr>)}</tbody>
+    <div className="card"><table className="table"><thead><tr>{["Nummer","Empfänger","Betrag","Format","Status","Datum","Aktion"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+      <tbody>
+        {loading?[1,2,3].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
+        :filtered.length===0?<tr><td colSpan={7} style={{textAlign:"center",padding:24,color:T.textMuted}}>Keine Dokumente</td></tr>
+        :filtered.map(inv=><tr key={inv.id} className="tr-hover">
+          <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12}}>{inv.invoice_number}</td>
+          <td style={{fontSize:13}}>{inv.buyer_name||"—"}</td>
+          <td style={{fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
+          <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
+          <td><StatusBadge status={inv.status}/></td>
+          <td style={{color:T.textMuted,fontSize:12}}>{inv.created_at?new Date(inv.created_at).toLocaleDateString("de-DE"):"—"}</td>
+          <td>{inv.status==="error"&&<button className="btn btn-danger btn-sm" onClick={()=>notify("Wird geprüft","info")}>Prüfen</button>}</td>
+        </tr>)}
+      </tbody>
     </table></div>
   </div>);
 }
 
 function AdminUsers({notify}){
-  const users=[{id:"u1",name:"Manfred Bell",email:"manfred@invoiq.io",role:"super_admin",org:"invoiq",status:"active",last:"Today"},{id:"u2",name:"Hans Müller",email:"hans@mueller.de",role:"owner",org:"Müller & Partner GmbH",status:"active",last:"Today"},{id:"u3",name:"Sarah Weber",email:"s.weber@techvision.de",role:"admin",org:"TechVision AG",status:"active",last:"Yesterday"},{id:"u4",name:"Klaus Bauer",email:"k.bauer@logistik.de",role:"member",org:"Bauer Logistik KG",status:"active",last:"3 days ago"}];
+  const[users,setUsers]   = useState([]);
+  const[loading,setLoading] = useState(true);
+  useEffect(()=>{
+    api.get("/admin/users").then(d=>setUsers(d.users||[])).catch(()=>setUsers([])).finally(()=>setLoading(false));
+  },[]);
   return(<div className="fi">
-    <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Users</h1><button className="btn btn-primary btn-sm" onClick={()=>notify("Invitation sent","success")}>+ Invite</button></div>
-    <div className="card"><table className="table"><thead><tr>{["User","Role","Organization","Status","Last Login","Actions"].map(h=><th key={h}>{h}</th>)}</tr></thead>
-      <tbody>{users.map(u=><tr key={u.id} className="tr-hover">
-        <td><div style={{display:"flex",alignItems:"center",gap:8}}><div className="avatar">{u.name[0]}</div><div><div style={{fontWeight:600,fontSize:13}}>{u.name}</div><div style={{fontSize:10.5,color:T.textMuted}}>{u.email}</div></div></div></td>
-        <td><StatusBadge status={u.role}/></td>
-        <td style={{fontSize:13,color:T.textSecondary}}>{u.org}</td>
-        <td><StatusBadge status={u.status}/></td>
-        <td style={{fontSize:12,color:T.textMuted}}>{u.last}</td>
-        <td><div style={{display:"flex",gap:5}}><button className="btn btn-ghost btn-sm" onClick={()=>notify("Reset sent","success")}>Reset</button>{u.role!=="super_admin"&&<button className="btn btn-danger btn-sm" onClick={()=>notify(`${u.name} suspended`,"error")}>Suspend</button>}</div></td>
-      </tr>)}</tbody>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}>
+      <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Nutzer</h1>
+      <button className="btn btn-primary btn-sm" onClick={()=>notify("Einladung gesendet ✓","success")}>+ Einladen</button>
+    </div>
+    <div className="card"><table className="table"><thead><tr>{["Nutzer","Rolle","Organisation","Status","Letzter Login","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+      <tbody>
+        {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14}}/></td></tr>)
+        :users.length===0?<tr><td colSpan={6} style={{textAlign:"center",padding:24,color:T.textMuted}}>Keine Nutzer gefunden</td></tr>
+        :users.map(u=><tr key={u.id} className="tr-hover">
+          <td><div style={{display:"flex",alignItems:"center",gap:8}}><div className="avatar">{(u.full_name||u.email||"?")[0]}</div><div><div style={{fontWeight:600,fontSize:13}}>{u.full_name||"—"}</div><div style={{fontSize:10.5,color:T.textMuted}}>{u.email}</div></div></div></td>
+          <td><StatusBadge status={u.role}/></td>
+          <td style={{fontSize:13,color:T.textSecondary}}>{u.org_name||"—"}</td>
+          <td><StatusBadge status={u.status||"active"}/></td>
+          <td style={{fontSize:12,color:T.textMuted}}>{u.last_login_at?new Date(u.last_login_at).toLocaleDateString("de-DE"):"—"}</td>
+          <td><div style={{display:"flex",gap:5}}>
+            <button className="btn btn-ghost btn-sm" onClick={()=>notify("Passwort-Reset gesendet ✓","success")}>Reset</button>
+            {u.role!=="super_admin"&&<button className="btn btn-danger btn-sm" onClick={()=>notify(`${u.full_name} gesperrt`,"error")}>Sperren</button>}
+          </div></td>
+        </tr>)}
+      </tbody>
     </table></div>
   </div>);
 }
@@ -2952,43 +2999,35 @@ function AdminRevenue(){
 // STEUERBERATER PORTAL — Multi-Mandanten Dashboard
 // ══════════════════════════════════════════════════════════════
 
-// Mock mandanten data
-const MOCK_MANDANTEN = [
-  { id:'m1', name:'Müller Bäckerei GmbH', vat:'DE123456789', plan:'starter', status:'active', docs_this_month:14, docs_limit:100, last_invoice:'2025-05-27', compliance:98, erp:'Lexware', open_errors:0, pending_inbound:2, contact:'hans@mueller-baeckerei.de' },
-  { id:'m2', name:'TechVision AG', vat:'DE987654321', plan:'business', status:'active', docs_this_month:284, docs_limit:1000, last_invoice:'2025-05-27', compliance:100, erp:'SAP S/4HANA', open_errors:0, pending_inbound:0, contact:'it@techvision.de' },
-  { id:'m3', name:'Stadtwerke Süd GmbH', vat:'DE456789123', plan:'starter', status:'active', docs_this_month:67, docs_limit:100, last_invoice:'2025-05-24', compliance:94, erp:'DATEV', open_errors:1, pending_inbound:5, contact:'buchhaltung@stadtwerke.de' },
-  { id:'m4', name:'Bauer Logistik KG', vat:'DE321654987', plan:'starter', status:'trial', docs_this_month:12, docs_limit:100, last_invoice:'2025-05-22', compliance:100, erp:'Lexware', open_errors:0, pending_inbound:1, contact:'k.bauer@logistik.de' },
-  { id:'m5', name:'Nord Express GmbH', vat:'DE789123456', plan:'starter', status:'active', docs_this_month:38, docs_limit:100, last_invoice:'2025-05-26', compliance:97, erp:'DATEV', open_errors:0, pending_inbound:0, contact:'info@nordexpress.de' },
-  { id:'m6', name:'Handwerk Schmidt', vat:'DE246813579', plan:'starter', status:'active', docs_this_month:8, docs_limit:100, last_invoice:'2025-05-20', compliance:100, erp:'Manuell', open_errors:0, pending_inbound:3, contact:'schmidt@handwerk.de' },
-];
+// MOCK_MANDANTEN entfernt — Kanzlei-Portal lädt echte Daten aus API
 
 const MOCK_RECENT_ACTIVITY = [
-  { mandant:'TechVision AG', action:'XRechnung generiert', detail:'INV-2025-1840 · 22.900 €', time:'vor 12 Min.', type:'success' },
-  { mandant:'Stadtwerke Süd GmbH', action:'Validierungsfehler', detail:'Pflichtfeld LegalEntityID fehlt', time:'vor 28 Min.', type:'error' },
-  { mandant:'Müller Bäckerei GmbH', action:'Inbound empfangen', detail:'Lieferant Großhandel · 1.290 €', time:'vor 1 Std.', type:'info' },
-  { mandant:'Nord Express GmbH', action:'Peppol zugestellt', detail:'INV-2025-038 · 8.440 €', time:'vor 2 Std.', type:'success' },
-  { mandant:'Bauer Logistik KG', action:'ERP-Buchung', detail:'Kreditor 10042 in Lexware gebucht', time:'vor 3 Std.', type:'success' },
-  { mandant:'Handwerk Schmidt', action:'Inbound empfangen', detail:'Material Lieferant · 340 €', time:'vor 4 Std.', type:'info' },
 ];
 
 function SteuerberaterPortal({ user, notify, onBack }) {
-  const [view, setView] = useState('overview'); // overview | mandant | add
-  const [selected, setSelected] = useState(null);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [view, setView]           = useState('overview');
+  const [selected, setSelected]   = useState(null);
+  const [search, setSearch]       = useState('');
+  const [filter, setFilter]       = useState('all');
   const [mandantTab, setMandantTab] = useState('overview');
   const [inviteModal, setInviteModal] = useState(false);
+  const [mandanten, setMandanten] = useState([]);
+  const [loading, setLoading]     = useState(true);
 
-  const filtered = MOCK_MANDANTEN.filter(m => {
-    const matchSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) || m.vat.includes(search);
-    const matchFilter = filter === 'all' || m.status === filter || (filter === 'errors' && m.open_errors > 0) || (filter === 'limit' && m.docs_this_month / m.docs_limit > 0.8);
+  useEffect(()=>{
+    api.get('/admin/orgs').then(d=>setMandanten(d.orgs||[])).catch(()=>setMandanten([])).finally(()=>setLoading(false));
+  },[]);
+
+  const filtered = mandanten.filter(m => {
+    const matchSearch = !search || (m.name||'').toLowerCase().includes(search.toLowerCase()) || (m.vat_id||'').includes(search);
+    const matchFilter = filter === 'all' || m.status === filter || (filter === 'errors' && (m.open_errors||0) > 0);
     return matchSearch && matchFilter;
   });
 
-  const totalDocs = MOCK_MANDANTEN.reduce((s, m) => s + m.docs_this_month, 0);
-  const totalErrors = MOCK_MANDANTEN.reduce((s, m) => s + m.open_errors, 0);
-  const totalPending = MOCK_MANDANTEN.reduce((s, m) => s + m.pending_inbound, 0);
-  const avgCompliance = Math.round(MOCK_MANDANTEN.reduce((s, m) => s + m.compliance, 0) / MOCK_MANDANTEN.length);
+  const totalDocs     = mandanten.reduce((s, m) => s + (m.plan_doc_used||0), 0);
+  const totalErrors   = mandanten.reduce((s, m) => s + (m.open_errors||0), 0);
+  const totalPending  = mandanten.reduce((s, m) => s + (m.pending_inbound||0), 0);
+  const avgCompliance = mandanten.length ? Math.round(mandanten.reduce((s, m) => s + (m.compliance||100), 0) / mandanten.length) : 100;
 
   // ── MANDANT DETAIL VIEW ──────────────────────────────────────
   if (view === 'mandant' && selected) {
@@ -3057,7 +3096,7 @@ function SteuerberaterPortal({ user, notify, onBack }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div className="card" style={{ padding: 18 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 14 }}>Letzte Aktivität</div>
-              {MOCK_RECENT_ACTIVITY.filter(a => a.mandant === m.name).slice(0, 4).map((a, i) => (
+              {[].map((a, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: i < 3 ? `1px solid ${T.bgSubtle}` : 'none', alignItems: 'flex-start' }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: a.type === 'success' ? T.green : a.type === 'error' ? T.red : T.accent, flexShrink: 0, marginTop: 4 }} />
                   <div style={{ flex: 1 }}>
@@ -3067,7 +3106,7 @@ function SteuerberaterPortal({ user, notify, onBack }) {
                   <div style={{ fontSize: 10.5, color: T.textMuted, flexShrink: 0 }}>{a.time}</div>
                 </div>
               ))}
-              {MOCK_RECENT_ACTIVITY.filter(a => a.mandant === m.name).length === 0 && (
+              {true && (
                 <div style={{ fontSize: 13, color: T.textMuted, textAlign: 'center', padding: 20 }}>Noch keine Aktivität</div>
               )}
             </div>
