@@ -109,7 +109,7 @@ export async function invoiceRoutes(fastify) {
     schema: {
       body: {
         type: 'object',
-        required: ['invoice_number', 'invoice_date', 'seller_name', 'buyer_name', 'line_items'],
+        required: ['invoice_number', 'invoice_date', 'buyer_name', 'line_items'],
         properties: {
           invoice_number: { type: 'string' },
           invoice_date: { type: 'string' },
@@ -152,21 +152,49 @@ export async function invoiceRoutes(fastify) {
     }
   }, async (req, reply) => {
     const body = req.body;
+    const org  = req.org;
+
+    // Org-Daten als Absender-Fallback wenn Felder leer
+    const seller_name    = body.seller_name    || org.name    || '';
+    const seller_vat_id  = body.seller_vat_id  || org.vat_id  || '';
+    const seller_address = body.seller_address || org.address || '';
+    const seller_city    = body.seller_city    || org.city    || '';
+    const seller_iban    = body.seller_iban    || org.iban    || '';
+
+    if (!seller_name) {
+      return reply.code(400).send({
+        error: 'Firmenname fehlt. Bitte unter Einstellungen → Unternehmen Ihren Firmennamen eintragen.',
+      });
+    }
+    if (!body.buyer_name) {
+      return reply.code(400).send({
+        error: 'Empfänger fehlt. Bitte das Feld "Firma" beim Empfänger ausfüllen.',
+      });
+    }
 
     // Calculate amounts
-    const net = (body.line_items || []).reduce((s, i) => s + (i.quantity * i.unit_price), 0);
+    const net    = (body.line_items || []).reduce((s, i) => s + (i.quantity * i.unit_price), 0);
     const vatAmt = (body.line_items || []).reduce((s, i) => s + (i.quantity * i.unit_price * ((i.vat_rate || 19) / 100)), 0);
-    const gross = net + vatAmt;
+    const gross  = net + vatAmt;
+
+    if (gross <= 0) {
+      return reply.code(400).send({ error: 'Betrag muss größer als 0 sein.' });
+    }
 
     const invoiceData = {
       ...body,
-      org_id: req.org.id,
-      amount_net: parseFloat(net.toFixed(2)),
-      amount_vat: parseFloat(vatAmt.toFixed(2)),
+      seller_name,
+      seller_vat_id,
+      seller_address,
+      seller_city,
+      seller_iban,
+      org_id:       org.id,
+      amount_net:   parseFloat(net.toFixed(2)),
+      amount_vat:   parseFloat(vatAmt.toFixed(2)),
       amount_gross: parseFloat(gross.toFixed(2)),
-      status: 'draft',
-      direction: body.direction || 'outbound',
-      created_by: req.user?.id,
+      status:       'draft',
+      direction:    body.direction || 'outbound',
+      created_by:   req.user?.id,
     };
 
     // EN 16931 Validation

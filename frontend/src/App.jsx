@@ -1588,7 +1588,7 @@ function Invoices({notify}){
   const updItem=(i,k,v)=>{const a=[...form.line_items];a[i]={...a[i],[k]:k==="description"?v:parseFloat(v)||0};upd("line_items",a);};
   const net=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price,0);
   const vat=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price*(i.vat_rate/100),0);
-  const generate=async()=>{if(!form.buyer_name){notify("Empfänger fehlt","error");return;}if(!form.line_items||form.line_items.every(i=>!i.description)){notify("Mindestens eine Position erforderlich","error");return;}if(net<=0){notify("Betrag muss größer als 0 sein","error");return;}setGenerating(true);try{const inv=await api.createInvoice(form);const xmlContent=await api.getXML(inv.id);setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});notify("XRechnung generiert · EN 16931 ✓","success");load();}catch(e){const msg=e.message.includes("erreichbar")?"Server nicht erreichbar – Railway startet, bitte 30 Sek. warten und erneut versuchen":e.message.includes("401")?"Nicht autorisiert – bitte neu einloggen":e.message.includes("400")?"Ungültige Rechnungsdaten – bitte Felder prüfen":e.message.includes("500")?"Serverfehler – bitte Support kontaktieren":e.message;notify(msg,"error");}setGenerating(false);};
+  const generate=async()=>{if(!form.buyer_name){notify("Empfänger fehlt","error");return;}if(!form.line_items||form.line_items.every(i=>!i.description)){notify("Mindestens eine Position erforderlich","error");return;}if(net<=0){notify("Betrag muss größer als 0 sein","error");return;}setGenerating(true);try{const inv=await api.createInvoice(form);const xmlContent=await api.getXML(inv.id);setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});notify("XRechnung generiert · EN 16931 ✓","success");load();}catch(e){const msg=e.message.includes("erreichbar")?"Server nicht erreichbar – Railway startet, bitte 30 Sek. warten und erneut versuchen":e.message.includes("401")?"Nicht autorisiert – bitte neu einloggen":e.message.includes("400")?"Ungültige Rechnungsdaten – bitte Felder prüfen":e.message.includes("500")?"Serverfehler – Railway Logs prüfen":e.message.includes("seller")||e.message.includes("buyer")||e.message.includes("required")?"Pflichtfeld fehlt – Absender und Empfänger müssen ausgefüllt sein":e.message;notify(msg,"error");}setGenerating(false);};
   const filtered=filter==="all"?invoices:invoices.filter(i=>i.status===filter);
 
   if(view==="create") return(<div className="fi">
@@ -1598,35 +1598,35 @@ function Invoices({notify}){
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
       <div className="card" style={{padding:20}}>
-        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Invoice Details</div>
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Rechnungsdetails</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
-          <div><label className="label">Number</label><input className="input" value={form.invoice_number} onChange={e=>upd("invoice_number",e.target.value)}/></div>
+          <div><label className="label">Nummer</label><input className="input" value={form.invoice_number} onChange={e=>upd("invoice_number",e.target.value)}/></div>
           <div><label className="label">Format</label><select className="select" value={form.format} onChange={e=>upd("format",e.target.value)}>{["xrechnung","zugferd","peppol","facturx"].map(f=><option key={f} value={f}>{f.toUpperCase()}</option>)}</select></div>
-          <div><label className="label">Issue Date</label><input className="input" type="date" value={form.invoice_date} onChange={e=>upd("invoice_date",e.target.value)}/></div>
-          <div><label className="label">Due Date</label><input className="input" type="date" value={form.due_date} onChange={e=>upd("due_date",e.target.value)}/></div>
+          <div><label className="label">Rechnungsdatum</label><input className="input" type="date" value={form.invoice_date} onChange={e=>upd("invoice_date",e.target.value)}/></div>
+          <div><label className="label">Fälligkeitsdatum</label><input className="input" type="date" value={form.due_date} onChange={e=>upd("due_date",e.target.value)}/></div>
         </div>
       </div>
       <div className="card" style={{padding:20}}>
-        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Recipient</div>
-        {[["buyer_name","Company"],["buyer_address","Street"],["buyer_city","City"],["buyer_email","Email"]].map(([k,l])=><div key={k} style={{marginBottom:9}}><label className="label">{l}</label><input className="input" value={form[k]} onChange={e=>upd(k,e.target.value)} placeholder={l}/></div>)}
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Empfänger</div>
+        {[["buyer_name","Firma"],["buyer_address","Straße"],["buyer_city","Stadt"],["buyer_email","Email"]].map(([k,l])=><div key={k} style={{marginBottom:9}}><label className="label">{l}</label><input className="input" value={form[k]} onChange={e=>upd(k,e.target.value)} placeholder={l}/></div>)}
       </div>
     </div>
     <div className="card" style={{padding:20,marginBottom:12}}>
-      <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Line Items</div>
-      <div style={{display:"grid",gridTemplateColumns:"3fr 70px 130px 80px 32px",gap:7,marginBottom:8}}>{["Description","Qty","Unit Price","VAT",""].map((h,i)=><div key={i} style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.3,textTransform:"uppercase"}}>{h}</div>)}</div>
+      <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Positionen</div>
+      <div style={{display:"grid",gridTemplateColumns:"3fr 70px 130px 80px 32px",gap:7,marginBottom:8}}>{["Beschreibung","Menge","Einzelpreis","MwSt.",""].map((h,i)=><div key={i} style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.3,textTransform:"uppercase"}}>{h}</div>)}</div>
       {form.line_items.map((item,idx)=><div key={idx} style={{display:"grid",gridTemplateColumns:"3fr 70px 130px 80px 32px",gap:7,marginBottom:6}}>
-        <input className="input" value={item.description} onChange={e=>updItem(idx,"description",e.target.value)} placeholder="Service description..."/>
+        <input className="input" value={item.description} onChange={e=>updItem(idx,"description",e.target.value)} placeholder="Leistungsbeschreibung..."/>
         <input className="input" type="number" min="0" value={item.quantity} onChange={e=>updItem(idx,"quantity",e.target.value)}/>
         <input className="input" type="number" min="0" step="0.01" value={item.unit_price} onChange={e=>updItem(idx,"unit_price",e.target.value)}/>
         <select className="select" value={item.vat_rate} onChange={e=>updItem(idx,"vat_rate",e.target.value)}><option value={19}>19%</option><option value={7}>7%</option><option value={0}>0%</option></select>
         <button onClick={()=>upd("line_items",form.line_items.filter((_,j)=>j!==idx))} style={{background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:7,color:T.red,cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
       </div>)}
-      <button onClick={()=>upd("line_items",[...form.line_items,{description:"",quantity:1,unit_price:0,vat_rate:19}])} style={{width:"100%",padding:"7px",border:`1.5px dashed ${T.bgBorder}`,background:"transparent",color:T.accent,cursor:"pointer",borderRadius:7,marginTop:7,fontSize:13,fontFamily:F.ui,fontWeight:500}}>+ Add line item</button>
+      <button onClick={()=>upd("line_items",[...form.line_items,{description:"",quantity:1,unit_price:0,vat_rate:19}])} style={{width:"100%",padding:"7px",border:`1.5px dashed ${T.bgBorder}`,background:"transparent",color:T.accent,cursor:"pointer",borderRadius:7,marginTop:7,fontSize:13,fontFamily:F.ui,fontWeight:500}}>+ Position hinzufügen</button>
       <div style={{display:"flex",justifyContent:"flex-end",marginTop:14}}>
         <div style={{background:T.bgSubtle,borderRadius:9,padding:"12px 16px",minWidth:220,border:`1px solid ${T.bgBorder}`}}>
-          {[["Net",fmtEUR(net)],["VAT",fmtEUR(vat)]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",gap:32,marginBottom:7,fontSize:13,color:T.textMuted}}><span>{l}</span><span>{v}</span></div>)}
+          {[["Netto",fmtEUR(net)],["MwSt.",fmtEUR(vat)]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",gap:32,marginBottom:7,fontSize:13,color:T.textMuted}}><span>{l}</span><span>{v}</span></div>)}
           <div style={{height:1,background:T.bgBorder,margin:"7px 0"}}/>
-          <div style={{display:"flex",justifyContent:"space-between",gap:32,fontFamily:F.ui,fontSize:18,color:T.textPrimary,fontWeight:400}}><span>Total</span><span>{fmtEUR(net+vat)}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",gap:32,fontFamily:F.ui,fontSize:18,color:T.textPrimary,fontWeight:400}}><span>Gesamt</span><span>{fmtEUR(net+vat)}</span></div>
         </div>
       </div>
     </div>
@@ -1665,7 +1665,7 @@ function Invoices({notify}){
             <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
             <td><StatusBadge status={inv.status}/></td>
             <td><div style={{display:"flex",gap:5}}>
-              {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>api.sendInvoice(inv.id,{delivery_method:"email"}).then(()=>{notify("Gesendet ✓","success");load();}).catch(e=>notify(e.message,"error"))}>Send</button>}
+              {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>api.sendInvoice(inv.id,{delivery_method:"email"}).then(()=>{notify("Gesendet ✓","success");load();}).catch(e=>notify(e.message,"error"))}>Senden</button>}
               {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
             </div></td>
           </tr>)}
@@ -2063,13 +2063,13 @@ function DokumentenScanner({ notify }) {
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(min(260px,100%),1fr))',gap:12}}>
             <div className="card" style={{padding:18}}>
               <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:'uppercase',marginBottom:12}}>Rechnungssteller</div>
-              {[['seller_name','Name'],['seller_vat_id','USt-IdNr.'],['seller_address','Adresse'],['seller_city','Stadt']].map(([k,l])=>(
+              {[['seller_name','Firmenname'],['seller_vat_id','USt-IdNr.'],['seller_address','Straße'],['seller_city','Stadt']].map(([k,l])=>(
                 <div key={k} style={{marginBottom:9}}><label className="label">{l}</label><input className="input" value={editResult[k]||''} onChange={e=>upd(k,e.target.value)}/></div>
               ))}
             </div>
             <div className="card" style={{padding:18}}>
               <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:'uppercase',marginBottom:12}}>Empfänger</div>
-              {[['buyer_name','Name'],['buyer_address','Adresse'],['buyer_city','Stadt']].map(([k,l])=>(
+              {[['buyer_name','Firmenname'],['buyer_address','Straße'],['buyer_city','Stadt']].map(([k,l])=>(
                 <div key={k} style={{marginBottom:9}}><label className="label">{l}</label><input className="input" value={editResult[k]||''} onChange={e=>upd(k,e.target.value)}/></div>
               ))}
             </div>
