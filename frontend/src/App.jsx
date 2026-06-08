@@ -887,16 +887,17 @@ function Landing({onEnter,onLegal=()=>{}}){
       </div>
     </section>
 
-    {/* INTEGRATIONS MARQUEE */}
-    <section style={{padding:'48px 0',borderTop:`1px solid rgba(99,91,255,.12)`,borderBottom:`1px solid rgba(99,91,255,.12)`,background:'#07102A',overflow:'hidden',position:'relative'}}>
+    {/* INTEGRATIONS MARQUEE — coming soon */}
+    <section style={{padding:'48px 0',borderTop:`1px solid rgba(99,91,255,.12)`,borderBottom:`1px solid rgba(99,91,255,.12)`,background:'#07102A',overflow:'hidden',position:'relative',opacity:.5,filter:'grayscale(.4)'}}>
       <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(99,91,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(99,91,255,.07) 1px,transparent 1px)',backgroundSize:'40px 40px',pointerEvents:'none'}}/>
-      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:'60%',height:'100px',background:'radial-gradient(ellipse,rgba(99,91,255,.15) 0%,transparent 70%)',pointerEvents:'none'}}/>
-      <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Kompatibel mit führenden ERP-Systemen</p>
-      <div className="marquee-wrap" style={{position:'relative'}}>
-        <div className="marquee-track">
+      {/* Coming Soon Banner */}
+      <div style={{position:'absolute',top:10,right:20,zIndex:10,background:'rgba(245,158,11,.15)',border:'1px solid rgba(245,158,11,.4)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:700,color:'#f59e0b',letterSpacing:.5}}>⚙ ERP-Konnektoren — In Entwicklung</div>
+      <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Kompatibel mit führenden ERP-Systemen <span style={{fontSize:10,fontWeight:600,color:'#f59e0b',marginLeft:8}}>— demnächst</span></p>
+      <div className="marquee-wrap" style={{position:'relative',pointerEvents:'none'}}>
+        <div className="marquee-track" style={{animationPlayState:'paused'}}>
           {[...integrations,...integrations].map((n,i)=>(
-            <div key={i} className="integration-logo" style={{color:'rgba(255,255,255,.55)',background:'rgba(255,255,255,.04)',borderColor:'rgba(255,255,255,.08)'}}>
-              <span style={{width:5,height:5,borderRadius:'50%',background:'rgba(99,91,255,.7)',display:'inline-block',flexShrink:0}}/>
+            <div key={i} className="integration-logo" style={{color:'rgba(255,255,255,.35)',background:'rgba(255,255,255,.03)',borderColor:'rgba(255,255,255,.06)'}}>
+              <span style={{width:5,height:5,borderRadius:'50%',background:'rgba(99,91,255,.4)',display:'inline-block',flexShrink:0}}/>
               {n}
             </div>
           ))}
