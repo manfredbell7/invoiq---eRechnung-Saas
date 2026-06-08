@@ -377,42 +377,61 @@ export async function invoiceRoutes(fastify) {
 
   // ── SEND INVOICE VIA EMAIL ───────────────────────────────────
   fastify.post('/:id/send-email', { preHandler: authMiddleware }, async (req, reply) => {
-    const { recipient_email, message } = req.body || {};
+    const { recipient_email, message, sender_copy = false } = req.body || {};
     if (!recipient_email) return reply.code(400).send({ error: 'Empfänger-E-Mail fehlt' });
 
     const invoice = await db.findInvoiceById(req.params.id, req.org.id);
     if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
 
-    // Get XML
     const { data: xmlRow } = await import('../../config/database.js').then(m =>
       m.supabase.from('invoices').select('xml_content').eq('id', invoice.id).single()
     );
     const xmlContent = xmlRow?.xml_content || generateXML(invoice, invoice.format || 'xrechnung');
     const xmlBuffer = Buffer.from(xmlContent, 'utf-8');
 
-    // Send via Resend
     const { sendInvoiceEmail } = await import('../../services/email.js');
+
+    // Rechnung an Empfänger senden
     await sendInvoiceEmail({
       to: recipient_email,
       invoice: {
         invoice_number: invoice.invoice_number,
-        customer_name: invoice.buyer_name,
-        total_amount: invoice.amount_gross,
-        invoice_date: invoice.invoice_date,
-        due_date: invoice.due_date,
+        customer_name:  invoice.buyer_name,
+        total_amount:   invoice.amount_gross,
+        invoice_date:   invoice.invoice_date,
+        due_date:       invoice.due_date,
         custom_message: message,
       },
       xmlBuffer,
     });
 
-    // Update status
-    await db.updateInvoice(invoice.id, { status: 'delivered', delivery_method: 'email', recipient_email });
+    // Kopie an Absender (Org-E-Mail)
+    if (sender_copy && req.org) {
+      const { data: orgUser } = await supabase
+        .from('users').select('email').eq('org_id', req.org.id).eq('role', 'owner').single();
+      const copyTo = orgUser?.email || req.user?.email;
+      if (copyTo) {
+        await sendInvoiceEmail({
+          to: copyTo,
+          invoice: {
+            invoice_number: invoice.invoice_number,
+            customer_name:  invoice.buyer_name,
+            total_amount:   invoice.amount_gross,
+            invoice_date:   invoice.invoice_date,
+            due_date:       invoice.due_date,
+            custom_message: `[KOPIE] Rechnung wurde an ${recipient_email} gesendet.`,
+          },
+          xmlBuffer,
+        });
+      }
+    }
+
+    await db.updateInvoice(invoice.id, {
+      status: 'delivered', delivery_method: 'email', recipient_email,
+    });
     await db.createAuditLog({
-      org_id: req.org.id,
-      user_id: req.user?.id,
-      invoice_id: invoice.id,
-      action: 'sent_email',
-      details: { recipient_email },
+      org_id: req.org.id, user_id: req.user?.id, invoice_id: invoice.id,
+      action: 'sent_email', details: { recipient_email, sender_copy },
     });
 
     return { success: true, message: `Rechnung an ${recipient_email} gesendet` };

@@ -65,7 +65,7 @@ const api={
   createInvoice:(b)=>api.post("/invoices",b),sendInvoice:(id,b)=>api.post(`/invoices/${id}/send`,b),
   getXML:(id)=>fetch(`${API_BASE}/invoices/${id}/xml`,{headers:{Authorization:`Bearer ${api._token}`}}).then(r=>r.text()),
   // E-Mail Ausgang
-  sendInvoiceEmail:(id,recipient_email,message)=>api.post(`/invoices/${id}/send-email`,{recipient_email,message}),
+  sendInvoiceEmail:(id,recipient_email,message,sender_copy=false)=>api.post(`/invoices/${id}/send-email`,{recipient_email,message,sender_copy}),
   // Peppol
   sendViaPeppol:(id,peppol_id)=>api.post(`/invoices/${id}/send-peppol`,{peppol_id}),
   lookupPeppol:(peppol_id)=>api.get(`/invoices/peppol/lookup?peppol_id=${encodeURIComponent(peppol_id)}`),
@@ -485,7 +485,7 @@ function Landing({onEnter,onLegal=()=>{}}){
     {num:'INV-2025-037',co:'Nord Express',amt:'8.440 €',st:'delivered'},
   ];
   const visibleRows=liveRows.slice(tick%5,(tick%5)+3).concat(liveRows).slice(0,3);
-  const integrations=['SAP S/4HANA','SAP ECC','DATEV','Lexware','MS Dynamics','Odoo','Xero','QuickBooks','NetSuite','sevDesk','lexoffice','Weclapp'];
+  const integrations=['DATEV','SAP S/4HANA','SAP ECC','Lexware','lexoffice','sevDesk','Weclapp','MS Dynamics 365','Odoo','REST API','SFTP','Xero'];
 
   const stBadge=(s)=>{
     const m={delivered:[T.green,'#ECFDF5','#A7F3D0','Delivered'],validated:[T.accent,'#EEF2FF','#C7D2FE','Validated'],error:[T.red,'#FEF2F2','#FECACA','Error'],pending:[T.amber,'#FFFBEB','#FDE68A','Pending']};
@@ -723,14 +723,14 @@ function Landing({onEnter,onLegal=()=>{}}){
                   <div style={{width:18,height:18,borderRadius:4,background:T.brand,flexShrink:0}}/>
                   <span style={{fontSize:11,fontWeight:700,color:T.textPrimary}}>invoiq</span>
                 </div>
-                {[['Overview',0],['Documents',1],['Dok.-Scanner',2],['Inbound',3],['Kanzlei',4],['Archive',5],['Settings',6]].map(([label,idx])=>(
+                {[['Übersicht',0],['Ausgang',1],['Scan & Import',2],['Eingang',3],['Kanzlei-Portal',4],['Archiv',5],['Einstellungen',6]].map(([label,idx])=>(
                   <div key={label} onClick={()=>setHeroTab(idx)} style={{padding:'5px 7px',borderRadius:5,fontSize:10.5,fontWeight:heroTab===idx?700:400,color:heroTab===idx?T.textPrimary:T.textMuted,background:heroTab===idx?T.bgMuted:'transparent',cursor:'pointer',transition:'all .15s',whiteSpace:'nowrap'}}>{label}</div>
                 ))}
               </div>
               {/* Content */}
               <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
                 <div style={{height:36,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px',flexShrink:0}}>
-                  <span style={{fontSize:11.5,fontWeight:600,color:T.textPrimary}}>{['Overview','Documents','Dok.-Scanner','Inbound','Kanzlei-Portal','Archive','Settings'][heroTab]}</span>
+                  <span style={{fontSize:11.5,fontWeight:600,color:T.textPrimary}}>{['Übersicht','Ausgang','Scan & Import','Eingang','Kanzlei-Portal','Archiv','Einstellungen'][heroTab]}</span>
                   <div style={{width:7,height:7,borderRadius:'50%',background:T.green,animation:'pulse 2s ease-in-out infinite'}}/>
                 </div>
                 <div style={{flex:1,overflow:'hidden'}}>
@@ -1549,6 +1549,7 @@ function Dashboard({user,org,notify,onNav}){
 // ── DOCUMENTS ─────────────────────────────────────────────────
 function Invoices({notify,initialView=null,onNavDone=null}){
   const [emailModal,setEmailModal] = useState(false);
+  const [senderCopy,setSenderCopy] = useState(true);
   const [emailTo,setEmailTo]       = useState('');
   const [sending,setSending]       = useState(false);
   const [peppolModal,setPeppolModal] = useState(false);
@@ -1582,7 +1583,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   useEffect(()=>{if(initialView){setView(initialView);onNavDone&&onNavDone();}},[]);
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   const[generating,setGenerating]=useState(false);const[xml,setXml]=useState(null);
-  const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",delivery_method:"email",seller_name:"",seller_vat_id:"",seller_address:"",seller_city:"",buyer_name:"",buyer_address:"",buyer_city:"",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
+  const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",template:"modern",delivery_method:"email",seller_name:"",seller_vat_id:"",seller_address:"",seller_city:"",buyer_name:"",buyer_address:"",buyer_city:"",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
   const load=useCallback(()=>{setLoading(true);api.listInvoices().then(d=>setInvoices(d.invoices||[])).catch(()=>setInvoices([])).finally(()=>setLoading(false));},[]);
   useEffect(()=>load(),[load]);
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1602,7 +1603,8 @@ function Invoices({notify,initialView=null,onNavDone=null}){
         <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Rechnungsdetails</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
           <div><label className="label">Nummer</label><input className="input" value={form.invoice_number} onChange={e=>upd("invoice_number",e.target.value)}/></div>
-          <div><label className="label">Format</label><select className="select" value={form.format} onChange={e=>upd("format",e.target.value)}>{["xrechnung","zugferd","peppol","facturx"].map(f=><option key={f} value={f}>{f.toUpperCase()}</option>)}</select></div>
+          <div><label className="label">Format</label><select className="select" value={form.format} onChange={e=>upd("format",e.target.value)}><option value="xrechnung">XRechnung 3.0</option><option value="zugferd">ZUGFeRD 2.4</option><option value="facturx">FacturX 1.0</option><option value="peppol">Peppol BIS 3.0</option></select></div>
+          <div><label className="label">Design-Vorlage</label><select className="select" value={form.template||"modern"} onChange={e=>upd("template",e.target.value)}><option value="modern">Modern (Blau)</option><option value="classic">Classic (Klassisch)</option><option value="minimal">Minimal (Clean)</option></select></div>
           <div><label className="label">Rechnungsdatum</label><input className="input" type="date" value={form.invoice_date} onChange={e=>upd("invoice_date",e.target.value)}/></div>
           <div><label className="label">Fälligkeitsdatum</label><input className="input" type="date" value={form.due_date} onChange={e=>upd("due_date",e.target.value)}/></div>
         </div>
@@ -1645,7 +1647,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
 
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Documents</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} documents total</p></div>
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Ausgang</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} Rechnungen gesamt</p></div>
       <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Exportieren</button><button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontSize:13.5,fontWeight:700}} onClick={()=>setView("create")}>+ Neue Rechnung</button></div>
     </div>
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
@@ -1666,7 +1668,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
             <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
             <td><StatusBadge status={inv.status}/></td>
             <td><div style={{display:"flex",gap:5}}>
-              {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>api.sendInvoice(inv.id,{delivery_method:"email"}).then(()=>{notify("Gesendet ✓","success");load();}).catch(e=>notify(e.message,"error"))}>Senden</button>}
+              {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>{setCurrentInvId(inv.id);setEmailTo(inv.buyer_email||'');setEmailModal(true);}}>✉ Senden</button>}
               {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
             </div></td>
           </tr>)}
@@ -1681,6 +1683,23 @@ function Invoices({notify,initialView=null,onNavDone=null}){
           <div style={{display:"flex",gap:7}}><button className="btn btn-primary btn-sm" onClick={()=>{const b=new Blob([xml.content],{type:"application/xml"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`${xml.number}.xml`;a.click();}}>↓ Herunterladen</button><button className="btn btn-ghost btn-sm" onClick={()=>setXml(null)}>×</button></div>
         </div>
         <pre style={{background:T.bgSubtle,borderRadius:8,padding:14,fontSize:10.5,color:T.textSecondary,overflow:"auto",maxHeight:420,lineHeight:1.55,fontFamily:F.mono}}>{xml.content}</pre>
+      </div>
+    </div>}
+    {emailModal&&<div className="modal-overlay" onClick={()=>setEmailModal(false)}>
+      <div className="modal sci" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+          <div style={{fontSize:16,fontWeight:700,color:T.textPrimary}}>✉ Per E-Mail senden</div>
+          <button onClick={()=>setEmailModal(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.textMuted}}>×</button>
+        </div>
+        <div style={{marginBottom:12}}><label className="label">Empfänger-E-Mail</label><input className="input" type="email" placeholder="kunde@firma.de" value={emailTo} onChange={e=>setEmailTo(e.target.value)} autoFocus/></div>
+        <div style={{marginBottom:14,display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:"#f0fdf4",borderRadius:7,border:"1px solid #bbf7d0",cursor:"pointer"}} onClick={()=>setSenderCopy(p=>!p)}>
+          <input type="checkbox" checked={senderCopy} onChange={()=>setSenderCopy(p=>!p)} style={{width:15,height:15,accentColor:T.accent}}/>
+          <span style={{fontSize:12.5,color:"#166534"}}>Kopie an mich senden (Absender-Bestätigung)</span>
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+          <button className="btn btn-ghost" onClick={()=>setEmailModal(false)}>Abbrechen</button>
+          <button className="btn btn-primary" onClick={doSendEmail} disabled={sending}>{sending?<><Spinner size={14} color="#fff"/>&nbsp;Wird gesendet...</>:"Senden →"}</button>
+        </div>
       </div>
     </div>}
   </div>);
