@@ -587,9 +587,9 @@ function Landing({onEnter,onLegal=()=>{}}){
         <span style={{color:'#818CF8'}}>&lt;/ubl:Invoice&gt;</span>
       </div>
     )},
-    {n:4,title:'Automatische ERP-Buchung',desc:'Eingehende Rechnungen werden direkt in Ihr Buchhaltungssystem gebucht — vollautomatisch, ohne Medienbruch. Procure-to-Pay ohne manuelle Schritte.',tags:['SAP FI automatisch','DATEV Buchung','Order-to-Cash','Procure-to-Pay'],preview:(
+    {n:4,title:'DATEV-Export & Weiterleitung',desc:'Eingangsrechnungen mit einem Klick als DATEV-CSV exportieren oder per E-Mail an deinen Steuerberater weiterleiten. Kein manuelles Abtippen mehr.',tags:['DATEV-CSV Export','E-Mail Weiterleitung','1-Klick','Steuerberater-ready'],preview:(
       <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-        {[['Rechnung empfangen','XRechnung geparst',T.green],['ERP-Mapping','SAP FI Buchung erstellt',T.green],['Freigabe','Workflow ausgelöst',T.accent],['Archiviert','GoBD-konform gespeichert',T.green]].map(([s,d,c],i)=>(
+        {[['Rechnung empfangen','XRechnung automatisch geparst',T.green],['Validiert','EN 16931 ✓ · Pflichtfelder OK',T.green],['DATEV-Export','CSV für Steuerberater bereit',T.accent],['Weitergeleitet','Per E-Mail an Kanzlei gesendet',T.green]].map(([s,d,c],i)=>(
           <div key={i} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'5px 0',borderBottom:i<3?`1px solid ${T.bgBorder}`:'none'}}>
             <div style={{width:7,height:7,borderRadius:'50%',background:c,flexShrink:0,marginTop:4}}/>
             <div>
@@ -642,7 +642,7 @@ function Landing({onEnter,onLegal=()=>{}}){
       name:'Business',price:199,yearlyPrice:159,docs:'1.000 Dok./Monat',
       sub:'Pro Monat, jederzeit kündbar',
       badge:'EMPFOHLEN',
-      features:['Alles in Starter','Peppol BIS 3.0 Versand','Automatische ERP-Buchung','5 ERP-Konnektoren','KI-Rechnungserkennung','ViDA-Reporting ready','5 Nutzer'],
+      features:['Alles in Starter','Peppol BIS 3.0 Versand','KI-Rechnungserkennung (Scanner)','DATEV-Export inklusive','Kanzlei-Portal Zugang','ViDA-Reporting ready','5 Nutzer'],
       cta:'Jetzt starten',ctaStyle:'primary',
     },
     {
@@ -687,7 +687,7 @@ function Landing({onEnter,onLegal=()=>{}}){
             Seit <strong>Januar 2025</strong> müssen alle Unternehmen E-Rechnungen empfangen können. Ab <strong>2027</strong> auch versenden.
           </p>
           <p className="fu3" style={{fontSize:14,color:T.textMuted,lineHeight:1.65,marginBottom:32,maxWidth:440}}>
-            invoiq deckt beides — bidirektional, vollautomatisch, für SAP, DATEV, Lexware und jedes ERP.
+            invoiq deckt beides — E-Rechnungen empfangen, erstellen und per E-Mail versenden. Einfach, compliant, ohne IT-Aufwand.
           </p>
           <div className="fu4" style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:40}}>
             <button className="btn btn-primary btn-lg" onClick={onEnter}>Kostenlos starten →</button>
@@ -944,7 +944,7 @@ function Landing({onEnter,onLegal=()=>{}}){
             {[
               {icon:'📥',step:'Empfang',detail:'XRechnung von Lieferant ABC',status:'done',time:'09:14:03'},
               {icon:'🔍',step:'Parsing & Validierung',detail:'EN 16931 ✓ · Alle Pflichtfelder vorhanden',status:'done',time:'09:14:03'},
-              {icon:'🗺',step:'ERP-Mapping',detail:'Kreditor 10042 · Kostenstelle 4100',status:'done',time:'09:14:04'},
+              {icon:'📊',step:'DATEV-Export bereit',detail:'CSV für Steuerberater · 1-Klick',status:'done',time:'09:14:04'},
               {icon:'📒',step:'SAP FI Buchung',detail:'Beleg 1800023847 erstellt',status:'done',time:'09:14:04'},
               {icon:'🔒',step:'GoBD-Archivierung',detail:'SHA-256 · 10 Jahre gesichert',status:'done',time:'09:14:05'},
             ].map((s,i)=>(
