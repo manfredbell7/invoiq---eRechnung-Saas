@@ -485,7 +485,7 @@ function Landing({onEnter,onLegal=()=>{}}){
     {num:'INV-2025-037',co:'Nord Express',amt:'8.440 €',st:'delivered'},
   ];
   const visibleRows=liveRows.slice(tick%5,(tick%5)+3).concat(liveRows).slice(0,3);
-  const integrations=['DATEV','SAP S/4HANA','SAP ECC','Lexware','lexoffice','sevDesk','Weclapp','MS Dynamics 365','Odoo','REST API','SFTP','Xero'];
+  const integrations=['DATEV','Lexware','lexoffice','sevDesk','SAP S/4HANA','SAP ECC','Weclapp','MS Dynamics 365','Odoo','REST API','Xero','QuickBooks'];
 
   const stBadge=(s)=>{
     const m={delivered:[T.green,'#ECFDF5','#A7F3D0','Delivered'],validated:[T.accent,'#EEF2FF','#C7D2FE','Validated'],error:[T.red,'#FEF2F2','#FECACA','Error'],pending:[T.amber,'#FFFBEB','#FDE68A','Pending']};
@@ -551,9 +551,9 @@ function Landing({onEnter,onLegal=()=>{}}){
   ];
 
   const STEPS=[
-    {n:1,title:'ERP verbinden',desc:'Einmalige Konfiguration in unter 2 Stunden. SAP, DATEV oder REST API — danach läuft alles automatisch.',tags:['SAP S/4HANA','SAP ECC','DATEV','Lexware','REST API'],preview:(
+    {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Deine persönliche invoiq-Adresse empfängt automatisch alle Eingangsrechnungen — kein ERP, kein IT-Aufwand.',tags:['rechnungen-firma@invoiq.io','XRechnung','ZUGFeRD','PDF'],preview:(
       <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-        {[['SAP S/4HANA','Connected'],['DATEV Connect','Connected'],['Lexware Office','Configure →']].map(([n,s],i)=>(
+        {[['rechnungen-firma@invoiq.io','Aktiv ✓'],['XRechnung','Automatisch erkannt'],['ZUGFeRD / PDF','Automatisch erkannt']].map(([n,s],i)=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgBorder}`:'none'}}>
             <div style={{width:7,height:7,borderRadius:'50%',background:s==='Connected'?T.green:T.bgBorder,flexShrink:0}}/>
             <span style={{fontSize:12.5,color:T.textPrimary,flex:1}}>{n}</span>
@@ -562,7 +562,7 @@ function Landing({onEnter,onLegal=()=>{}}){
         ))}
       </div>
     )},
-    {n:2,title:'Ausgehend & Eingehend — bidirektional',desc:'Seit Januar 2025 Pflicht: Alle Unternehmen müssen E-Rechnungen empfangen können. invoiq verarbeitet beide Richtungen vollautomatisch — ohne Medienbruch.',tags:['Outbound XRechnung','Inbound Parsing','Peppol Empfang','PDF-Konvertierung'],preview:(
+    {n:2,title:'Rechnung erstellen oder empfangen',desc:'Ausgang: Rechnungsdaten eingeben oder PDF/Foto hochladen → invoiq generiert konforme XRechnung und versendet per E-Mail. Eingang: Lieferant schickt Rechnung an deine invoiq-Adresse → automatisch geparst, validiert, gespeichert.',tags:['Outbound XRechnung','Inbound Parsing','Peppol Empfang','PDF-Konvertierung'],preview:(
       <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
           <div style={{background:T.bg,border:`1px solid ${T.greenBdr}`,borderRadius:5,padding:'10px 12px'}}>
@@ -723,14 +723,14 @@ function Landing({onEnter,onLegal=()=>{}}){
                   <div style={{width:18,height:18,borderRadius:4,background:T.brand,flexShrink:0}}/>
                   <span style={{fontSize:11,fontWeight:700,color:T.textPrimary}}>invoiq</span>
                 </div>
-                {[['Übersicht',0],['Ausgang',1],['Scan & Import',2],['Eingang',3],['Kanzlei-Portal',4],['Archiv',5],['Einstellungen',6]].map(([label,idx])=>(
+                {[['Übersicht',0],['Ausgang',1],['Scan & Import',2],['Eingang',3],['Archiv',4],['Einstellungen',5],['Kanzlei-Portal',6]].map(([label,idx])=>(
                   <div key={label} onClick={()=>setHeroTab(idx)} style={{padding:'5px 7px',borderRadius:5,fontSize:10.5,fontWeight:heroTab===idx?700:400,color:heroTab===idx?T.textPrimary:T.textMuted,background:heroTab===idx?T.bgMuted:'transparent',cursor:'pointer',transition:'all .15s',whiteSpace:'nowrap'}}>{label}</div>
                 ))}
               </div>
               {/* Content */}
               <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
                 <div style={{height:36,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px',flexShrink:0}}>
-                  <span style={{fontSize:11.5,fontWeight:600,color:T.textPrimary}}>{['Übersicht','Ausgang','Scan & Import','Eingang','Kanzlei-Portal','Archiv','Einstellungen'][heroTab]}</span>
+                  <span style={{fontSize:11.5,fontWeight:600,color:T.textPrimary}}>{['Übersicht','Ausgang','Scan & Import','Eingang','Archiv','Einstellungen','Kanzlei-Portal'][heroTab]}</span>
                   <div style={{width:7,height:7,borderRadius:'50%',background:T.green,animation:'pulse 2s ease-in-out infinite'}}/>
                 </div>
                 <div style={{flex:1,overflow:'hidden'}}>
@@ -1034,7 +1034,7 @@ function Landing({onEnter,onLegal=()=>{}}){
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
           {[
-            {num:'01',target:'Mittelstand mit SAP',sub:'> 800k€ Umsatz · ab 01.01.2027 Versandpflicht',points:['SAP S/4HANA & ECC Integration','IDoc / CPI / RFC Anbindung','Vollautomatischer Faktura-Versand','EN 16931 + ZUGFeRD'],cta:'SAP-Demo buchen',color:T.accent},
+            {num:'01',target:'Einzelunternehmer & KMU',sub:'Handwerker · Freelancer · kleine Firmen · ohne IT-Aufwand',points:['XRechnung per E-Mail empfangen & senden','Foto/PDF → XRechnung per KI-Scanner','GoBD-Archivierung automatisch','Kein ERP · kein IT-Wissen nötig'],cta:'Kostenlos starten →',color:T.accent},
             {num:'02',target:'DATEV-Kanzleien',sub:'Multiplikator für KMU-Mandanten',points:['Steuerberater-Portal',`Mandanten-Verwaltung zentral`,'DATEV Connect Integration','Alle Mandanten auf einen Blick'],cta:'Kanzlei-Paket ansehen',color:T.purple},
             {num:'03',target:'Kleinunternehmen',sub:'Alle müssen empfangen können',points:['Kostenloser Einstieg (10 Dok.)','Inbound-Empfang inklusive','Kein ERP nötig','XRechnung-Generator gratis'],cta:'Kostenlos starten',color:T.green},
           ].map((g,i)=>(
@@ -1188,27 +1188,6 @@ function Landing({onEnter,onLegal=()=>{}}){
           })}
         </div>
 
-        {/* Add-ons row */}
-        <div className="reveal" style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'18px 24px',marginBottom:16}}>
-          <div style={{fontSize:12,fontWeight:700,color:T.textMuted,letterSpacing:.6,textTransform:'uppercase',marginBottom:12}}>Add-ons — Flexibel zubuchbar</div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}}>
-            {[
-              {name:'Zusätzlicher Nutzer',price:'+9€/Monat'},
-              {name:'API-Erweiterung',price:'+29€/Monat',sub:'10.000 zusätzliche API-Calls'},
-              {name:'Premium-Onboarding',price:'499€ einmalig',sub:'48h-Setup durch Experten'},
-              {name:'White-Label',price:'+99€/Monat',sub:'Für Steuerberater & Partner'},
-            ].map((a,i)=>(
-              <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,padding:'10px 14px',background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:6}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>{a.name}</div>
-                  {a.sub&&<div style={{fontSize:11,color:T.textMuted,marginTop:1}}>{a.sub}</div>}
-                </div>
-                <div style={{fontSize:13,fontWeight:700,color:T.accent,flexShrink:0}}>{a.price}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Overage note */}
         <div className="reveal" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           <div style={{padding:'13px 18px',background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,display:'flex',alignItems:'flex-start',gap:10}}>
@@ -1285,6 +1264,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
     {key:"scanner",     label:"Scan & Import"},
     {key:"archive",     label:"Archiv"},
     {key:"settings",    label:"Einstellungen"},
+    // Kanzlei-Portal: ans Ende, nach Einstellungen
   ];
 
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
