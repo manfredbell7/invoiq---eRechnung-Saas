@@ -118,13 +118,102 @@ async function getAuditLogs(orgId, invoiceId) {
   return data ?? [];
 }
 
+// ── ORGANISATIONS ──────────────────────────────────────────────────────────
+async function findOrgByApiKey(apiKey) {
+  const { data, error } = await supabase.from('organizations').select('*').eq('api_key', apiKey).eq('active', true).single();
+  if (error && error.code !== 'PGRST116') return null;
+  return data ?? null;
+}
+
+async function createOrg(data) {
+  const row = { id: uuidv4(), ...data, active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  const res = await supabase.from('organizations').insert(row).select().single();
+  return assertNoError(res, 'createOrg');
+}
+
+async function findOrgById(id) {
+  const { data, error } = await supabase.from('organizations').select('*').eq('id', id).single();
+  if (error && error.code !== 'PGRST116') throw new Error(`[db/findOrgById] ${error.message}`);
+  return data ?? null;
+}
+
+async function updateOrg(id, patch) {
+  const res = await supabase.from('organizations').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+  return assertNoError(res, 'updateOrg');
+}
+
+// ── USERS ──────────────────────────────────────────────────────────────────
+async function findUserByEmail(email) {
+  const { data, error } = await supabase.from('users').select('*').ilike('email', email).single();
+  if (error && error.code !== 'PGRST116') return null;
+  return data ?? null;
+}
+
+async function findUserById(id) {
+  const { data, error } = await supabase.from('users').select('*').eq('id', id).single();
+  if (error && error.code !== 'PGRST116') return null;
+  return data ?? null;
+}
+
+async function createUser(data) {
+  const row = { id: uuidv4(), ...data, active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  const res = await supabase.from('users').insert(row).select().single();
+  return assertNoError(res, 'createUser');
+}
+
+async function updateUser(id, patch) {
+  const res = await supabase.from('users').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+  return assertNoError(res, 'updateUser');
+}
+
+// ── REFRESH TOKENS ─────────────────────────────────────────────────────────
+async function saveRefreshToken(userId, tokenHash, expiresAt) {
+  await supabase.from('refresh_tokens').insert({
+    id: uuidv4(), user_id: userId, token_hash: tokenHash,
+    expires_at: expiresAt, created_at: new Date().toISOString(),
+  });
+}
+
+async function findRefreshToken(tokenHash) {
+  const { data } = await supabase.from('refresh_tokens').select('*').eq('token_hash', tokenHash).single();
+  return data ?? null;
+}
+
+async function deleteRefreshToken(tokenHash) {
+  await supabase.from('refresh_tokens').delete().eq('token_hash', tokenHash);
+}
+
+// ── EMAIL SERVICE ──────────────────────────────────────────────────────────
+async function sendInvoiceEmail({ to, subject, invoice, xmlBuffer, pdfBuffer }) {
+  const { sendInvoiceEmail: send } = await import('../services/email.js');
+  return send({ to, subject, invoice, xmlBuffer, pdfBuffer });
+}
+
 // ── EXPORT ─────────────────────────────────────────────────────────────────
 export const db = {
+  // Invoices
   findInvoices,
   findInvoiceById,
   createInvoice,
   updateInvoice,
   getStats,
+  // Orgs
+  createOrg,
+  findOrgById,
+  findOrgByApiKey,
+  updateOrg,
+  // Users
+  findUserByEmail,
+  findUserById,
+  createUser,
+  updateUser,
+  // Tokens
+  saveRefreshToken,
+  findRefreshToken,
+  deleteRefreshToken,
+  // Email
+  sendInvoiceEmail,
+  // Audit
   createAuditLog,
   getAuditLogs,
 };

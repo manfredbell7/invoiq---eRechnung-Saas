@@ -1417,7 +1417,7 @@ function Dashboard({user,org,notify,onNav}){
           Guten Tag{user?.full_name?`, ${user.full_name.split(' ')[0]}`:''}.</h1>
         <p style={{color:T.textMuted,fontSize:12.5,marginTop:4}}>{new Date().toLocaleDateString('de-DE',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
       </div>
-      <button className="btn btn-primary btn-sm" onClick={()=>onNav('invoices')}>+ Neue Rechnung</button>
+      <button className="btn btn-primary btn-sm" onClick={()=>onNav('invoices','create')}>+ Neue Rechnung</button>
     </div>
 
     {/* KPIs — klickbar */}
@@ -1547,7 +1547,7 @@ function Dashboard({user,org,notify,onNav}){
 }
 
 // ── DOCUMENTS ─────────────────────────────────────────────────
-function Invoices({notify}){
+function Invoices({notify,initialView=null,onNavDone=null}){
   const [emailModal,setEmailModal] = useState(false);
   const [emailTo,setEmailTo]       = useState('');
   const [sending,setSending]       = useState(false);
@@ -1578,7 +1578,8 @@ function Invoices({notify}){
     setSending(false);
   };
 
-  const[view,setView]=useState("list");const[filter,setFilter]=useState("all");
+  const[view,setView]=useState(initialView||"list");const[filter,setFilter]=useState("all");
+  useEffect(()=>{if(initialView){setView(initialView);onNavDone&&onNavDone();}},[]);
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   const[generating,setGenerating]=useState(false);const[xml,setXml]=useState(null);
   const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",delivery_method:"email",seller_name:"",seller_vat_id:"",seller_address:"",seller_city:"",buyer_name:"",buyer_address:"",buyer_city:"",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
@@ -3547,12 +3548,14 @@ export default function App(){
   const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'app';return'landing';}); // landing|auth|app|admin|onboarding|impressum|datenschutz|agb
 const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/register'||p.startsWith('/register'))?'register':'login';});
   const[nav,setNav]=useState("dashboard");
+  const[subNav,setSubNav]=useState(null);
   const[adminNav,setAdminNav]=useState("overview");
   const[loading,setLoading]=useState(false);
   const[toast,setToast]=useState(null);
   const[user,setUser]=useState(null);
   const[org,setOrg]=useState(null);
   const notify=(msg,type="info")=>setToast({msg,type});
+  const onNav=(page,sub=null)=>{setNav(page);setSubNav(sub);window.scrollTo(0,0);};
 
   useEffect(()=>{
     const token=typeof localStorage!=="undefined"&&localStorage.getItem("invoiq_token");
@@ -3566,17 +3569,17 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
       api.setToken(d.access_token);setUser(d.user);setOrg(d.org);
       const isNew=!d.org?.onboarding_completed&&typeof localStorage!=="undefined"&&!localStorage.getItem("invoiq_onboarding_done");
       if(isNew&&mode==="register"){setScreen("onboarding");}else{setScreen("app");setNav("dashboard");}
-      notify(`Welcome${d.user.full_name?`, ${d.user.full_name.split(" ")[0]}`:""}!`,"success");
+      notify(`Willkommen${d.user.full_name?`, ${d.user.full_name.split(" ")[0]}`:""}!`,"success");
     }catch(e){
       setUser({full_name:form.full_name||"Manfred Bell",email:form.email,role:"owner"});
       setOrg({name:form.org_name||"invoiq Demo",plan:"business",plan_doc_limit:1000,plan_doc_used:41});
       if(mode==="register"){setScreen("onboarding");}else{setScreen("app");setNav("dashboard");}
-      notify(mode==="register"?"Welcome to invoiq!":"Demo mode active","info");
+      notify(mode==="register"?"Willkommen bei invoiq!":"Demo-Modus aktiv","info");
     }
     setLoading(false);
   };
 
-  const handleLogout=async()=>{await api.logout().catch(()=>{});api.setToken(null);setUser(null);setOrg(null);setScreen("landing");notify("Signed out","info");};
+  const handleLogout=async()=>{await api.logout().catch(()=>{});api.setToken(null);setUser(null);setOrg(null);setScreen("landing");notify("Abgemeldet","info");};
   const isSuper=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
 
   return(<>
@@ -3584,10 +3587,10 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
     {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
     {screen==="landing"&&<Landing onEnter={()=>{if(api._token){setScreen("app");}else{setMode("login");setScreen("auth");}}}/>}
     {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading}/>}
-    {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup complete — welcome to invoiq! 🎉","success");}}/>}
+    {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup abgeschlossen — willkommen bei invoiq! 🎉","success");}}/>}
     {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
-      {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={setNav}/>}
-      {nav==="invoices"&&<Invoices notify={notify}/>}
+      {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={onNav}/>}
+      {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)}/>}
       {nav==="connect"&&<ConnectorsView notify={notify}/>}
           {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify}/>}
