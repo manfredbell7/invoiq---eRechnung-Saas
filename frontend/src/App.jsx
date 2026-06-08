@@ -649,7 +649,7 @@ function Landing({onEnter,onLegal=()=>{}}){
       name:'Pro',price:599,yearlyPrice:479,docs:'10.000 Dok./Monat',
       sub:'Pro Monat, jederzeit kündbar',
       badge:null,
-      features:['Alles in Business','Alle Konnektoren','Steuerberater-Portal','Branchen-Templates','Public REST API + Webhooks','White-Label','15 Nutzer'],
+      features:['Alles in Business','Kanzlei-Portal inklusive','DATEV-Export inklusive','Public REST API + Webhooks','GoBD-Archiv 10 Jahre','Unbegrenzte Rechnungen','15 Nutzer'],
       cta:'Demo buchen',ctaStyle:'outline',
     },
   ];
@@ -888,16 +888,16 @@ function Landing({onEnter,onLegal=()=>{}}){
     </section>
 
     {/* INTEGRATIONS MARQUEE — coming soon */}
-    <section style={{padding:'48px 0',borderTop:`1px solid rgba(99,91,255,.12)`,borderBottom:`1px solid rgba(99,91,255,.12)`,background:'#07102A',overflow:'hidden',position:'relative',opacity:.5,filter:'grayscale(.4)'}}>
+    <section style={{padding:'48px 0',borderTop:`1px solid rgba(99,91,255,.12)`,borderBottom:`1px solid rgba(99,91,255,.12)`,background:'#07102A',overflow:'hidden',position:'relative'}}>
       <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(99,91,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(99,91,255,.07) 1px,transparent 1px)',backgroundSize:'40px 40px',pointerEvents:'none'}}/>
-      {/* Coming Soon Banner */}
-      <div style={{position:'absolute',top:10,right:20,zIndex:10,background:'rgba(245,158,11,.15)',border:'1px solid rgba(245,158,11,.4)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:700,color:'#f59e0b',letterSpacing:.5}}>⚙ ERP-Konnektoren — In Entwicklung</div>
-      <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Kompatibel mit führenden ERP-Systemen <span style={{fontSize:10,fontWeight:600,color:'#f59e0b',marginLeft:8}}>— demnächst</span></p>
-      <div className="marquee-wrap" style={{position:'relative',pointerEvents:'none'}}>
-        <div className="marquee-track" style={{animationPlayState:'paused'}}>
+      {/* Coming Soon Badge */}
+      <div style={{position:'absolute',top:12,right:20,zIndex:10,background:'rgba(245,158,11,.15)',border:'1px solid rgba(245,158,11,.4)',borderRadius:6,padding:'4px 12px',fontSize:11,fontWeight:700,color:'#f59e0b',letterSpacing:.5}}>⚙ ERP-Konnektoren — In Entwicklung</div>
+      <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Kompatibel mit führenden ERP-Systemen <span style={{fontSize:10,color:'#f59e0b',marginLeft:6}}>— demnächst verfügbar</span></p>
+      <div className="marquee-wrap" style={{position:'relative'}}>
+        <div className="marquee-track">
           {[...integrations,...integrations].map((n,i)=>(
-            <div key={i} className="integration-logo" style={{color:'rgba(255,255,255,.35)',background:'rgba(255,255,255,.03)',borderColor:'rgba(255,255,255,.06)'}}>
-              <span style={{width:5,height:5,borderRadius:'50%',background:'rgba(99,91,255,.4)',display:'inline-block',flexShrink:0}}/>
+            <div key={i} className="integration-logo" style={{color:'rgba(255,255,255,.6)',background:'rgba(255,255,255,.05)',borderColor:'rgba(255,255,255,.1)',padding:'10px 20px',fontSize:13.5,fontWeight:600,minWidth:160,justifyContent:'center',gap:10,borderRadius:10}}>
+              <span style={{width:7,height:7,borderRadius:'50%',background:'rgba(99,91,255,.6)',display:'inline-block',flexShrink:0}}/>
               {n}
             </div>
           ))}
@@ -1009,7 +1009,7 @@ function Landing({onEnter,onLegal=()=>{}}){
           {[
             {tag:'Neu',title:'KI-Rechnungserkennung',desc:'Automatische Extraktion aus PDF-Rechnungen — konvertiert historische Rechnungen in strukturierte XRechnungen ohne manuelle Arbeit.',color:T.purple},
             {tag:'Pflicht ab 2025',title:'Inbound für alle Tarife',desc:'Empfang, Parsing und Validierung eingehender E-Rechnungen ist in jedem Plan inklusive — nicht erst ab 199 €.',color:T.green},
-            {tag:'Multiplikator',title:'Steuerberater-Portal',desc:'Zentrales Dashboard für Kanzleien mit hunderten KMU-Mandanten. Ein Login — alle Mandanten verwalten.',color:T.accent},
+            {tag:'Business-Plan',title:'Kanzlei-Portal',desc:'Ein Login für alle deine Mandanten. E-Rechnungen zentral empfangen, verwalten und als DATEV-Export weitergeben — ohne manuellen Aufwand.',color:T.accent},
             {tag:'2028 ready',title:'ViDA Transaction Reporting',desc:'Die EU-Initiative ViDA kommt 2028. invoiq baut die Schnittstellen jetzt — Sie müssen später nichts umstellen.',color:T.amber},
             {tag:'Branche',title:'Branchen-Templates',desc:'Vorkonfigurierte Vorlagen für Bau, Handwerk, IT und E-Commerce — mit Abschlagszahlungen, GAEB-Support und mehr.',color:T.blue},
             {tag:'Self-Service',title:'Lieferanten-Portal',desc:'Geschäftspartner empfangen und versenden E-Rechnungen ohne eigenes System — Sie werden der zentrale Hub.',color:T.accent},
@@ -1036,7 +1036,7 @@ function Landing({onEnter,onLegal=()=>{}}){
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
           {[
             {num:'01',target:'Einzelunternehmer & KMU',sub:'Handwerker · Freelancer · kleine Firmen · ohne IT-Aufwand',points:['XRechnung per E-Mail empfangen & senden','Foto/PDF → XRechnung per KI-Scanner','GoBD-Archivierung automatisch','Kein ERP · kein IT-Wissen nötig'],cta:'Kostenlos starten →',color:T.accent},
-            {num:'02',target:'DATEV-Kanzleien',sub:'Multiplikator für KMU-Mandanten',points:['Steuerberater-Portal',`Mandanten-Verwaltung zentral`,'DATEV Connect Integration','Alle Mandanten auf einen Blick'],cta:'Kanzlei-Paket ansehen',color:T.purple},
+            {num:'02',target:'Steuerberater & Kanzleien',sub:'Ein Portal · alle Mandanten · zentrale E-Rechnungs-Verwaltung',points:['Kanzlei-Portal: alle Mandanten auf einen Blick','Eingangsrechnungen pro Mandant empfangen','DATEV-Export für jeden Mandanten','Dokumenten-Archiv GoBD-konform'],cta:'Kanzlei-Portal testen →',color:T.purple},
             {num:'03',target:'Kleinunternehmen',sub:'Alle müssen empfangen können',points:['Kostenloser Einstieg (10 Dok.)','Inbound-Empfang inklusive','Kein ERP nötig','XRechnung-Generator gratis'],cta:'Kostenlos starten',color:T.green},
           ].map((g,i)=>(
             <div key={i} className="card reveal" style={{padding:24,transitionDelay:`${i*.08}s`}}>
@@ -1284,18 +1284,13 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
           {label}
         </button>)}
 
-        {/* Kanzlei-Portal — nur für Business/Enterprise */}
-        {hasKanzlei
-          ? <button className={`nav-item ${nav==="steuerberater"?"active":""}`} onClick={()=>setNav("steuerberater")}>
-              <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav==="steuerberater"?T.accent:"transparent",border:`1px solid ${nav==="steuerberater"?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
-              Kanzlei-Portal
-            </button>
-          : <button className="nav-item" style={{opacity:.45,cursor:'default'}} title="Verfügbar ab Business-Plan">
-              <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:"transparent",border:`1px solid ${T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
-              Kanzlei-Portal
-              <span style={{marginLeft:'auto',fontSize:9,background:T.accent,color:'#fff',borderRadius:3,padding:'1px 4px',fontWeight:700}}>PRO</span>
-            </button>
-        }
+        {/* Kanzlei-Portal — immer sichtbar, Starter bekommt Upgrade-Modal */}
+        <button className={`nav-item ${nav==="steuerberater"?"active":""}`} onClick={()=>setNav("steuerberater")}
+          style={{position:'relative'}}>
+          <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav==="steuerberater"?T.accent:"transparent",border:`1px solid ${nav==="steuerberater"?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
+          Kanzlei-Portal
+          {!hasKanzlei&&<span style={{marginLeft:'auto',fontSize:9,background:'#7c3aed',color:'#fff',borderRadius:3,padding:'1px 5px',fontWeight:700}}>PRO</span>}
+        </button>
 
         {isAdmin&&<><div className="nav-section" style={{marginTop:6}}>Admin</div>
           <button className="nav-item" onClick={onAdmin} style={{color:T.red,fontSize:12}}><span style={{fontSize:8,width:8,height:8,borderRadius:"50%",background:T.red,display:"inline-block",flexShrink:0}}/>Admin Panel</button>

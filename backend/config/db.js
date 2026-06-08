@@ -183,6 +183,11 @@ async function deleteRefreshToken(tokenHash) {
   await supabase.from('refresh_tokens').delete().eq('token_hash', tokenHash);
 }
 
+// Alias für Logout
+async function revokeRefreshToken(tokenHash) {
+  await supabase.from('refresh_tokens').delete().eq('token_hash', tokenHash);
+}
+
 // ── EMAIL SERVICE ──────────────────────────────────────────────────────────
 async function sendInvoiceEmail({ to, subject, invoice, xmlBuffer, pdfBuffer }) {
   const { sendInvoiceEmail: send } = await import('../services/email.js');
@@ -211,6 +216,7 @@ export const db = {
   saveRefreshToken,
   findRefreshToken,
   deleteRefreshToken,
+  revokeRefreshToken,
   // Email
   sendInvoiceEmail,
   // Audit
