@@ -43,9 +43,9 @@ const T = {
 };
 // Stripe uses -apple-system / Inter — NO decorative display fonts in UI
 const F={
-  display:"'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-  ui:     "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-  mono:   "'SF Mono','Fira Code','Fira Mono','Roboto Mono',monospace",
+  display:"'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+  ui:     "'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+  mono:   "'JetBrains Mono',ui-monospace,SFMono-Regular,monospace",
 };
 
 const API_BASE=(import.meta?.env?.VITE_API_URL)||"http://localhost:3000/v1";
@@ -108,7 +108,7 @@ const fmtNum=n=>new Intl.NumberFormat("de-DE").format(n||0);
 const fmtAgo=d=>{const s=Date.now()-new Date(d);if(s<3600000)return`vor ${Math.floor(s/60000)} Min.`;if(s<86400000)return`vor ${Math.floor(s/3600000)} Std.`;return"gestern";};
 
 const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
@@ -376,6 +376,20 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
   transform:translateY(-2px);
 }
 @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes shimmerX{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
+@keyframes drawIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.bento-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;}
+.bento-grid .bento-wide{grid-column:span 2;}
+@media(max-width:768px){.bento-grid{grid-template-columns:1fr;}.bento-grid .bento-wide{grid-column:span 1;}}
+.zg-grid{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:16px;}
+@media(max-width:768px){.zg-grid{grid-template-columns:1fr;}}
+.btn:active{transform:translateY(1px) scale(.985);}
+.bento-card{background:#fff;border:1px solid rgba(221,225,231,.55);border-radius:18px;padding:26px;position:relative;overflow:hidden;transition:box-shadow .3s cubic-bezier(.16,1,.3,1),transform .3s cubic-bezier(.16,1,.3,1);box-shadow:0 18px 38px -18px rgba(10,37,64,.06);}
+.bento-card:hover{transform:translateY(-3px);box-shadow:0 24px 48px -16px rgba(10,37,64,.12);}
+.live-dot{width:7px;height:7px;border-radius:50%;display:inline-block;animation:pulseDot 2.4s ease-in-out infinite;}
+.shimmer-bar{background:linear-gradient(90deg,rgba(99,91,255,.07) 25%,rgba(99,91,255,.16) 50%,rgba(99,91,255,.07) 75%);background-size:200% 100%;animation:shimmerX 2.6s linear infinite;}
 .marquee-track{
   display:flex;gap:10px;
   animation:marquee 32s linear infinite;
@@ -551,9 +565,9 @@ function Landing({onEnter,onLegal=()=>{}}){
   ];
 
   const STEPS=[
-    {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Deine persönliche invoiq-Adresse empfängt automatisch alle Eingangsrechnungen — kein ERP, kein IT-Aufwand.',tags:['rechnungen-firma@invoiq.io','XRechnung','ZUGFeRD','PDF'],preview:(
+    {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Deine persönliche invoiq-Adresse empfängt automatisch alle Eingangsrechnungen — kein ERP, kein IT-Aufwand.',tags:['firma@rechnungen.invoiq.io','XRechnung','ZUGFeRD','PDF'],preview:(
       <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-        {[['rechnungen-firma@invoiq.io','Aktiv ✓'],['XRechnung','Automatisch erkannt'],['ZUGFeRD / PDF','Automatisch erkannt']].map(([n,s],i)=>(
+        {[['firma@rechnungen.invoiq.io','Aktiv ✓'],['XRechnung','Automatisch erkannt'],['ZUGFeRD / PDF','Automatisch erkannt']].map(([n,s],i)=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgBorder}`:'none'}}>
             <div style={{width:7,height:7,borderRadius:'50%',background:s==='Connected'?T.green:T.bgBorder,flexShrink:0}}/>
             <span style={{fontSize:12.5,color:T.textPrimary,flex:1}}>{n}</span>
@@ -680,10 +694,10 @@ function Landing({onEnter,onLegal=()=>{}}){
               E-Rechnungspflicht 2025/2027 — Jetzt vorbereiten
             </span>
           </div>
-          <h1 className="fu2" style={{fontFamily:F.ui,fontSize:'clamp(32px,4.5vw,56px)',fontWeight:800,color:T.textPrimary,lineHeight:1.1,letterSpacing:'-.04em',marginBottom:18}}>
-            E-Invoice<br/>Compliance.<br/><span style={{color:T.accent}}>Automatisch.</span>
+          <h1 className="fu2" style={{fontFamily:F.ui,fontSize:'clamp(34px,4.8vw,60px)',fontWeight:800,color:T.textPrimary,lineHeight:1.02,letterSpacing:'-.045em',marginBottom:18}}>
+            E-Rechnungen.<br/>Empfangen. Senden.<br/><span style={{color:T.accent}}>Automatisch.</span>
           </h1>
-          <p className="fu3" style={{fontSize:16,color:T.textSecondary,lineHeight:1.7,marginBottom:10,maxWidth:440}}>
+          <p className="fu3" style={{fontSize:16,color:T.textSecondary,lineHeight:1.7,marginBottom:10,maxWidth:'52ch'}}>
             Seit <strong>Januar 2025</strong> müssen alle Unternehmen E-Rechnungen empfangen können. Ab <strong>2027</strong> auch versenden.
           </p>
           <p className="fu3" style={{fontSize:14,color:T.textMuted,lineHeight:1.65,marginBottom:32,maxWidth:440}}>
@@ -1005,23 +1019,57 @@ function Landing({onEnter,onLegal=()=>{}}){
           <span className="reveal badge badge-blue" style={{marginBottom:14,fontSize:11}}>Marktführende Funktionen</span>
           <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em',lineHeight:1.15}}>Alles was Sie brauchen.<br/>Nichts was Sie nicht brauchen.</h2>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(min(300px,100%),1fr))',gap:12}}>
-          {[
-            {tag:'Neu',title:'KI-Rechnungserkennung',desc:'Automatische Extraktion aus PDF-Rechnungen — konvertiert historische Rechnungen in strukturierte XRechnungen ohne manuelle Arbeit.',color:T.purple},
-            {tag:'Pflicht ab 2025',title:'Inbound für alle Tarife',desc:'Empfang, Parsing und Validierung eingehender E-Rechnungen ist in jedem Plan inklusive — nicht erst ab 199 €.',color:T.green},
-            {tag:'Business-Plan',title:'Kanzlei-Portal',desc:'Ein Login für alle deine Mandanten. E-Rechnungen zentral empfangen, verwalten und als DATEV-Export weitergeben — ohne manuellen Aufwand.',color:T.accent},
-            {tag:'2028 ready',title:'ViDA Transaction Reporting',desc:'Die EU-Initiative ViDA kommt 2028. invoiq baut die Schnittstellen jetzt — Sie müssen später nichts umstellen.',color:T.amber},
-            {tag:'Branche',title:'Branchen-Templates',desc:'Vorkonfigurierte Vorlagen für Bau, Handwerk, IT und E-Commerce — mit Abschlagszahlungen, GAEB-Support und mehr.',color:T.blue},
-            {tag:'Self-Service',title:'Lieferanten-Portal',desc:'Geschäftspartner empfangen und versenden E-Rechnungen ohne eigenes System — Sie werden der zentrale Hub.',color:T.accent},
-          ].map((f,i)=>(
-            <div key={i} className="feature-card reveal" style={{transitionDelay:`${i*.06}s`}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
-                <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:f.color+'15',color:f.color,border:`1px solid ${f.color}30`}}>{f.tag}</span>
+        <div className="bento-grid">
+          {/* Bento 1 — WIDE: KI-Scanner mit Live-Typewriter-Demo */}
+          <div className="bento-card bento-wide reveal" style={{transitionDelay:'0s'}}>
+            <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.purple+'15',color:T.purple,border:`1px solid ${T.purple}30`}}>Neu</span>
+            <h3 style={{fontWeight:700,fontSize:17,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>KI-Rechnungserkennung</h3>
+            <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65,maxWidth:'52ch'}}>Foto oder PDF hochladen — invoiq extrahiert alle Felder automatisch und erzeugt eine konforme XRechnung. Ohne Abtippen.</p>
+            <div style={{marginTop:18,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:10,padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
+              <span className="live-dot" style={{background:T.purple}}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontFamily:F.mono,color:T.textSecondary,marginBottom:6}}>rechnung_scan_0472.pdf wird analysiert…</div>
+                <div className="shimmer-bar" style={{height:6,borderRadius:3,width:'72%'}}/>
               </div>
-              <h3 style={{fontWeight:700,fontSize:15,color:T.textPrimary,marginBottom:7,letterSpacing:'-.02em'}}>{f.title}</h3>
-              <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65}}>{f.desc}</p>
+              <span style={{fontSize:10.5,fontWeight:700,color:T.green,fontFamily:F.mono}}>14 Felder ✓</span>
             </div>
-          ))}
+          </div>
+          {/* Bento 2 — Inbound mit Pulse */}
+          <div className="bento-card reveal" style={{transitionDelay:'.07s'}}>
+            <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.green+'15',color:T.green,border:`1px solid ${T.green}30`}}>Pflicht seit 2025</span>
+            <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>Eingang in jedem Tarif</h3>
+            <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Empfang, Parsing und Validierung eingehender E-Rechnungen — auch im Free-Plan.</p>
+            <div style={{marginTop:16,display:'flex',alignItems:'center',gap:8}}>
+              <span className="live-dot" style={{background:T.green}}/>
+              <span style={{fontSize:11,fontFamily:F.mono,color:T.textMuted}}>Empfangsbereit</span>
+            </div>
+          </div>
+          {/* Bento 3 — Kanzlei */}
+          <div className="bento-card reveal" style={{transitionDelay:'.14s'}}>
+            <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.accent+'15',color:T.accent,border:`1px solid ${T.accent}30`}}>Business-Plan</span>
+            <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>Kanzlei-Portal</h3>
+            <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Ein Login, alle Mandanten — zentral verwalten und als DATEV-Export weitergeben.</p>
+          </div>
+          {/* Bento 4 */}
+          <div className="bento-card reveal" style={{transitionDelay:'.21s'}}>
+            <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.amber+'15',color:T.amber,border:`1px solid ${T.amber}30`}}>2028 ready</span>
+            <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>ViDA Reporting</h3>
+            <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Die EU-Meldepflicht kommt 2028 — invoiq baut die Schnittstellen jetzt schon mit ein.</p>
+          </div>
+          {/* Bento 5 — WIDE: GoBD-Archiv mit Daten-Strip */}
+          <div className="bento-card bento-wide reveal" style={{transitionDelay:'.28s'}}>
+            <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.blue+'15',color:T.blue,border:`1px solid ${T.blue}30`}}>Rechtssicher</span>
+            <h3 style={{fontWeight:700,fontSize:17,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>GoBD-Archiv — 10 Jahre, unveränderbar</h3>
+            <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65,maxWidth:'52ch'}}>Jedes Dokument wird mit SHA-256 versiegelt und revisionssicher archiviert. Prüfbar per Klick.</p>
+            <div style={{marginTop:16,display:'flex',gap:0,borderTop:`1px solid ${T.bgBorder}`}}>
+              {[['10 Jahre','Aufbewahrung'],['SHA-256','Hash-Siegel'],['EN 16931','Validierung'],['DSGVO','EU-Hosting']].map(([v,l],i)=>(
+                <div key={l} style={{flex:1,padding:'12px 0 0',borderLeft:i>0?`1px solid ${T.bgBorder}`:'none',paddingLeft:i>0?16:0}}>
+                  <div style={{fontSize:14,fontWeight:800,fontFamily:F.mono,color:T.textPrimary,letterSpacing:'-.02em'}}>{v}</div>
+                  <div style={{fontSize:10.5,color:T.textMuted,marginTop:2}}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1033,7 +1081,7 @@ function Landing({onEnter,onLegal=()=>{}}){
           <span className="reveal badge badge-gray" style={{marginBottom:14,fontSize:11}}>Zielgruppen</span>
           <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em',lineHeight:1.15}}>Die richtige Lösung<br/>für jede Unternehmensgröße.</h2>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
+        <div className="zg-grid">
           {[
             {num:'01',target:'Einzelunternehmer & KMU',sub:'Handwerker · Freelancer · kleine Firmen · ohne IT-Aufwand',points:['XRechnung per E-Mail empfangen & senden','Foto/PDF → XRechnung per KI-Scanner','GoBD-Archivierung automatisch','Kein ERP · kein IT-Wissen nötig'],cta:'Kostenlos starten →',color:T.accent},
             {num:'02',target:'Steuerberater & Kanzleien',sub:'Ein Portal · alle Mandanten · zentrale E-Rechnungs-Verwaltung',points:['Kanzlei-Portal: alle Mandanten auf einen Blick','Eingangsrechnungen pro Mandant empfangen','DATEV-Export für jeden Mandanten','Dokumenten-Archiv GoBD-konform'],cta:'Kanzlei-Portal testen →',color:T.purple},
@@ -2205,7 +2253,7 @@ function InboundScreen({notify}){
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null)}>↓ DATEV-Export</button>
           <button className="btn btn-ghost btn-sm" onClick={()=>{
-            navigator.clipboard.writeText(`rechnungen-${emailSlug}@invoiq.io`);
+            navigator.clipboard.writeText(`${emailSlug}@rechnungen.invoiq.io`);
             notify(`E-Mail-Adresse kopiert ✓`,'success');
           }}>📋 Meine Eingangs-E-Mail</button>
         </div>
@@ -2215,10 +2263,10 @@ function InboundScreen({notify}){
       <div style={{padding:'12px 16px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
         <div>
           <div style={{fontSize:12.5,fontWeight:600,color:T.accent,marginBottom:2}}>Ihre Eingangs-E-Mail-Adresse</div>
-          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>rechnungen-{emailSlug||'...'}@invoiq.io</div>
+          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{emailSlug||'...'}@rechnungen.invoiq.io</div>
           <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Lieferanten schicken Rechnungen einfach an diese Adresse — invoiq verarbeitet alles automatisch.</div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`rechnungen-${emailSlug}@invoiq.io`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`${emailSlug}@rechnungen.invoiq.io`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
       </div>
 
       {/* Skonto-Alerts */}

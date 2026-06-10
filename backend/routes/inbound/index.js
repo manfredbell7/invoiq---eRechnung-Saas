@@ -37,8 +37,9 @@ export async function inboundRoutes(fastify) {
       const sender    = parts.sender    || parts.From || '';
       const subject   = parts.subject   || parts.Subject || '';
 
-      // Resolve org: rechnungen-[slug]@invoiq.io
-      const match = recipient.match(/rechnungen-([a-z0-9\-]+)@invoiq\.io/i);
+      // Resolve org: [slug]@rechnungen.invoiq.io (neu) oder rechnungen-[slug]@invoiq.io (alt)
+      const match = recipient.match(/([a-z0-9\-]+)@rechnungen\.invoiq\.io/i)
+                 || recipient.match(/rechnungen-([a-z0-9\-]+)@invoiq\.io/i);
       if (!match) return reply.send({ received: true });
 
       const { data: org } = await supabase
