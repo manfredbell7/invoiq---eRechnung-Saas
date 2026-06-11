@@ -5,6 +5,7 @@ import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import { db } from './config/db.js';
 import { authRoutes } from './routes/auth/index.js';
+import { adminRoutes } from './routes/admin/index.js';
 import { invoiceRoutes } from './routes/invoices/index.js';
 import { archiveRoutes } from './routes/archive/index.js';
 import { webhookRoutes, connectRoutes } from './routes/webhooks/index.js';
@@ -88,6 +89,7 @@ export async function buildServer() {
 
   // ── ROUTES — registered BEFORE db.ready() so server accepts traffic immediately
   fastify.register(authRoutes,    { prefix: `${API}/auth` });
+  fastify.register(adminRoutes,   { prefix: `${API}/admin` });
   fastify.register(invoiceRoutes, { prefix: `${API}/invoices` });
   fastify.register(archiveRoutes, { prefix: `${API}/archive` });
   fastify.register(webhookRoutes, { prefix: `${API}/webhooks` });

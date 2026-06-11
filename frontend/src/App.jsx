@@ -212,15 +212,15 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
 
 /* ── Cards — Stripe's layered approach ── */
 .card{
-  background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:8px;
-  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 6px rgba(10,37,64,.06);
+  background:${T.bg};border:1px solid rgba(221,225,231,.6);
+  border-radius:14px;
+  box-shadow:0 16px 32px -20px rgba(10,37,64,.07);
+  transition:box-shadow .3s cubic-bezier(.16,1,.3,1),transform .3s cubic-bezier(.16,1,.3,1),border-color .2s;
 }
-.card-hover{transition:all .15s;}
-.card-hover:hover{
-  border-color:${T.textPlaceholder};
-  box-shadow:0 2px 4px rgba(0,0,0,.04),0 4px 12px rgba(10,37,64,.1);
-  transform:translateY(-1px);
+.card-hover:hover,.card.tr-target:hover{
+  border-color:rgba(99,91,255,.25);
+  box-shadow:0 20px 40px -18px rgba(10,37,64,.13);
+  transform:translateY(-2px);
 }
 
 /* ── Table ── */
@@ -238,8 +238,10 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
   padding:11px 14px;font-size:13.5px;
   border-bottom:1px solid ${T.bgSubtle};
   vertical-align:middle;
+  font-variant-numeric:tabular-nums;
 }
-.tr-hover:hover{background:${T.bgSubtle};cursor:pointer;}
+.tr-hover{transition:background .15s;}
+.tr-hover:hover{background:${T.accentLight};cursor:pointer;}
 
 /* ── Badges — Stripe minimal ── */
 .badge{
@@ -256,15 +258,21 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
 
 /* ── Navigation ── */
 .nav-item{
-  display:flex;align-items:center;gap:8px;
-  padding:6px 10px;background:transparent;
-  color:${T.textMuted};border:none;border-radius:6px;
+  display:flex;align-items:center;gap:9px;
+  padding:7px 11px;background:transparent;
+  color:${T.textMuted};border:none;border-radius:8px;
   cursor:pointer;font-size:13px;font-weight:500;
   text-align:left;width:100%;font-family:${F.ui};
-  transition:all .1s;
+  transition:all .18s cubic-bezier(.16,1,.3,1);
+  position:relative;
 }
-.nav-item:hover{color:${T.textPrimary};background:${T.bgMuted};}
-.nav-item.active{color:${T.textPrimary};background:${T.bgMuted};font-weight:600;}
+.nav-item:hover{color:${T.textPrimary};background:${T.bgMuted};transform:translateX(2px);}
+.nav-item.active{color:${T.accent};background:${T.accentLight};font-weight:600;}
+.nav-item.active::before{
+  content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);
+  width:3px;height:16px;border-radius:0 3px 3px 0;background:${T.accent};
+}
+.nav-item:active{transform:scale(.98);}
 .nav-section{
   font-size:10px;font-weight:600;color:${T.textPlaceholder};
   letter-spacing:.8px;text-transform:uppercase;
@@ -273,7 +281,8 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
 
 /* ── Layout ── */
 .sidebar{
-  width:216px;background:${T.bg};
+  width:218px;
+  background:linear-gradient(180deg,${T.bg} 0%,${T.bgSubtle} 100%);
   border-right:1px solid ${T.bgBorder};
   display:flex;flex-direction:column;flex-shrink:0;
   position:sticky;top:0;height:100vh;overflow-y:auto;
@@ -286,11 +295,12 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
 
 /* ── Misc ── */
 .divider{height:1px;background:${T.bgBorder};}
-.progress{height:2px;background:${T.bgMuted};border-radius:2px;overflow:hidden;}
-.progress-fill{height:100%;background:${T.accent};border-radius:2px;transition:width .3s;}
+.progress{height:3px;background:${T.bgMuted};border-radius:3px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,${T.accent},#8B7FFF);border-radius:3px;transition:width .5s cubic-bezier(.16,1,.3,1);}
 .stat-num{
-  font-family:${F.ui};font-size:28px;font-weight:700;
-  color:${T.textPrimary};line-height:1;letter-spacing:-.03em;
+  font-family:${F.mono};font-size:27px;font-weight:700;
+  color:${T.textPrimary};line-height:1;letter-spacing:-.04em;
+  font-variant-numeric:tabular-nums;
 }
 .tab{
   padding:8px 14px;font-size:13px;font-weight:500;
@@ -2899,11 +2909,11 @@ function AdminShell({user,org,nav,setNav,onBack,children}){
 }
 
 function AdminOverview({notify,isSuper}){
-  const [adminStats,setAdminStats] = React.useState(null);
-  const [orgs,setOrgs]             = React.useState([]);
-  const [loadingA,setLoadingA]     = React.useState(true);
+  const [adminStats,setAdminStats] = useState(null);
+  const [orgs,setOrgs]             = useState([]);
+  const [loadingA,setLoadingA]     = useState(true);
 
-  React.useEffect(()=>{
+  useEffect(()=>{
     // Echte Daten aus API laden
     Promise.all([
       api.get('/admin/stats').catch(()=>null),
