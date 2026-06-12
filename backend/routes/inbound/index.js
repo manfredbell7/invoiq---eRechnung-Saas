@@ -183,6 +183,113 @@ export async function inboundRoutes(fastify) {
     return checkDiscount(inv);
   });
 
+
+  // ── DETAIL ───────────────────────────────────────────────────
+  fastify.get('/:id/detail', { preHandler: authMiddleware }, async (req, reply) => {
+    const { data: inv } = await supabase.from('inbound_invoices').select('*')
+      .eq('id', req.params.id).eq('org_id', req.org.id).single();
+    if (!inv) return reply.code(404).send({ error: 'Nicht gefunden' });
+
+    // Lieferanten-Wissen laden (gelernte Defaults)
+    let vendor = null;
+    if (inv.seller_vat_id) {
+      const { data: v } = await supabase.from('vendors').select('*')
+        .eq('org_id', req.org.id).eq('vendor_vat_id', inv.seller_vat_id).single();
+      vendor = v || null;
+    }
+    return { invoice: inv, vendor };
+  });
+
+  // ── FELDER KORRIGIEREN (KI-Vorschläge editierbar) ────────────
+  fastify.patch('/:id', { preHandler: authMiddleware }, async (req, reply) => {
+    const allowed = ['invoice_number','amount','amount_net','due_date','seller_name',
+                     'seller_vat_id','seller_iban','seller_bic','payment_reference',
+                     'discount_percent','discount_days','suggested_account'];
+    const updates = {};
+    const corrected = [];
+    for (const k of allowed) {
+      if (req.body[k] !== undefined) { updates[k] = req.body[k]; corrected.push(k); }
+    }
+    if (!corrected.length) return reply.code(400).send({ error: 'Keine Felder' });
+
+    const { data: inv } = await supabase.from('inbound_invoices').select('corrected_fields, seller_vat_id, seller_name')
+      .eq('id', req.params.id).eq('org_id', req.org.id).single();
+    if (!inv) return reply.code(404).send({ error: 'Nicht gefunden' });
+
+    const prevCorrected = Array.isArray(inv.corrected_fields) ? inv.corrected_fields : [];
+    updates.corrected_fields = [...new Set([...prevCorrected, ...corrected])];
+    updates.review_status = 'geprueft';
+    updates.updated_at = new Date().toISOString();
+
+    await supabase.from('inbound_invoices').update(updates).eq('id', req.params.id);
+
+    // LERNLOGIK: Lieferanten-Defaults speichern (Regeltraining)
+    const vatId = updates.seller_vat_id || inv.seller_vat_id;
+    if (vatId) {
+      await supabase.from('vendors').upsert({
+        org_id: req.org.id,
+        vendor_vat_id: vatId,
+        vendor_name: updates.seller_name || inv.seller_name || '',
+        vendor_iban: updates.seller_iban || undefined,
+        default_account: updates.suggested_account || undefined,
+        corrections: 1,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'org_id,vendor_vat_id', ignoreDuplicates: false });
+      // Korrektur-Zähler erhöhen
+      await supabase.rpc('increment_vendor_corrections', { p_org: req.org.id, p_vat: vatId }).then(()=>{}).catch(()=>{});
+    }
+
+    await db.createAuditLog({ org_id: req.org.id, user_id: req.user?.id,
+      action: 'inbound_corrected', details: { id: req.params.id, fields: corrected } });
+    return { success: true, corrected };
+  });
+
+  // ── FREIGEBEN / ABLEHNEN ─────────────────────────────────────
+  fastify.post('/:id/review', { preHandler: authMiddleware }, async (req, reply) => {
+    const { decision } = req.body || {}; // 'freigegeben' | 'abgelehnt'
+    if (!['freigegeben','abgelehnt'].includes(decision))
+      return reply.code(400).send({ error: 'decision muss freigegeben oder abgelehnt sein' });
+
+    const { data: inv } = await supabase.from('inbound_invoices').select('seller_vat_id, corrected_fields')
+      .eq('id', req.params.id).eq('org_id', req.org.id).single();
+    if (!inv) return reply.code(404).send({ error: 'Nicht gefunden' });
+
+    await supabase.from('inbound_invoices').update({
+      review_status: decision,
+      reviewed_by: req.user?.id,
+      reviewed_at: new Date().toISOString(),
+    }).eq('id', req.params.id);
+
+    // Qualitätsmetrik: Freigabe ohne Korrektur = KI war gut
+    const wasClean = !(Array.isArray(inv.corrected_fields) && inv.corrected_fields.length);
+    if (decision === 'freigegeben' && wasClean && inv.seller_vat_id) {
+      const { data: v } = await supabase.from('vendors').select('auto_approved')
+        .eq('org_id', req.org.id).eq('vendor_vat_id', inv.seller_vat_id).single();
+      if (v) await supabase.from('vendors').update({ auto_approved: (v.auto_approved||0)+1 })
+        .eq('org_id', req.org.id).eq('vendor_vat_id', inv.seller_vat_id);
+    }
+
+    await db.createAuditLog({ org_id: req.org.id, user_id: req.user?.id,
+      action: `inbound_${decision}`, details: { id: req.params.id } });
+    return { success: true, status: decision };
+  });
+
+  // ── QUALITÄTSMETRIKEN (Lerncenter) ───────────────────────────
+  fastify.get('/quality-stats', { preHandler: authMiddleware }, async (req) => {
+    const { data: invs } = await supabase.from('inbound_invoices')
+      .select('review_status, corrected_fields, confidence')
+      .eq('org_id', req.org.id);
+    const all = invs || [];
+    const total      = all.length;
+    const reviewed   = all.filter(i=>['freigegeben','abgelehnt','geprueft'].includes(i.review_status)).length;
+    const corrected  = all.filter(i=>Array.isArray(i.corrected_fields)&&i.corrected_fields.length).length;
+    const cleanRate  = reviewed ? Math.round(((reviewed-corrected)/reviewed)*100) : 100;
+    const avgConf    = total ? Math.round(all.reduce((s,i)=>s+(parseFloat(i.confidence)||0.85),0)/total*100) : 0;
+    const { count: vendorCount } = await supabase.from('vendors')
+      .select('id',{count:'exact',head:true}).eq('org_id', req.org.id);
+    return { total, reviewed, corrected, clean_rate: cleanRate, avg_confidence: avgConf, learned_vendors: vendorCount||0 };
+  });
+
   // ── MARK AS PAID ──────────────────────────────────────────────
   fastify.post('/:id/mark-paid', { preHandler: authMiddleware }, async (req, reply) => {
     const { error } = await supabase

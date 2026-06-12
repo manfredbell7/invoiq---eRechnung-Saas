@@ -58,7 +58,7 @@ const api={
     try{const res=await fetch(`${API_BASE}${path}`,{method,headers,body:body?JSON.stringify(body):undefined});const data=await res.json();if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);return data;}
     catch(err){if(err.message.includes("fetch"))throw new Error("");throw err;}
   },
-  get:(p)=>api.req("GET",p),post:(p,b)=>api.req("POST",p,b),
+  get:(p)=>api.req("GET",p),post:(p,b)=>api.req("POST",p,b),patch:(p,b)=>api.req("PATCH",p,b),
   login:(b)=>api.post("/auth/login",b),register:(b)=>api.post("/auth/register",b),
   me:()=>api.get("/auth/me"),logout:()=>api.post("/auth/logout",{}),
   getStats:()=>api.get("/invoices/stats"),listInvoices:(q="")=>api.get(`/invoices${q}`),
@@ -79,6 +79,10 @@ const api={
   forwardInbound:(id,email)=>api.post(`/inbound/${id}/forward`,{recipient_email:email}),
   getSepaDownloadUrl:(id,discount=false)=>`${API_BASE}/inbound/${id}/sepa-pain001?discount=${discount}&token=${api._token}`,
   checkDiscount:(id)=>api.get(`/inbound/${id}/discount-check`),
+  getInboundDetail:(id)=>api.get(`/inbound/${id}/detail`),
+  patchInbound:(id,fields)=>api.patch(`/inbound/${id}`,fields),
+  reviewInbound:(id,decision)=>api.post(`/inbound/${id}/review`,{decision}),
+  getQualityStats:()=>api.get('/inbound/quality-stats'),
   // Einstellungen
   saveSettings:(b)=>api.post('/auth/settings',b),
   getOrgSettings:()=>api.get('/auth/settings'),
@@ -2199,9 +2203,42 @@ function InboundScreen({notify}){
   const [emailSlug,setEmailSlug] = useState('');
   const [sepaModal,setSepaModal] = useState(null); // invoice object
   const [discountInfo,setDiscountInfo] = useState({}); // id → {active,daysLeft,savingEur}
+  const [reviewInv,setReviewInv]   = useState(null);   // Split-Pane: ausgewählte Rechnung
+  const [reviewEdit,setReviewEdit] = useState({});     // editierte Felder
+  const [reviewVendor,setReviewVendor] = useState(null);
+  const [reviewSaving,setReviewSaving] = useState(false);
+  const [quality,setQuality]       = useState(null);   // Lerncenter-Metriken
+
+  const openReview = async (inv) => {
+    setReviewInv(inv); setReviewEdit({}); setReviewVendor(null);
+    try {
+      const d = await api.getInboundDetail(inv.id);
+      setReviewInv(d.invoice); setReviewVendor(d.vendor);
+    } catch(e){}
+  };
+  const saveCorrections = async () => {
+    if(!Object.keys(reviewEdit).length){ notify('Keine Änderungen','info'); return; }
+    setReviewSaving(true);
+    try {
+      await api.patchInbound(reviewInv.id, reviewEdit);
+      notify('Korrekturen gespeichert — Lieferant lernt mit ✓','success');
+      setReviewEdit({}); load();
+      const d = await api.getInboundDetail(reviewInv.id);
+      setReviewInv(d.invoice);
+    } catch(e){ notify(e.message,'error'); }
+    finally{ setReviewSaving(false); }
+  };
+  const doReview = async (decision) => {
+    try {
+      await api.reviewInbound(reviewInv.id, decision);
+      notify(decision==='freigegeben'?'Rechnung freigegeben ✓':'Rechnung abgelehnt','success');
+      setReviewInv(null); load();
+    } catch(e){ notify(e.message,'error'); }
+  };
 
   const load = () => {
     setLoading(true);
+    api.getQualityStats().then(setQuality).catch(()=>{});
     api.listInbound()
       .then(d => {
         const invs = d.invoices || [];
@@ -2322,7 +2359,27 @@ function InboundScreen({notify}){
         ))}
       </div>
 
-      {/* Table */}
+      {/* Lerncenter-Metriken */}
+      {quality&&quality.total>0&&(
+        <div style={{display:'flex',gap:0,background:'#fff',border:`1px solid ${T.bgBorder}`,borderRadius:12,padding:'14px 0',marginBottom:14}}>
+          {[
+            ['KI-Trefferquote',`${quality.clean_rate}%`,'freigegeben ohne Korrektur',T.green],
+            ['Ø Konfidenz',`${quality.avg_confidence}%`,'Felderkennungs-Sicherheit',T.accent],
+            ['Gelernte Lieferanten',quality.learned_vendors,'mit gespeicherten Regeln',T.purple],
+            ['Geprüft',`${quality.reviewed}/${quality.total}`,'Rechnungen im Review',T.textPrimary],
+          ].map(([l,v,s,c],i)=>(
+            <div key={l} style={{flex:1,padding:'0 18px',borderLeft:i>0?`1px solid ${T.bgBorder}`:'none'}}>
+              <div style={{fontSize:10,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:5}}>{l}</div>
+              <div style={{fontSize:20,fontWeight:800,fontFamily:F.mono,color:c,letterSpacing:'-.03em'}}>{v}</div>
+              <div style={{fontSize:10.5,color:T.textMuted,marginTop:2}}>{s}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Split-Pane: Tabelle + Review-Detail */}
+      <div style={{display:'flex',gap:14,alignItems:'flex-start'}}>
+      <div style={{flex:reviewInv?'1 1 46%':'1 1 100%',minWidth:0,transition:'flex .3s cubic-bezier(.16,1,.3,1)'}}>
       {loading ? (
         <div style={{textAlign:'center',padding:40}}><Spinner size={24} color={T.accent}/></div>
       ) : (
@@ -2335,7 +2392,7 @@ function InboundScreen({notify}){
               {filtered.map((inv)=>{
                 const dk = discountInfo[inv.id];
                 return (
-                <tr key={inv.id} className="tr-hover">
+                <tr key={inv.id} className="tr-hover" onClick={()=>openReview(inv)} style={{cursor:'pointer',background:reviewInv?.id===inv.id?T.accentLight:undefined}}>
                   <td>
                     <div style={{fontWeight:600,fontSize:13,color:T.textPrimary}}>{inv.sender_name||'Unbekannt'}</div>
                     <div style={{fontSize:11,color:T.textMuted}}>{inv.sender_email||''}</div>
@@ -2352,7 +2409,7 @@ function InboundScreen({notify}){
                   <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:4,padding:'2px 7px',fontSize:11,fontWeight:700,fontFamily:F.mono}}>{(inv.format||'?').toUpperCase()}</span></td>
                   <td><StatusBadge status={inv.status==='bezahlt'?'delivered':inv.validation_passed?'validated':'error'}/></td>
                   <td>
-                    <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+                    <div style={{display:'flex',gap:5,flexWrap:'wrap'}} onClick={e=>e.stopPropagation()}>
                       {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>window.open(api.getInboundPdf(inv.id),'_blank')}>↓ PDF</button>}
                       {inv.status!=='bezahlt'&&inv.seller_iban&&(
                         <button className="btn btn-sm btn-primary" style={{fontSize:11,padding:'3px 8px'}}
@@ -2371,6 +2428,84 @@ function InboundScreen({notify}){
           </table>
         </div>
       )}
+      </div>
+
+      {/* ── REVIEW DETAIL-PANEL (Split-Pane rechts) ── */}
+      {reviewInv&&(()=>{
+        const f = (key)=> reviewEdit[key]!==undefined ? reviewEdit[key] : (reviewInv[key]??'');
+        const edited = (key)=> reviewEdit[key]!==undefined;
+        const wasCorrected = (key)=> Array.isArray(reviewInv.corrected_fields)&&reviewInv.corrected_fields.includes(key);
+        const conf = Math.round((parseFloat(reviewInv.confidence)||0.85)*100);
+        const confColor = conf>=90?T.green:conf>=75?T.amber:T.red;
+        const Field = ({label,k,type='text',mono=false})=>(
+          <div style={{marginBottom:11}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
+              <label style={{fontSize:10.5,fontWeight:600,color:T.textMuted,letterSpacing:.3,textTransform:'uppercase'}}>{label}</label>
+              {edited(k)?<span style={{fontSize:9,fontWeight:700,color:T.amber}}>● geändert</span>
+               :wasCorrected(k)?<span style={{fontSize:9,fontWeight:700,color:T.purple}}>✎ korrigiert</span>
+               :<span style={{fontSize:9,fontWeight:700,color:T.green}}>KI ✓</span>}
+            </div>
+            <input className="input" type={type} value={f(k)}
+              style={{fontFamily:mono?F.mono:F.ui,fontSize:13,borderColor:edited(k)?T.amber:undefined}}
+              onChange={e=>setReviewEdit(p=>({...p,[k]:e.target.value}))}/>
+          </div>
+        );
+        return (
+        <div className="card fi" style={{flex:'1 1 54%',minWidth:340,position:'sticky',top:14,maxHeight:'calc(100vh - 90px)',overflowY:'auto'}}>
+          {/* Kopf */}
+          <div style={{padding:'16px 20px',borderBottom:`1px solid ${T.bgBorder}`,display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:T.textPrimary,letterSpacing:'-.02em'}}>{reviewInv.seller_name||reviewInv.sender_name||'Rechnung'}</div>
+              <div style={{fontSize:11.5,color:T.textMuted,marginTop:2,fontFamily:F.mono}}>{reviewInv.invoice_number||'—'} · {(reviewInv.format||'?').toUpperCase()}</div>
+            </div>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <span style={{fontSize:10.5,fontWeight:700,padding:'3px 9px',borderRadius:5,background:confColor+'15',color:confColor,border:`1px solid ${confColor}30`,fontFamily:F.mono}}>KI {conf}%</span>
+              <button onClick={()=>setReviewInv(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:19,color:T.textMuted,lineHeight:1}}>×</button>
+            </div>
+          </div>
+
+          {/* Lieferanten-Wissen */}
+          {reviewVendor&&(
+            <div style={{margin:'14px 20px 0',padding:'10px 13px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,fontSize:12,color:T.textSecondary}}>
+              <strong style={{color:T.accent}}>Bekannter Lieferant</strong> — {reviewVendor.auto_approved||0}× ohne Korrektur freigegeben{reviewVendor.default_account?`, Konto ${reviewVendor.default_account}`:''}
+            </div>
+          )}
+
+          {/* Felder — KI-Vorschläge editierbar */}
+          <div style={{padding:'16px 20px'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 14px'}}>
+              <Field label="Rechnungsnummer" k="invoice_number" mono/>
+              <Field label="Betrag (Brutto €)" k="amount" type="number" mono/>
+              <Field label="Fälligkeit" k="due_date" type="date"/>
+              <Field label="Netto €" k="amount_net" type="number" mono/>
+              <Field label="Lieferant" k="seller_name"/>
+              <Field label="USt-IdNr." k="seller_vat_id" mono/>
+              <Field label="IBAN" k="seller_iban" mono/>
+              <Field label="Verwendungszweck" k="payment_reference"/>
+              <Field label="Skonto %" k="discount_percent" type="number" mono/>
+              <Field label="Skonto Tage" k="discount_days" type="number" mono/>
+              <Field label="DATEV-Konto (Vorschlag)" k="suggested_account" mono/>
+            </div>
+
+            {/* Aktionen */}
+            <div style={{display:'flex',gap:8,marginTop:14,paddingTop:14,borderTop:`1px solid ${T.bgBorder}`}}>
+              {Object.keys(reviewEdit).length>0&&(
+                <button className="btn btn-ghost" onClick={saveCorrections} disabled={reviewSaving} style={{borderColor:T.amber,color:T.amber}}>
+                  {reviewSaving?<Spinner size={13} color={T.amber}/>:`✎ ${Object.keys(reviewEdit).length} Korrektur${Object.keys(reviewEdit).length>1?'en':''} speichern`}
+                </button>
+              )}
+              <div style={{flex:1}}/>
+              <button className="btn btn-ghost" onClick={()=>doReview('abgelehnt')} style={{color:T.red,borderColor:T.redBdr}}>Ablehnen</button>
+              <button className="btn btn-primary" onClick={()=>doReview('freigegeben')}>✓ Freigeben</button>
+            </div>
+            {reviewInv.review_status&&reviewInv.review_status!=='neu'&&(
+              <div style={{marginTop:10,fontSize:11.5,color:T.textMuted}}>Status: <strong style={{color:reviewInv.review_status==='freigegeben'?T.green:reviewInv.review_status==='abgelehnt'?T.red:T.amber}}>{reviewInv.review_status}</strong>{reviewInv.reviewed_at?` · ${new Date(reviewInv.reviewed_at).toLocaleString('de-DE')}`:''}</div>
+            )}
+          </div>
+        </div>
+        );
+      })()}
+      </div>
 
       {/* SEPA Modal */}
       {sepaModal&&<div className="modal-overlay" onClick={()=>setSepaModal(null)}>
