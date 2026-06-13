@@ -61,13 +61,14 @@ export async function inboundRoutes(fastify) {
           format = 'xrechnung';
         } else if (fn.endsWith('.pdf')) {
           xmlContent = await extractFromPDF(att.buffer);
-          format = 'pdf_extracted';
+          format = xmlContent ? 'zugferd' : 'pdf';
+        } else {
+          // Andere Anhänge (Bilder etc.) überspringen
+          continue;
         }
 
-        if (!xmlContent) continue;
-
-        const parsed    = parseInboundXML(xmlContent);
-        const validation = validateEN16931(parsed?.data || {});
+        const parsed     = xmlContent ? parseInboundXML(xmlContent) : null;
+        const validation = xmlContent ? validateEN16931(parsed?.data || {}) : { passed: false };
 
         await supabase.from('inbound_invoices').insert({
           org_id:            org.id,
@@ -76,8 +77,8 @@ export async function inboundRoutes(fastify) {
           subject,
           format,
           raw_xml:           xmlContent,
-          xml_hash:          hashXML(xmlContent),
-          status:            'empfangen',
+          xml_hash:          xmlContent ? hashXML(xmlContent) : null,
+          status:            format === 'pdf' ? 'pruefung' : 'empfangen',
           invoice_number:    parsed?.data?.invoice_number  || null,
           amount:            parsed?.data?.amount_gross    || null,
           amount_net:        parsed?.data?.amount_net      || null,
@@ -90,9 +91,24 @@ export async function inboundRoutes(fastify) {
           discount_days:     parsed?.data?.discount_days   || null,
           payment_reference: parsed?.data?.payment_reference || null,
           validation_passed: validation.passed,
+          attachment_name:   att.filename || null,
         });
 
         processed++;
+      }
+
+      // Mail ohne verwertbaren Anhang: trotzdem als Eingang protokollieren
+      if (processed === 0) {
+        await supabase.from('inbound_invoices').insert({
+          org_id:       org.id,
+          sender_email: sender,
+          sender_name:  extractName(sender),
+          subject,
+          format:       'email',
+          status:       'pruefung',
+          validation_passed: false,
+        });
+        processed = 1;
       }
 
       return reply.send({ received: true, processed });
@@ -372,17 +388,21 @@ async function extractFromPDF(buffer) {
 </ubl:Invoice>`;
   }
   const base64 = buffer.toString('base64');
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514', max_tokens: 1200,
-      messages: [{ role: 'user', content: [
-        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-        { type: 'text', text: 'Extrahiere alle Rechnungsfelder und gib NUR XRechnung UBL XML zurück. Kein Markdown.' }
-      ]}],
-    }),
-  });
-  const data = await response.json();
-  return data.content?.[0]?.text?.replace(/```xml|```/g, '').trim() || null;
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 1200,
+        messages: [{ role: 'user', content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+          { type: 'text', text: 'Extrahiere alle Rechnungsfelder und gib NUR XRechnung UBL XML zurück. Kein Markdown.' }
+        ]}],
+      }),
+    });
+    const data = await response.json();
+    return data.content?.[0]?.text?.replace(/```xml|```/g, '').trim() || null;
+  } catch (e) {
+    return null; // KI-Extraktion fehlgeschlagen → PDF trotzdem als Eingang speichern
+  }
 }
