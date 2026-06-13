@@ -25,6 +25,7 @@ export async function buildServer() {
     logger: (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') ? { transport: { target: 'pino-pretty', options: { colorize: true } } } : false,
     ajv: { customOptions: { strict: 'log', keywords: ['kind', 'modifier'] } },
     trustProxy: true,  // Required for Railway reverse proxy
+    ignoreTrailingSlash: true,  // /inbound und /inbound/ identisch behandeln
   });
 
   // ── PLUGINS ────────────────────────────────────────────────
