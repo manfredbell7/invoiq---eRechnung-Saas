@@ -30,10 +30,29 @@
 <div id="root"></div>
 <script type="module" src="/src/main.jsx"></script>
 <script>
-  // Service Worker registrieren (PWA)
+  // Service Worker registrieren (PWA) mit Auto-Update
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        // Bei jedem Laden aktiv nach neuer Version suchen
+        reg.update();
+        // Wenn ein neuer SW die Kontrolle übernimmt: Seite einmal neu laden
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
+        // Neu gefundenen SW sofort aktivieren lassen
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (nw) nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              nw.postMessage && nw.postMessage('skipWaiting');
+            }
+          });
+        });
+      }).catch(() => {});
     });
   }
 </script>
