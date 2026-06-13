@@ -247,6 +247,19 @@ export async function invoiceRoutes(fastify) {
     return invoice.xml_content;
   });
 
+  // ── GET PDF (menschenlesbar, mit gewählter Vorlage) ──────────
+  fastify.get('/:id/pdf', { preHandler: authMiddleware }, async (req, reply) => {
+    const invoice = await db.findInvoiceById(req.params.id, req.org.id);
+    if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
+
+    const { renderInvoicePDF } = await import('../../services/pdfRenderer.js');
+    const pdfBuffer = await renderInvoicePDF(invoice);
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', `inline; filename="${invoice.invoice_number}.pdf"`);
+    return reply.send(pdfBuffer);
+  });
+
   // ── VALIDATE ─────────────────────────────────────────────────
   fastify.post('/:id/validate', { preHandler: authMiddleware }, async (req, reply) => {
     const invoice = await db.findInvoiceById(req.params.id, req.org.id);
@@ -389,6 +402,15 @@ export async function invoiceRoutes(fastify) {
     const xmlContent = xmlRow?.xml_content || generateXML(invoice, invoice.format || 'xrechnung');
     const xmlBuffer = Buffer.from(xmlContent, 'utf-8');
 
+    // Menschenlesbares PDF mit gewählter Vorlage (modern/classic/minimal)
+    let pdfBuffer = null;
+    try {
+      const { renderInvoicePDF } = await import('../../services/pdfRenderer.js');
+      pdfBuffer = await renderInvoicePDF(invoice);
+    } catch (e) {
+      req.log?.warn?.('PDF-Rendering fehlgeschlagen, sende nur XML');
+    }
+
     const { sendInvoiceEmail } = await import('../../services/email.js');
 
     // Rechnung an Empfänger senden
@@ -403,6 +425,7 @@ export async function invoiceRoutes(fastify) {
         custom_message: message,
       },
       xmlBuffer,
+      pdfBuffer,
     });
 
     // Kopie an Absender (Org-E-Mail)
@@ -422,6 +445,7 @@ export async function invoiceRoutes(fastify) {
             custom_message: `[KOPIE] Rechnung wurde an ${recipient_email} gesendet.`,
           },
           xmlBuffer,
+          pdfBuffer,
         });
       }
     }

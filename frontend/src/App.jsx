@@ -64,6 +64,8 @@ const api={
   getStats:()=>api.get("/invoices/stats"),listInvoices:(q="")=>api.get(`/invoices${q}`),
   createInvoice:(b)=>api.post("/invoices",b),sendInvoice:(id,b)=>api.post(`/invoices/${id}/send`,b),
   getXML:(id)=>fetch(`${API_BASE}/invoices/${id}/xml`,{headers:{Authorization:`Bearer ${api._token}`}}).then(r=>r.text()),
+  getPDFUrl:(id)=>`${API_BASE}/invoices/${id}/pdf`,
+  openPDF:(id)=>fetch(`${API_BASE}/invoices/${id}/pdf`,{headers:{Authorization:`Bearer ${api._token}`}}).then(r=>r.blob()).then(b=>{const u=URL.createObjectURL(b);window.open(u,'_blank');}),
   // E-Mail Ausgang
   sendInvoiceEmail:(id,recipient_email,message,sender_copy=false)=>api.post(`/invoices/${id}/send-email`,{recipient_email,message,sender_copy}),
   // Peppol
@@ -1738,6 +1740,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
             <td><div style={{display:"flex",gap:5}}>
               {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>{setCurrentInvId(inv.id);setEmailTo(inv.buyer_email||'');setEmailModal(true);}}>✉ Senden</button>}
               {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
+              <button className="btn btn-ghost btn-sm" onClick={()=>api.openPDF(inv.id).catch(e=>notify(e.message,"error"))}>PDF</button>
             </div></td>
           </tr>)}
           {!loading&&filtered.length===0&&invoices.length===0&&<tr><td colSpan={6} style={{padding:0}}>
