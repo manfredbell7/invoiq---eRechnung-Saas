@@ -1621,6 +1621,8 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   useEffect(()=>{if(initialView){setView(initialView);onNavDone&&onNavDone();}},[]);
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   const[generating,setGenerating]=useState(false);const[xml,setXml]=useState(null);
+  const[fieldErrors,setFieldErrors]=useState({});
+  const[saving,setSaving]=useState(false);
   const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",template:"modern",delivery_method:"email",seller_name:"",seller_vat_id:"",seller_address:"",seller_city:"",buyer_name:"",buyer_address:"",buyer_city:"",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
   const load=useCallback(()=>{setLoading(true);api.listInvoices().then(d=>setInvoices(d.invoices||[])).catch(()=>setInvoices([])).finally(()=>setLoading(false));},[]);
   useEffect(()=>load(),[load]);
@@ -1628,7 +1630,34 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   const updItem=(i,k,v)=>{const a=[...form.line_items];a[i]={...a[i],[k]:k==="description"?v:parseFloat(v)||0};upd("line_items",a);};
   const net=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price,0);
   const vat=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price*(i.vat_rate/100),0);
-  const generate=async()=>{if(!form.buyer_name){notify("Empfänger fehlt","error");return;}if(!form.line_items||form.line_items.every(i=>!i.description)){notify("Mindestens eine Position erforderlich","error");return;}if(net<=0){notify("Betrag muss größer als 0 sein","error");return;}setGenerating(true);try{const inv=await api.createInvoice(form);const xmlContent=await api.getXML(inv.id);setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});notify("XRechnung generiert · EN 16931 ✓","success");load();}catch(e){const msg=e.message.includes("erreichbar")?"Server nicht erreichbar – Railway startet, bitte 30 Sek. warten und erneut versuchen":e.message.includes("401")?"Nicht autorisiert – bitte neu einloggen":e.message.includes("400")?"Ungültige Rechnungsdaten – bitte Felder prüfen":e.message.includes("500")?"Serverfehler – Railway Logs prüfen":e.message.includes("seller")||e.message.includes("buyer")||e.message.includes("required")?"Pflichtfeld fehlt – Absender und Empfänger müssen ausgefüllt sein":e.message;notify(msg,"error");}setGenerating(false);};
+  const generate=async()=>{
+    const errors={};
+    if(!form.buyer_name) errors.buyer_name=true;
+    if(!form.buyer_city) errors.buyer_city=true;
+    if(!form.line_items||form.line_items.every(i=>!i.description)) errors.line_items=true;
+    if(Object.keys(errors).length>0){setFieldErrors(errors);notify("Bitte alle Pflichtfelder ausfüllen","error");return;}
+    if(net<=0){notify("Betrag muss größer als 0 sein","error");return;}
+    setFieldErrors({});
+    setGenerating(true);
+    try{
+      const inv=await api.createInvoice(form);
+      const xmlContent=await api.getXML(inv.id);
+      setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});
+      notify("XRechnung generiert · EN 16931 ✓","success");
+      load();
+    }catch(e){const msg=e.message.includes("erreichbar")?"Server nicht erreichbar – Railway startet, bitte 30 Sek. warten und erneut versuchen":e.message.includes("401")?"Nicht autorisiert – bitte neu einloggen":e.message.includes("400")?"Ungültige Rechnungsdaten – bitte Felder prüfen":e.message.includes("500")?"Serverfehler – Railway Logs prüfen":e.message.includes("seller")||e.message.includes("buyer")||e.message.includes("required")?"Pflichtfeld fehlt – Absender und Empfänger müssen ausgefüllt sein":e.message;notify(msg,"error");}
+    setGenerating(false);
+  };
+  const saveDraft=async()=>{
+    setSaving(true);
+    try{
+      await api.createInvoice({...form,status:'draft'});
+      notify("Entwurf gespeichert","success");
+      setView('list');
+      load();
+    }catch(e){notify(e.message,"error");}
+    setSaving(false);
+  };
   const filtered=filter==="all"?invoices:invoices.filter(i=>i.status===filter);
 
   if(view==="create") return(<div className="fi">
@@ -1649,7 +1678,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
       </div>
       <div className="card" style={{padding:20}}>
         <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Empfänger</div>
-        {[["buyer_name","Firma"],["buyer_address","Straße"],["buyer_city","Stadt"],["buyer_email","Email"]].map(([k,l])=><div key={k} style={{marginBottom:9}}><label className="label">{l}</label><input className="input" value={form[k]} onChange={e=>upd(k,e.target.value)} placeholder={l}/></div>)}
+        {[["buyer_name","Firma"],["buyer_address","Straße"],["buyer_city","Stadt"],["buyer_email","Email"]].map(([k,l])=><div key={k} style={{marginBottom:9}}><label className="label">{l}</label><input className="input" value={form[k]} onChange={e=>{upd(k,e.target.value);if(fieldErrors[k])setFieldErrors(p=>({...p,[k]:false}));}} placeholder={l} style={{borderColor:fieldErrors[k]?T.red:undefined}}/></div>)}
       </div>
     </div>
     <div className="card" style={{padding:20,marginBottom:12}}>
@@ -1672,7 +1701,8 @@ function Invoices({notify,initialView=null,onNavDone=null}){
       </div>
     </div>
     <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginBottom:16}}>
-      <button className="btn btn-primary" style={{fontSize:13.5,padding:"10px 24px"}} onClick={generate} disabled={generating}>{generating?<><Spinner color="#fff" size={14}/>&nbsp;Wird generiert...</>:"⚡ XRechnung generieren"}</button>
+      <button className="btn btn-ghost" style={{fontSize:13.5,padding:"10px 20px"}} onClick={saveDraft} disabled={saving||generating}>{saving?<><Spinner size={14}/>&nbsp;Speichert...</>:"Als Entwurf speichern"}</button>
+      <button className="btn btn-primary" style={{fontSize:13.5,padding:"10px 24px"}} onClick={generate} disabled={generating||saving}>{generating?<><Spinner color="#fff" size={14}/>&nbsp;Wird generiert...</>:"⚡ XRechnung generieren"}</button>
     </div>
     {xml&&<div className="card fi" style={{padding:20}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
@@ -1710,7 +1740,15 @@ function Invoices({notify,initialView=null,onNavDone=null}){
               {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
             </div></td>
           </tr>)}
-          {!loading&&filtered.length===0&&<tr><td colSpan={6} style={{textAlign:"center",color:T.textMuted,padding:28,fontSize:13}}>Keine Dokumente gefunden</td></tr>}
+          {!loading&&filtered.length===0&&invoices.length===0&&<tr><td colSpan={6} style={{padding:0}}>
+            <div style={{textAlign:'center',padding:'60px 24px',color:T.textMuted}}>
+              <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,margin:'0 auto 16px'}}>📄</div>
+              <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>Noch keine Rechnung erstellt</div>
+              <div style={{fontSize:14,marginBottom:20}}>Erstelle deine erste XRechnung in wenigen Sekunden.</div>
+              <button className="btn btn-primary" onClick={()=>setView('create')}>Erste Rechnung erstellen →</button>
+            </div>
+          </td></tr>}
+          {!loading&&filtered.length===0&&invoices.length>0&&<tr><td colSpan={6} style={{textAlign:"center",color:T.textMuted,padding:28,fontSize:13}}>Keine Dokumente in diesem Filter</td></tr>}
         </tbody>
       </table>
     </div>
@@ -2423,7 +2461,15 @@ function InboundScreen({notify}){
                   </td>
                 </tr>
               )})}
-              {filtered.length===0&&<tr><td colSpan={7} style={{textAlign:'center',padding:32,color:T.textMuted}}>Keine Rechnungen</td></tr>}
+              {filtered.length===0&&<tr><td colSpan={7} style={{padding:0}}>
+                <div style={{textAlign:'center',padding:'56px 24px',color:T.textMuted}}>
+                  <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,margin:'0 auto 16px'}}>📬</div>
+                  <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>Noch keine Eingangsrechnung</div>
+                  <div style={{fontSize:14,marginBottom:6}}>Deine Eingangs-E-Mail-Adresse ist bereit:</div>
+                  <code style={{background:T.accentLight,padding:'4px 10px',borderRadius:5,fontSize:12.5,fontFamily:F.mono,color:T.accent}}>{emailSlug}@rechnungen.invoiq.io</code>
+                  <div style={{fontSize:13,marginTop:14}}>Lieferanten schicken Rechnungen einfach dorthin.</div>
+                </div>
+              </td></tr>}
             </tbody>
           </table>
         </div>
@@ -3733,7 +3779,7 @@ function AGB({ onBack }) {
 
 // ── ROOT ──────────────────────────────────────────────────────
 export default function App(){
-  const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'app';return'landing';}); // landing|auth|app|admin|onboarding|impressum|datenschutz|agb
+  const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'loading';return'landing';}); // loading|landing|auth|app|admin|onboarding|impressum|datenschutz|agb
 const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/register'||p.startsWith('/register'))?'register':'login';});
   const[nav,setNav]=useState("dashboard");
   const[subNav,setSubNav]=useState(null);
@@ -3747,7 +3793,8 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
 
   useEffect(()=>{
     const token=typeof localStorage!=="undefined"&&localStorage.getItem("invoiq_token");
-    if(token){api.setToken(token);api.me().then(d=>{setUser(d.user);setOrg(d.org);setScreen("app");}).catch(()=>{if(typeof localStorage!=="undefined")localStorage.removeItem("invoiq_token");});}
+    if(token){api.setToken(token);api.me().then(d=>{setUser(d.user);setOrg(d.org);setScreen("app");}).catch(()=>{if(typeof localStorage!=="undefined")localStorage.removeItem("invoiq_token");api.setToken(null);setScreen("landing");});}
+    else if(screen==="loading"){setScreen("landing");}
   },[]);
 
   const handleAuth=async form=>{
@@ -3773,6 +3820,14 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
   return(<>
     <style>{CSS}</style>
     {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
+    {screen==="loading"&&(
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:T.bgSubtle}}>
+        <div style={{textAlign:'center'}}>
+          <div style={{width:40,height:40,border:`3px solid ${T.accentLight}`,borderTopColor:T.accent,borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto 16px'}}></div>
+          <div style={{fontSize:14,color:T.textMuted,fontFamily:F.ui}}>Wird geladen...</div>
+        </div>
+      </div>
+    )}
     {screen==="landing"&&<Landing onEnter={()=>{if(api._token){setScreen("app");}else{setMode("login");setScreen("auth");}}}/>}
     {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup abgeschlossen — willkommen bei invoiq! 🎉","success");}}/>}
@@ -3782,7 +3837,18 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
       {nav==="connect"&&<ConnectorsView notify={notify}/>}
           {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify}/>}
-          {nav==="steuerberater"&&<SteuerberaterPortal user={user} notify={notify} onBack={()=>setNav('dashboard')}/>}
+          {nav==="steuerberater"&&(
+            (org?.plan==='business'||org?.plan==='enterprise'||org?.plan==='pro')
+              ? <SteuerberaterPortal user={user} notify={notify} onBack={()=>setNav('dashboard')}/>
+              : <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'60vh',flexDirection:'column',gap:14,padding:40,textAlign:'center'}}>
+                  <div style={{width:64,height:64,borderRadius:16,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>🔒</div>
+                  <div style={{fontSize:20,fontWeight:700,color:T.textPrimary,letterSpacing:'-.02em'}}>Kanzlei-Portal</div>
+                  <div style={{fontSize:14,color:T.textMuted,maxWidth:380,lineHeight:1.6}}>
+                    Das Kanzlei-Portal ist ab dem Business-Plan verfügbar. Verwalte alle Mandanten zentral und exportiere DATEV mit einem Klick.
+                  </div>
+                  <button className="btn btn-primary" onClick={()=>setNav('settings')} style={{marginTop:8}}>Plan upgraden →</button>
+                </div>
+          )}
       {nav==="archive"&&<ArchiveScreen notify={notify}/>}
       {nav==="webhooks"&&<Placeholder title="Webhooks" sub="invoice.created · invoice.sent · invoice.delivered" icon="⚡"/>}
       {nav==="settings"&&<SettingsScreen user={user} org={org} notify={notify}/>}
