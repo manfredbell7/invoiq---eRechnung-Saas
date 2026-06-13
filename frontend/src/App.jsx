@@ -2235,13 +2235,14 @@ function DokumentenScanner({ notify }) {
   return null;
 }
 
-function InboundScreen({notify}){
+function InboundScreen({notify, org}){
   const [invoices,setInvoices]   = useState([]);
   const [loading,setLoading]     = useState(true);
   const [filter,setFilter]       = useState('all');
   const [fwdModal,setFwdModal]   = useState(null);
   const [fwdEmail,setFwdEmail]   = useState('');
   const [emailSlug,setEmailSlug] = useState('');
+  useEffect(()=>{ if(org?.inbound_email_slug) setEmailSlug(org.inbound_email_slug); },[org]);
   const [sepaModal,setSepaModal] = useState(null); // invoice object
   const [discountInfo,setDiscountInfo] = useState({}); // id → {active,daysLeft,savingEur}
   const [reviewInv,setReviewInv]   = useState(null);   // Split-Pane: ausgewählte Rechnung
@@ -2295,7 +2296,7 @@ function InboundScreen({notify}){
       .catch(() => {
         setInvoices([]);
         setLoading(false);
-        setEmailSlug('meine-firma-abc12345');
+        if(org?.inbound_email_slug) setEmailSlug(org.inbound_email_slug);
       });
   };
 
@@ -3892,7 +3893,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
       {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)}/>}
       {nav==="connect"&&<ConnectorsView notify={notify}/>}
           {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
-          {nav==="inbound"&&<InboundScreen notify={notify}/>}
+          {nav==="inbound"&&<InboundScreen notify={notify} org={org}/>}
           {nav==="steuerberater"&&(
             (org?.plan==='business'||org?.plan==='enterprise'||org?.plan==='pro')
               ? <SteuerberaterPortal user={user} notify={notify} onBack={()=>setNav('dashboard')}/>
