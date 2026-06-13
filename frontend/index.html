@@ -2,8 +2,40 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>invoiq — E-Rechnung Platform</title>
+<meta name="description" content="E-Rechnungen empfangen, erstellen und versenden — XRechnung, ZUGFeRD, Peppol. Konform mit EN 16931. Seit 2025 Pflicht in Deutschland." />
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#635BFF" />
+
+<!-- iOS PWA Support -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="invoiq" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+<!-- Favicons -->
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+
+<!-- Open Graph -->
+<meta property="og:title" content="invoiq — E-Rechnung Platform" />
+<meta property="og:description" content="E-Rechnungen empfangen, erstellen und versenden — ohne IT-Aufwand." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://invoiq.io" />
 </head>
-<body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.jsx"></script>
+<script>
+  // Service Worker registrieren (PWA)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
 </html>

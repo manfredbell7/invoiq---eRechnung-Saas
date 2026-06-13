@@ -3778,6 +3778,58 @@ function AGB({ onBack }) {
 
 
 // ── ROOT ──────────────────────────────────────────────────────
+function InstallPrompt(){
+  const [deferredPrompt,setDeferredPrompt]=useState(null);
+  const [show,setShow]=useState(false);
+  const [iosHint,setIosHint]=useState(false);
+
+  useEffect(()=>{
+    if(typeof window==="undefined")return;
+    // Bereits installiert? → nicht zeigen
+    if(window.matchMedia?.('(display-mode: standalone)').matches)return;
+    if(localStorage.getItem('invoiq_install_dismissed'))return;
+
+    const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
+    if(isIOS){
+      // iOS hat kein beforeinstallprompt → manueller Hinweis nach kurzer Verzögerung
+      const t=setTimeout(()=>{setIosHint(true);setShow(true);},4000);
+      return ()=>clearTimeout(t);
+    }
+    const handler=(e)=>{e.preventDefault();setDeferredPrompt(e);setShow(true);};
+    window.addEventListener('beforeinstallprompt',handler);
+    return ()=>window.removeEventListener('beforeinstallprompt',handler);
+  },[]);
+
+  const dismiss=()=>{setShow(false);if(typeof localStorage!=="undefined")localStorage.setItem('invoiq_install_dismissed','1');};
+  const install=async()=>{
+    if(!deferredPrompt)return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    setDeferredPrompt(null);setShow(false);
+  };
+
+  if(!show)return null;
+  return(
+    <div style={{position:'fixed',bottom:16,left:16,right:16,maxWidth:380,margin:'0 auto',zIndex:9999,
+      background:'#fff',borderRadius:14,boxShadow:'0 20px 48px -12px rgba(10,37,64,.22)',
+      border:'1px solid rgba(99,91,255,.2)',padding:'16px 18px',
+      display:'flex',alignItems:'center',gap:13,animation:'drawIn .4s cubic-bezier(.16,1,.3,1)'}}>
+      <div style={{width:44,height:44,borderRadius:11,background:'#635BFF',flexShrink:0,
+        display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:800,fontSize:19,letterSpacing:'-1px'}}>ia</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontWeight:700,fontSize:13.5,color:'#0A2540'}}>invoiq installieren</div>
+        <div style={{fontSize:12,color:'#697386',lineHeight:1.4}}>
+          {iosHint?'Tippe auf „Teilen" und dann „Zum Home-Bildschirm".':'Als App auf dem Startbildschirm — schneller Zugriff.'}
+        </div>
+      </div>
+      {!iosHint&&<button onClick={install} style={{flexShrink:0,background:'#635BFF',color:'#fff',border:'none',
+        borderRadius:8,padding:'8px 14px',fontSize:12.5,fontWeight:700,cursor:'pointer'}}>Installieren</button>}
+      <button onClick={dismiss} style={{flexShrink:0,background:'none',border:'none',cursor:'pointer',
+        fontSize:18,color:'#9AA5B1',lineHeight:1,padding:4}}>×</button>
+    </div>
+  );
+}
+
 export default function App(){
   const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'loading';return'landing';}); // loading|landing|auth|app|admin|onboarding|impressum|datenschutz|agb
 const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/register'||p.startsWith('/register'))?'register':'login';});
@@ -3819,6 +3871,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
 
   return(<>
     <style>{CSS}</style>
+    <InstallPrompt/>
     {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
     {screen==="loading"&&(
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:T.bgSubtle}}>
