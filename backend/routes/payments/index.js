@@ -145,7 +145,7 @@ export async function paymentRoutes(fastify) {
         const plan = session.metadata?.plan;
         const customerId = session.customer;
         fastify.log.info({ plan, customerId }, 'Checkout completed');
-        // TODO: Update org.plan in DB, send welcome email
+        if(plan&&customerId){try{const db=fastify.db;if(db){await db.from('organizations').update({plan,stripe_customer_id:customerId,plan_updated_at:new Date().toISOString()}).eq('stripe_customer_id',customerId);fastify.log.info({plan,customerId},'Plan updated in DB after checkout');}}catch(dbErr){fastify.log.error(dbErr,'Failed to update plan in DB');}}
         break;
       }
       case 'customer.subscription.updated': {
@@ -155,7 +155,7 @@ export async function paymentRoutes(fastify) {
       }
       case 'customer.subscription.deleted': {
         fastify.log.info('Subscription cancelled');
-        // TODO: Downgrade org to free plan
+        try{const sub=event.data.object;const custId=sub.customer;if(custId){const db=fastify.db;if(db){await db.from('organizations').update({plan:'free',plan_updated_at:new Date().toISOString()}).eq('stripe_customer_id',custId);fastify.log.info({custId},'Plan downgraded to free');}}}catch(e){fastify.log.error(e,'Failed to downgrade plan');}
         break;
       }
       case 'invoice.payment_failed': {
