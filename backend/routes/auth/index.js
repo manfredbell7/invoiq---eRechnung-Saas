@@ -1,5 +1,6 @@
 // src/routes/auth/index.js
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../../config/jwt.js';
 import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,7 +11,7 @@ import { authMiddleware } from '../../middleware/auth.js';
 
 
 function signTokens(userId, orgId, role) {
-  const accessToken = jwt.sign({ userId, orgId, role }, process.env.JWT_SECRET || 'dev-secret-min-32-chars-invoiq', { expiresIn: process.env.JWT_EXPIRES_IN || '1h' });
+  const accessToken = jwt.sign({ userId, orgId, role }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '1h' });
   const refreshToken = randomBytes(40).toString('hex');
   return { accessToken, refreshToken };
 }

@@ -1,5 +1,6 @@
 // src/middleware/auth.js
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../config/jwt.js';
 import { db } from '../config/db.js';
 // ── JWT AUTH ──────────────────────────────────────────────────
 export async function authMiddleware(request, reply) {
@@ -23,7 +24,14 @@ export async function authMiddleware(request, reply) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-min-32-chars-invoiq');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (e) {
+      // Übergang: Tokens die mit dem früheren Fallback-Secret signiert wurden
+      // weiterhin akzeptieren, damit aktive Sessions einen Deploy überleben.
+      decoded = jwt.verify(token, 'dev-secret-min-32-chars-invoiq');
+    }
 
     const user = await db.findUserById(decoded.userId);
     if (!user || !user.active) return reply.code(401).send({ error: 'Benutzer nicht gefunden' });
