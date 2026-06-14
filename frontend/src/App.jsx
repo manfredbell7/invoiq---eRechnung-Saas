@@ -3875,7 +3875,6 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
 
   return(<>
     <style>{CSS}</style>
-    <InstallPrompt/>
     {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
     {screen==="loading"&&(
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:T.bgSubtle}}>

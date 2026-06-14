@@ -30,30 +30,26 @@
 <div id="root"></div>
 <script type="module" src="/src/main.jsx"></script>
 <script>
-  // Service Worker registrieren (PWA) mit Auto-Update
+  // SERVICE WORKER KILL-SWITCH
+  // Entfernt jeden zuvor installierten Service Worker und löscht alle Caches.
+  // Notwendig damit veraltete JS-Bundles nicht mehr ausgeliefert werden.
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then((reg) => {
-        // Bei jedem Laden aktiv nach neuer Version suchen
-        reg.update();
-        // Wenn ein neuer SW die Kontrolle übernimmt: Seite einmal neu laden
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (refreshing) return;
-          refreshing = true;
-          window.location.reload();
-        });
-        // Neu gefundenen SW sofort aktivieren lassen
-        reg.addEventListener('updatefound', () => {
-          const nw = reg.installing;
-          if (nw) nw.addEventListener('statechange', () => {
-            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-              nw.postMessage && nw.postMessage('skipWaiting');
-            }
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      let hadSW = regs.length > 0;
+      Promise.all(regs.map((r) => r.unregister())).then(() => {
+        if ('caches' in window) {
+          caches.keys().then((keys) => {
+            Promise.all(keys.map((k) => caches.delete(k))).then(() => {
+              // Wenn ein alter SW aktiv war: einmal hart neu laden, damit
+              // das frische Bundle direkt vom Netzwerk kommt.
+              if (hadSW) window.location.reload();
+            });
           });
-        });
-      }).catch(() => {});
-    });
+        } else if (hadSW) {
+          window.location.reload();
+        }
+      });
+    }).catch(() => {});
   }
 </script>
 </body>
