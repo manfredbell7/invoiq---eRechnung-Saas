@@ -2452,7 +2452,7 @@ function InboundScreen({notify, org}){
                   <td><StatusBadge status={inv.status==='bezahlt'?'delivered':inv.validation_passed?'validated':'error'}/></td>
                   <td>
                     <div style={{display:'flex',gap:5,flexWrap:'wrap'}} onClick={e=>e.stopPropagation()}>
-                      {(inv.has_xml||inv.format==='pdf')&&<button className="btn btn-ghost btn-sm" onClick={()=>setPdfModal(inv)}>📄 PDF</button><button className="btn btn-ghost btn-sm" onClick={()=>setPdfModal(inv)}>📄 PDF</button>}
+                      {(inv.has_xml||inv.format==='pdf')&&<button className="btn btn-ghost btn-sm" onClick={()=>setPdfModal(inv)}>📄 PDF</button>}
                       {inv.status!=='bezahlt'&&inv.seller_iban&&(
                         <button className="btn btn-sm btn-primary" style={{fontSize:11,padding:'3px 8px'}}
                           onClick={()=>setSepaModal({...inv,_applyDiscount:dk?.active||false})}>
