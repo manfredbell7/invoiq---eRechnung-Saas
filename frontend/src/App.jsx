@@ -48,7 +48,7 @@ const F={
   mono:   "'JetBrains Mono',ui-monospace,SFMono-Regular,monospace",
 };
 
-const API_BASE=(import.meta?.env?.VITE_API_URL)||"http://localhost:3000/v1";
+const API_BASE=(import.meta?.env?.VITE_API_URL)||"http://https://api.invoiq.io/v1";
 const api={
   _token:(typeof localStorage!=='undefined'&&localStorage.getItem("invoiq_token"))||null,
   setToken(t){this._token=t;if(typeof localStorage!=='undefined'){if(t)localStorage.setItem("invoiq_token",t);else localStorage.removeItem("invoiq_token");}},
