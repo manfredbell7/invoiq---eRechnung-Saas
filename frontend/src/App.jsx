@@ -865,7 +865,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                       </div>
                     ))}
                   </div>}
-                  {heroTab===5&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
+                  {heroTab===4&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
                     <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:10}}>GoBD-Archiv</div>
                     <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6,marginBottom:10}}>
                       {[['12.441','Archiviert'],['10 Jahre','Retention']].map(([v,l])=>(
@@ -886,7 +886,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                       </div>
                     ))}
                   </div>}
-                  {heroTab===6&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
+                  {heroTab===5&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
                     <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:12}}>Einstellungen</div>
                     {[{l:'Standard-Format',v:'XRechnung 3.0',t:'s'},{l:'GoBD-Archivierung',v:true,t:'t'},{l:'ViDA-Reporting (Beta)',v:false,t:'t'},{l:'Peppol aktiviert',v:true,t:'t'},{l:'Zustellweg',v:'E-Mail',t:'s'}].map((s,i)=>(
                       <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`,marginBottom:6}}>
@@ -903,7 +903,7 @@ function Landing({onEnter,onLegal=()=>{}}){
               </div>
             </div>
           </div>
-          {/* Floating notification */}
+          {heroTab===6&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>{org?.plan==='enterprise'||org?.plan==='kanzlei'?<div><div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:12}}>Kanzlei-Portal</div><div style={{fontSize:10.5,color:T.textMuted,marginBottom:16}}>Mandanten-Dokumente verwalten und XRechnungen erstellen.</div><div style={{background:T.bgSubtle,borderRadius:8,padding:12}}><div style={{fontSize:10.5,color:T.textMuted}}>Mandantenverwaltung in Entwicklung.</div></div></div>:<div style={{textAlign:'center',padding:'40px 20px'}}><div style={{fontSize:40,marginBottom:12}}>🏛️</div><div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:8}}>Kanzlei-Portal</div><div style={{fontSize:10.5,color:T.textMuted,marginBottom:20}}>Diese Funktion ist nur im Enterprise-Abo verfügbar.</div><button className="btn btn-primary" style={{fontSize:10.5,padding:'6px 16px'}} onClick={()=>api.createCheckout('enterprise','monthly').then(r=>{if(r?.url)window.location.href=r.url})}>Jetzt upgraden</button></div>}</div>}{/* Floating notification */}
           <div style={{position:'absolute',bottom:-18,right:-14,background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:9,padding:'10px 14px',boxShadow:T.shadow3,display:'flex',alignItems:'center',gap:10,zIndex:2}}>
             <div style={{width:28,height:28,borderRadius:6,background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -2452,7 +2452,7 @@ function InboundScreen({notify, org}){
                   <td><StatusBadge status={inv.status==='bezahlt'?'delivered':inv.validation_passed?'validated':'error'}/></td>
                   <td>
                     <div style={{display:'flex',gap:5,flexWrap:'wrap'}} onClick={e=>e.stopPropagation()}>
-                      {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>setPdfModal(inv)}>📄 PDF</button>}
+                      {(inv.has_xml||inv.format==='pdf')&&<button className="btn btn-ghost btn-sm" onClick={()=>setPdfModal(inv)}>📄 PDF</button><button className="btn btn-ghost btn-sm" onClick={()=>setPdfModal(inv)}>📄 PDF</button>}
                       {inv.status!=='bezahlt'&&inv.seller_iban&&(
                         <button className="btn btn-sm btn-primary" style={{fontSize:11,padding:'3px 8px'}}
                           onClick={()=>setSepaModal({...inv,_applyDiscount:dk?.active||false})}>
