@@ -3026,7 +3026,7 @@ function SettingsScreen({user,org,notify}){
                         if(d.checkout_url && !d.demo){
                           window.open(d.checkout_url,'_blank');
                         } else {
-                          notify('Demo-Modus — STRIPE_SECRET_KEY in Railway setzen','info');
+                          notify('Stripe-Checkout wird geöffnet...','info');
                         }
                       }catch(e){notify(e.message,'error');}
                     }}>Upgrade →</button>
