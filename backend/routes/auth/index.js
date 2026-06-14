@@ -48,7 +48,7 @@ export async function authRoutes(fastify) {
       slug: `${slug}-${uuidv4().substr(0, 6)}`,
       vat_id: vat_id || '',
       plan: 'starter',
-      plan_doc_limit: 100,
+      plan_doc_limit: 100,           inbound_email_slug: slug + '-' + uuidv4().substr(0, 6),
       api_key: apiKey,
       api_key_created_at: new Date().toISOString(),
     });
