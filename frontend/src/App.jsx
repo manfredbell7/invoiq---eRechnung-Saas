@@ -1245,7 +1245,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                 </div>
 
                 {/* CTA */}
-                <button onClick={onEnter} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',gap:5,background:isFeatured?'rgba(255,255,255,.12)':'transparent',color:isFeatured?'#fff':'#635BFF',border:isFeatured?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:12.5,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.opacity='.8';}} onMouseLeave={e=>{e.currentTarget.style.opacity='1';}}>
+                <button onClick={()=>onEnter(p.name.toLowerCase())} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',gap:5,background:isFeatured?'rgba(255,255,255,.12)':'transparent',color:isFeatured?'#fff':'#635BFF',border:isFeatured?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:12.5,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.opacity='.8';}} onMouseLeave={e=>{e.currentTarget.style.opacity='1';}}>
                   {p.cta} →
                 </button>
               </div>
