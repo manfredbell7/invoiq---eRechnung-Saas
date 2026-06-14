@@ -3884,7 +3884,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
         </div>
       </div>
     )}
-    {screen==="landing"&&<Landing onEnter={()=>{if(api._token){setScreen("app");}else{setMode("login");setScreen("auth");}}}/>}
+    {screen==="landing"&&<Landing onEnter={(plan)=>{if(plan)localStorage.setItem('invoiq_selected_plan',plan);if(api._token){setScreen("app");}else{setMode("register");setScreen("auth");}}}/>}
     {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup abgeschlossen — willkommen bei invoiq! 🎉","success");}}/>}
     {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
