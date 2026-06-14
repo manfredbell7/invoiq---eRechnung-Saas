@@ -640,7 +640,7 @@ function Step5({ data, onFinish }) {
         <div style={{ fontSize: 11, fontWeight: 700, color: C.textLight, letterSpacing: .8, textTransform: "uppercase", marginBottom: 4 }}>Empfohlene nächste Schritte</div>
         {[
           { icon: "🔗", text: "ERP-Konnektor aktivieren", sub: "Automatisierung einschalten" },
-          { icon: "💳", text: "Plan aktivieren", sub: "Starter ab 49 €/Monat", plan: "starter" },
+          { icon: "💳", text: "Plan aktivieren", sub: "Starter ab 49 €/Monat", plan: localStorage.getItem("invoiq_selected_plan")||"starter" },
           { icon: "👥", text: "Team einladen", sub: "Kollegen hinzufügen" },
         ].map((s, i) => (
           <div key={i} onClick={s.plan?async()=>{const r=await fetch(`${import.meta?.env?.VITE_API_URL||"http://localhost:3000"}/payments/checkout`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("invoiq_token")}`},body:JSON.stringify({plan:s.plan})});const d=await r.json();if(d.checkout_url)window.location.href=d.checkout_url;}:undefined} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", transition: "border-color .15s" }} onMouseEnter={e => e.currentTarget.style.borderColor = C.navyLite} onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
