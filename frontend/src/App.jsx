@@ -3243,7 +3243,7 @@ function AdminRevenue(){
 const MOCK_RECENT_ACTIVITY = [
 ];
 
-function SteuerberaterPortal({ user, notify, onBack }) {
+function SteuerberaterPortal({ user, org, notify, onBack }) {
   const [view, setView]           = useState('overview');
   const [selected, setSelected]   = useState(null);
   const [search, setSearch]       = useState('');
@@ -3439,11 +3439,11 @@ function SteuerberaterPortal({ user, notify, onBack }) {
             <h1 style={{ fontFamily: F.ui, fontSize: 22, fontWeight: 700, color: T.textPrimary, letterSpacing: '-.025em' }}>Steuerberater-Portal</h1>
             <span className="badge badge-purple" style={{ fontSize: 10.5 }}>Kanzlei-Ansicht</span>
           </div>
-          <p style={{ fontSize: 13, color: T.textMuted }}>{MOCK_MANDANTEN.length} Mandanten · Zentrales Dashboard für alle Ihre Mandanten</p>
+          <p style={{ fontSize: 13, color: T.textMuted }}>{MOCK_MANDANTEN.length} Mandanten · Zentrales Dashboard für alle Ihre Mandanten</p>{limitReached&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,padding:'10px 14px',marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontSize:13,color:'#92400E'}}>⚠️ Mandanten-Limit ({mandanten.length}/{mandantenLimit===Infinity?'∞':mandantenLimit})</span><button onClick={onBack} style={{fontSize:13,fontWeight:600,color:'#D97706',background:'none',border:'none',cursor:'pointer',padding:0}}>Plan upgraden →</button></div>}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => notify('Sammel-Report wird generiert...', 'info')}>↓ Monats-Report</button>
-          <button className="btn btn-primary btn-sm" onClick={() => setInviteModal(true)}>+ Mandant einladen</button>
+          <button className="btn btn-primary btn-sm" onClick={()=>limitReached?notify(`Mandanten-Limit erreicht (${mandantenLimit} max). Bitte Plan upgraden.`,'warning'):setInviteModal(true)}>{limitReached?`🔒 Limit erreicht`:'+ Mandant einladen'}</button>
         </div>
       </div>
 
@@ -3894,8 +3894,8 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
           {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify} org={org}/>}
           {nav==="steuerberater"&&(
-            (org?.plan==='business'||org?.plan==='enterprise'||org?.plan==='pro')
-              ? <SteuerberaterPortal user={user} notify={notify} onBack={()=>setNav('dashboard')}/>
+            true
+              ? <SteuerberaterPortal user={user} org={org} notify={notify} onBack={()=>setNav('dashboard')}/>
               : <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'60vh',flexDirection:'column',gap:14,padding:40,textAlign:'center'}}>
                   <div style={{width:64,height:64,borderRadius:16,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>🔒</div>
                   <div style={{fontSize:20,fontWeight:700,color:T.textPrimary,letterSpacing:'-.02em'}}>Kanzlei-Portal</div>
