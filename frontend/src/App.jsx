@@ -3238,7 +3238,7 @@ function AdminRevenue(){
 // STEUERBERATER PORTAL — Multi-Mandanten Dashboard
 // ══════════════════════════════════════════════════════════════
 
-// MOCK_MANDANTEN entfernt — Kanzlei-Portal lädt echte Daten aus API
+// mandanten entfernt — Kanzlei-Portal lädt echte Daten aus API
 
 const MOCK_RECENT_ACTIVITY = [
 ];
@@ -3439,7 +3439,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
             <h1 style={{ fontFamily: F.ui, fontSize: 22, fontWeight: 700, color: T.textPrimary, letterSpacing: '-.025em' }}>Steuerberater-Portal</h1>
             <span className="badge badge-purple" style={{ fontSize: 10.5 }}>Kanzlei-Ansicht</span>
           </div>
-          <p style={{ fontSize: 13, color: T.textMuted }}>{MOCK_MANDANTEN.length} Mandanten · Zentrales Dashboard für alle Ihre Mandanten</p>{limitReached&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,padding:'10px 14px',marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontSize:13,color:'#92400E'}}>⚠️ Mandanten-Limit ({mandanten.length}/{mandantenLimit===Infinity?'∞':mandantenLimit})</span><button onClick={onBack} style={{fontSize:13,fontWeight:600,color:'#D97706',background:'none',border:'none',cursor:'pointer',padding:0}}>Plan upgraden →</button></div>}
+          <p style={{ fontSize: 13, color: T.textMuted }}>{mandanten.length} Mandanten · Zentrales Dashboard für alle Ihre Mandanten</p>{limitReached&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,padding:'10px 14px',marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontSize:13,color:'#92400E'}}>⚠️ Mandanten-Limit ({mandanten.length}/{mandantenLimit===Infinity?'∞':mandantenLimit})</span><button onClick={onBack} style={{fontSize:13,fontWeight:600,color:'#D97706',background:'none',border:'none',cursor:'pointer',padding:0}}>Plan upgraden →</button></div>}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => notify('Sammel-Report wird generiert...', 'info')}>↓ Monats-Report</button>
@@ -3450,7 +3450,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
       {/* Platform KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 18 }}>
         {[
-          { label: 'Mandanten gesamt', value: MOCK_MANDANTEN.length, sub: `${MOCK_MANDANTEN.filter(m => m.status === 'active').length} aktiv`, color: T.textPrimary },
+          { label: 'Mandanten gesamt', value: mandanten.length, sub: `${mandanten.filter(m => m.status === 'active').length} aktiv`, color: T.textPrimary },
           { label: 'Dokumente Mai', value: fmtNum(totalDocs), sub: 'Alle Mandanten', color: T.textPrimary },
           { label: 'Offene Fehler', value: totalErrors, sub: totalErrors > 0 ? 'Handlungsbedarf' : 'Alles OK', color: totalErrors > 0 ? T.red : T.green },
           { label: 'Ø Compliance', value: `${avgCompliance}%`, sub: 'EN 16931', color: avgCompliance >= 97 ? T.green : T.amber },
@@ -3470,7 +3470,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
             <div style={{ padding: '10px 16px', background: T.redBg, border: `1px solid ${T.redBdr}`, borderRadius: 7, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: T.red, flexShrink: 0 }} />
               <span style={{ color: T.red, fontWeight: 600 }}>{totalErrors} Validierungsfehler</span>
-              <span style={{ color: T.red }}> bei {MOCK_MANDANTEN.filter(m => m.open_errors > 0).map(m => m.name).join(', ')}</span>
+              <span style={{ color: T.red }}> bei {mandanten.filter(m => m.open_errors > 0).map(m => m.name).join(', ')}</span>
               <button className="btn btn-danger btn-sm" style={{ marginLeft: 'auto' }} onClick={() => { setFilter('errors'); }}>Alle anzeigen</button>
             </div>
           )}
