@@ -81,7 +81,7 @@ export async function paymentRoutes(fastify) {
         allow_promotion_codes: true,
         billing_address_collection: 'required',
         tax_id_collection: { enabled: true }, // USt-IdNr für B2B
-        customer_update: { address: 'auto' },
+        
         automatic_tax: { enabled: true },
       });
 
