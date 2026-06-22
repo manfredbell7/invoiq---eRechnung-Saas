@@ -1681,7 +1681,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
       </div>
       <div className="card" style={{padding:20}}>
         <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Empfänger</div>
-        {[["buyer_name","Firma"],["buyer_address","Straße"],["buyer_city","Stadt"],["buyer_email","Email"]].map(([k,l])=><div key={k} style={{marginBottom:9}}><label className="label">{l}</label><input className="input" value={form[k]} onChange={e=>{upd(k,e.target.value);if(fieldErrors[k])setFieldErrors(p=>({...p,[k]:false}));}} placeholder={l} style={{borderColor:fieldErrors[k]?T.red:undefined}}/></div>)}
+                {[["buyer_name","Firma"],["buyer_address","Straße"],["buyer_zip","PLZ"],["buyer_city","Stadt"],["buyer_country","Land"],["buyer_email","Email"]].map(([k,l])=>(<div key={k}><label className="label">{l}</label><input className="input" value={form[k]||''} onChange={e=>{upd(k,e.target.value);if(fieldErrors[k])setFieldErrors(p=>({...p,[k]:false}));}} placeholder={l} style={{borderColor:fieldErrors[k]?T.red:undefined}}/></div>))}
       </div>
     </div>
     <div className="card" style={{padding:20,marginBottom:12}}>
