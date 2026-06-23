@@ -1625,7 +1625,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   const[generating,setGenerating]=useState(false);const[xml,setXml]=useState(null);
   const[fieldErrors,setFieldErrors]=useState({});
   const[saving,setSaving]=useState(false);
-  const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",template:"modern",delivery_method:"email",seller_name : "",seller_vat_id:"",seller_address:"",seller_city:"",buyer_name:"",buyer_address:"",buyer_zip:"",buyer_city:"",buyer_country:"DE",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
+  const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",template:"modern",delivery_method:"email",seller_name : "",_orgLoaded:false,seller_vat_id:"",seller_address:"",seller_city:"",buyer_name:"",buyer_address:"",buyer_zip:"",buyer_city:"",buyer_country:"DE",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
   const load=useCallback(()=>{setLoading(true);api.listInvoices().then(d=>setInvoices(d.invoices||[])).catch(()=>setInvoices([])).finally(()=>setLoading(false));},[]);
   useEffect(()=>load(),[load]);
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1642,7 +1642,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
     setFieldErrors({});
     setGenerating(true);
     try{
-      const inv=await api.createInvoice(form);
+      const inv=await api.createInvoice({...form, seller_name: form.seller_name||(await api.getOrgSettings().catch(()=>({}))).name||''});
       const xmlContent=await api.getXML(inv.id);
       setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});
       notify("XRechnung generiert · EN 16931 ✓","success");
@@ -3241,10 +3241,10 @@ function AdminRevenue(){
 
 // mandanten entfernt — Kanzlei-Portal lädt echte Daten aus API
 
-const MOCK_RECENT_ACTIVITY = [
-];
+class PortalBoundary extends React.Component { constructor(p){super(p);this.state={err:null};} componentDidCatch(e){this.setState({err:e});} render(){if(this.state.err)return <div style={{padding:20,color:'red'}}>Portal-Fehler: {this.state.err.message}</div>;return this.props.children;}} static getDerivedStateFromError(e){return{err:e};} componentDidCatch(e){console.error('PortalBoundary:',e);} render(){if(this.state.err)return <div style={{padding:40,textAlign:'center',color:'#ef4444'}}><h3>Kanzlei-Portal konnte nicht geladen werden</h3><p>{this.state.err.message}</p><button onClick={()=>this.setState({err:null})} style={{marginTop:12}}>Erneut versuchen</button></div>; return this.props.children;} } const MOCK_RECENT_ACTIVITY = [
 
-function SteuerberaterPortal({ user, org, notify, onBack }) {
+
+function SteuerberaterPortal({ user, org, notify, onBack }) { const [portalErr,setPortalErr]=useState(null); if(portalErr) return <div style={{padding:40,textAlign:'center'}}><h3>Kanzlei-Portal</h3><p style={{color:'#ef4444'}}>Fehler beim Laden. <button onClick={()=>setPortalErr(null)}>Erneut versuchen</button></p></div>;
   const [view, setView]           = useState('overview');
   const [selected, setSelected]   = useState(null);
   const [search, setSearch]       = useState('');
