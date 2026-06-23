@@ -15,7 +15,7 @@ import { scannerRoutes }  from './routes/scanner/index.js';
 import { paymentRoutes }  from './routes/payments/index.js';
 import { inboundRoutes }  from './routes/inbound/index.js';
 
-const PORT = process.env.PORT || 3000;
+import { registerSecurityHooks } from './middleware/security.js'; const PORT = process.env.PORT || 3000;
 const API = `/v1`;  // Changed from /api/v1 — Railway blocks /api/* prefix
 
 
