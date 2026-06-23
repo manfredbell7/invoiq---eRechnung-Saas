@@ -1319,7 +1319,7 @@ function Auth({mode,onSwitch,onSuccess,loading}){
 // ── APP SHELL ─────────────────────────────────────────────────
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
   // Kanzlei-Portal nur für Business/Enterprise
-  const plan = org?.plan || 'starter';
+  const plan = org?.plan?.toLowerCase() || 'starter';
   const hasKanzlei = plan === 'business' || plan === 'enterprise' || plan === 'pro';
 
   const items=[
