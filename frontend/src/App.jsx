@@ -3272,7 +3272,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
   // ── MANDANT DETAIL VIEW ──────────────────────────────────────
   if (view === 'mandant' && selected) {
     const m = selected;
-    const pct = Math.round((m.docs_this_month / m.docs_limit) * 100);
+    const pct = Math.round((m.docs_this_month / (m.docs_limit||100)) * 100);
     return (
       <div className="fi">
         {/* Header */}
@@ -3504,13 +3504,13 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
         <div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {filtered.map(m => {
-              const pct = Math.round((m.docs_this_month / m.docs_limit) * 100);
+              const pct = Math.round((m.docs_this_month / (m.docs_limit||100)) * 100);
               return (
                 <div key={m.id} className="card card-hover" style={{ padding: 16, cursor: 'pointer' }} onClick={() => { setSelected(m); setView('mandant'); }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                     {/* Avatar */}
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: T.accentLight, border: `1px solid ${T.accentPale}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: T.accent, flexShrink: 0 }}>
-                      {m.name[0]}
+                      {(m.name||'?')[0]}
                     </div>
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
