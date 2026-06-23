@@ -1320,7 +1320,7 @@ function Auth({mode,onSwitch,onSuccess,loading}){
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
   // Kanzlei-Portal nur für Business/Enterprise
   const plan = org?.plan?.toLowerCase() || 'starter';
-  const hasKanzlei = plan === 'business' || plan === 'enterprise' || plan === 'pro';
+  const hasKanzlei = plan === 'enterprise' || plan === 'pro';
 
   const items=[
     {key:"dashboard",   label:"Übersicht"},
