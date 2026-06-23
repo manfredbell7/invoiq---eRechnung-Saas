@@ -48,8 +48,7 @@ export async function authMiddleware(request, reply) {
     if (err.name === 'JsonWebTokenError') return reply.code(401).send({ error: 'Ungültiges Token' });
     return reply.code(401).send({ error: 'Authentifizierung fehlgeschlagen' });
   }
-}
-
+org.plan?.toLowerCase() !== 'enterprise'
 // ── ROLE CHECK ────────────────────────────────────────────────
 export function requireRole(...roles) {
   return async (request, reply) => {
@@ -65,7 +64,7 @@ export async function checkDocLimit(request, reply) {
   const { org } = request;
   if (!org) return reply.code(401).send({ error: 'Organisation nicht gefunden' });
 
-  if (org.plan !== 'enterprise' && org.plan_doc_used >= org.plan_doc_limit) {
+  if (org.plan?.toLowerCase() !== 'enterprise' && org.plan_doc_used >= org.plan_doc_limit) {
     return reply.code(429).send({
       error: 'Dokumentenlimit erreicht',
       message: `Ihr Plan erlaubt ${org.plan_doc_limit} Dokumente/Monat. Bitte upgraden Sie.`,
