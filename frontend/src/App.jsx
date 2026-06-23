@@ -3241,7 +3241,7 @@ function AdminRevenue(){
 
 // mandanten entfernt — Kanzlei-Portal lädt echte Daten aus API
 
-class PortalBoundary extends React.Component { constructor(p){super(p);this.state={err:null};} componentDidCatch(e){this.setState({err:e});} render(){if(this.state.err)return <div style={{padding:20,color:'red'}}>Portal-Fehler: {this.state.err.message}</div>;return this.props.children;}} componentDidCatch(e){console.error('PortalBoundary:',e);} render(){if(this.state.err)return <div style={{padding:40,textAlign:'center',color:'#ef4444'}}><h3>Kanzlei-Portal konnte nicht geladen werden</h3><p>{this.state.err.message}</p><button onClick={()=>this.setState({err:null})} style={{marginTop:12}}>Erneut versuchen</button></div>; return this.props.children;} } 
+class PortalBoundary extends React.Component { constructor(p){super(p);this.state={err:null};} componentDidCatch(e){this.setState({err:e});} render(){if(this.state.err)return <div style={{padding:20,color:'red'}}>Portal-Fehler: {this.state.err.message}</div>;return this.props.children;} PLACEHOLDER render(){if(this.state.err)return <div style={{padding:40,textAlign:'center',color:'#ef4444'}}><h3>Kanzlei-Portal konnte nicht geladen werden</h3><p>{this.state.err.message}</p><button onClick={()=>this.setState({err:null})} style={{marginTop:12}}>Erneut versuchen</button></div>; return this.props.children;} } 
 
 
 function SteuerberaterPortal({ user, org, notify, onBack }) { const [portalErr,setPortalErr]=useState(null); if(portalErr) return <div style={{padding:40,textAlign:'center'}}><h3>Kanzlei-Portal</h3><p style={{color:'#ef4444'}}>Fehler beim Laden. <button onClick={()=>setPortalErr(null)}>Erneut versuchen</button></p></div>;
