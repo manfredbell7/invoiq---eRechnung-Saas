@@ -89,7 +89,7 @@ async function getStats(orgId) {
       .filter(r => r.direction === 'outbound')
       .reduce((s, r) => s + (r.amount_gross || 0), 0),
     pending_count: rows.filter(r => r.status === 'validated').length,
-    sent_count: rows.filter(r => r.status === 'sent').length,
+    sent_count: rows.filter(r => r.status === 'sent').length, format_breakdown: (()=>{ const out=rows.filter(r=>r.direction==='outbound'); const tot=out.length||1; const xr=out.filter(r=>(r.xml_format||'').toLowerCase().includes('xrechnung')).length; const zf=out.filter(r=>(r.xml_format||'').toLowerCase().includes('zugferd')).length; const pp=out.filter(r=>(r.xml_format||'').toLowerCase().includes('peppol')).length; return [['XRechnung',Math.round(xr/tot*100),'#635BFF'],['ZUGFeRD',Math.round(zf/tot*100),'#9B8AFB'],['Peppol',Math.round(pp/tot*100),'#1A9C5B']]; })(),
   };
 }
 
