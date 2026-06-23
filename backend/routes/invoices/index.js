@@ -218,7 +218,7 @@ export async function invoiceRoutes(fastify) {
     invoiceData.status = 'validated';
 
     // Save to DB
-    const invoice = await db.createInvoice(invoiceData);
+    const invoice = await db.createInvoice({org_id:req.org.id,invoice_number:invoiceData.invoice_number,invoice_date:invoiceData.invoice_date,due_date:invoiceData.due_date||null,format:invoiceData.format||'xrechnung',direction:'outbound',status:'validated',seller_name:invoiceData.seller_name,seller_vat_id:invoiceData.seller_vat_id||null,seller_address:invoiceData.seller_address||null,seller_city:invoiceData.seller_city||null,seller_iban:invoiceData.seller_iban||null,buyer_name:invoiceData.buyer_name,buyer_vat_id:invoiceData.buyer_vat_id||null,buyer_address:invoiceData.buyer_address||null,buyer_city:invoiceData.buyer_city||null,buyer_country:invoiceData.buyer_country||'DE',buyer_email:invoiceData.buyer_email||null,amount_net:invoiceData.amount_net,amount_vat:invoiceData.amount_vat,amount_gross:invoiceData.amount_gross,currency:invoiceData.currency||'EUR',line_items:invoiceData.line_items,xml_content:invoiceData.xml_content,xml_hash:invoiceData.xml_hash,validation_passed:invoiceData.validation_passed});
 
     // Audit log
     await db.createAuditLog({
