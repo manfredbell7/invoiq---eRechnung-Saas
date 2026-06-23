@@ -77,5 +77,21 @@ export async function adminRoutes(fastify) {
         status: u.active === false ? 'suspended' : 'active',
       })),
     };
+ - 20 realistische Demo-Rechnungen seeden  
+  // -- SEED DEMO DATA
+  fastify.post('/seed-demo',{preHandler:adminGuard},async(req)=>{
+    const orgId=req.org.id;
+    const buyers=['Mustermann GmbH','ACME AG','Tech Solutions GmbH','Bauer & Partner KG','Schmidt Consulting','Weber Industries','Krause Digital','Fischer & Co','Lehmann Solutions','Becker Enterprises'];
+    const items=[];
+    for(let i=0;i<20;i++){
+      const net=Math.round((Math.random()*9000+500)*100)/100;
+      const vat=Math.round(net*0.19*100)/100;
+      const gross=Math.round((net+vat)*100)/100;
+      const d=new Date(Date.now()-Math.random()*90*86400000);
+      items.push({org_id:orgId,invoice_number:`INV-SEED-${String(i+1).padStart(3,'0')}`,invoice_date:d.toISOString().split('T')[0],due_date:new Date(d.getTime()+30*86400000).toISOString().split('T')[0],format:'xrechnung',direction:'outbound',status:['validated','sent','archived'][i%3],seller_name:'invoiq Demo',seller_vat_id:'DE123456789',buyer_name:buyers[i%10],buyer_country:'DE',amount_net:net,amount_vat:vat,amount_gross:gross,currency:'EUR',validation_passed:true,created_at:d.toISOString()});
+    }
+    const {error}=await supabase.from('invoices').insert(items);
+    if(error)return{success:false,error:error.message};
+    return{success:true,seeded:items.length};
   });
 }
