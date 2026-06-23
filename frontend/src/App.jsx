@@ -3127,7 +3127,7 @@ function AdminOverview({notify,isSuper}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
       <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super-Admin":mandanten[0].name}</p></div>
-      {isSuper&&<><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Export</button><button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo"}</button></>}
+      {isSuper&&<><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Export</button><button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo ? 'Seeding...":"Seed Demo"}</button></>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
       {loadingA?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:90}}><div className="skeleton" style={{height:"100%"}}/></div>)
