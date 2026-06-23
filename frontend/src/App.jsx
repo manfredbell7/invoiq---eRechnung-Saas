@@ -693,7 +693,7 @@ function Landing({onEnter,onLegal=()=>{}}){
         {['Funktionen','Preise','Sicherheit'].map(l=><a key={l} href={`#${l.toLowerCase()}`} style={{fontSize:13,fontWeight:500,color:T.textMuted,textDecoration:'none',padding:'6px 11px',borderRadius:6,transition:'all .14s'}} onMouseEnter={e=>{e.target.style.color=T.textPrimary;e.target.style.background=T.bgSubtle;}} onMouseLeave={e=>{e.target.style.color=T.textMuted;e.target.style.background='transparent';}}>{l}</a>)}
       </nav>
       <div style={{display:'flex',gap:8}}>
-        <button className="btn btn-ghost btn-sm" onClick={onEnter}>Anmelden</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>onEnter('login')}>Anmelden</button>
         <button className="btn btn-primary btn-sm" onClick={onEnter}>Kostenlos starten →</button>
       </div>
     </header>
@@ -3885,7 +3885,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
         </div>
       </div>
     )}
-    {screen==="landing"&&<Landing onEnter={(plan)=>{if(plan)localStorage.setItem('invoiq_selected_plan',plan);if(api._token){setScreen("app");}else{setMode("register");setScreen("auth");}}}/>}
+    {screen==="landing"&&<Landing onEnter={(plan)=>{if(plan==='login'){setMode('login');setScreen('auth');return;}if(plan)localStorage.setItem('invoiq_selected_plan',plan);if(api._token){setScreen("app");}else{setMode("register");setScreen("auth");}}}/>}
     {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup abgeschlossen — willkommen bei invoiq! 🎉","success");}}/>}
     {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
