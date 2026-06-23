@@ -29,7 +29,7 @@ export async function buildServer() {
   });
 
   // ── PLUGINS ────────────────────────────────────────────────
-  await fastify.register(cors, {
+  registerSecurityHooks(fastify);   await fastify.register(cors, {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
       const allowed = [
