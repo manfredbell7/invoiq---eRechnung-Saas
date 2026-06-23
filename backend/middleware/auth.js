@@ -30,7 +30,7 @@ export async function authMiddleware(request, reply) {
     } catch (e) {
       // Übergang: Tokens die mit dem früheren Fallback-Secret signiert wurden
       // weiterhin akzeptieren, damit aktive Sessions einen Deploy überleben.
-      decoded = jwt.verify(token, 'dev-secret-min-32-chars-invoiq');
+      decoded = jwt.verify(token, JWT_SECRET);
     }
 
     const user = await db.findUserById(decoded.userId);
