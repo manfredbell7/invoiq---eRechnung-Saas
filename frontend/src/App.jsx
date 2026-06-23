@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import OnboardingWizard from "./OnboardingWizard.jsx";
+import { useState, useEffect, useCallback, useRef, Component } from "react";
+import OnboardingWizard from "./OnboardingWizard.jsx"; class PortalErrorBoundary extends Component{constructor(p){super(p);this.state={err:false};}static getDerivedStateFromError(){return{err:true};}componentDidCatch(e,i){console.error('Portal crash:',e,i);}render(){if(this.state.err)return(<div style={{padding:40,textAlign:'center',color:'#697386'}}><div style={{fontSize:40}}>⚠️</div><h3 style={{color:'#0A2540',marginTop:8}}>Kanzlei-Portal nicht verfügbar</h3><p>Ein Fehler ist aufgetreten. Bitte laden Sie die Seite neu.</p><button onClick={()=>this.setState({err:false})} style={{marginTop:16,padding:'10px 20px',background:'#635BFF',color:'#fff',border:'none',borderRadius:8,cursor:'pointer'}}>Erneut versuchen</button></div>);return this.props.children;}}
 
 /* ═══════════════════════════════════════════════════════════════
    invoiq — Complete App · Design System v2
@@ -3879,8 +3879,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
     {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
     {screen==="loading"&&(
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:T.bgSubtle}}>
-        <div style={{textAlign:'center'}}>
-          <div style={{width:40,height:40,border:`3px solid ${T.accentLight}`,borderTopColor:T.accent,borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto 16px'}}></div>
+onBack={()=>setNav('dashboard')}/>          <div style={{width:40,height:40,border:`3px solid ${T.accentLight}`,borderTopColor:T.accent,borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto 16px'}}></div>
           <div style={{fontSize:14,color:T.textMuted,fontFamily:F.ui}}>Wird geladen...</div>
         </div>
       </div>
@@ -3896,7 +3895,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
           {nav==="inbound"&&<InboundScreen notify={notify} org={org}/>}
           {nav==="steuerberater"&&(
             hasKanzlei
-              ? <SteuerberaterPortal user={user} org={org} notify={notify} onBack={()=>setNav('dashboard')}/>
+              ? <PortalErrorBoundary>onBack={()=>setNav('dashboard')}/></PortalErrorBoundary> user={user} org={org} notify={notify} onBack={()=>setNav('dashboard')}/>
               : <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'60vh',flexDirection:'column',gap:14,padding:40,textAlign:'center'}}>
                   <div style={{width:64,height:64,borderRadius:16,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>🔒</div>
                   <div style={{fontSize:20,fontWeight:700,color:T.textPrimary,letterSpacing:'-.02em'}}>Kanzlei-Portal</div>
