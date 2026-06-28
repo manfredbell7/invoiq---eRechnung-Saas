@@ -23,6 +23,11 @@ export async function authRoutes(fastify) {
     schema: {
       body: {
         type: 'object',
+        // Nur Name, Firma, E-Mail, Passwort sind Pflicht. Adresse ist empfohlen,
+        // aber NICHT erzwungen (SMEs sollen sich in <2 Min. registrieren können).
+        // IBAN/SEPA und ERP-Anbindung sind bewusst NICHT Teil der Registrierung —
+        // diese werden optional im Onboarding-Wizard oder später in den
+        // Einstellungen ergänzt.
         required: ['email', 'password', 'full_name', 'org_name'],
         properties: {
           email: { type: 'string', format: 'email' },
@@ -30,11 +35,16 @@ export async function authRoutes(fastify) {
           full_name: { type: 'string', minLength: 2 },
           org_name: { type: 'string', minLength: 2 },
           vat_id: { type: 'string' },
+          // Adresse — optional bei Registrierung, kann später ergänzt werden
+          address: { type: 'string' },
+          city: { type: 'string' },
+          zip: { type: 'string' },
+          country: { type: 'string' },
         }
       }
     }
   }, async (req, reply) => {
-    const { email, password, full_name, org_name, vat_id } = req.body;
+    const { email, password, full_name, org_name, vat_id, address, city, zip, country } = req.body;
 
     const existing = await db.findUserByEmail(email);
     if (existing) return reply.code(409).send({ error: 'E-Mail bereits registriert' });
@@ -47,6 +57,11 @@ export async function authRoutes(fastify) {
       name: org_name,
       slug: `${slug}-${uuidv4().substr(0, 6)}`,
       vat_id: vat_id || '',
+      // Adresse optional — kann leer bleiben und später in den Einstellungen ergänzt werden
+      address: address || '',
+      city: city || '',
+      zip: zip || '',
+      country: country || 'DE',
       plan: 'starter',
       plan_doc_limit: 100,           inbound_email_slug: slug + '-' + uuidv4().substr(0, 6),
       api_key: apiKey,

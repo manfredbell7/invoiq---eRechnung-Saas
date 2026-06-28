@@ -327,17 +327,17 @@ function Step1({ data, setData }) {
         </div>
 
         <div>
-          <label className="ob-label">Straße & Hausnummer *</label>
+          <label className="ob-label">Straße & Hausnummer</label>
           <input className="ob-input" value={data.address || ""} onChange={e => upd("address", e.target.value)} placeholder="Musterstraße 1" />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 14 }}>
           <div>
-            <label className="ob-label">PLZ *</label>
+            <label className="ob-label">PLZ</label>
             <input className="ob-input" value={data.zip || ""} onChange={e => upd("zip", e.target.value)} placeholder="80331" />
           </div>
           <div>
-            <label className="ob-label">Stadt *</label>
+            <label className="ob-label">Stadt</label>
             <input className="ob-input" value={data.city || ""} onChange={e => upd("city", e.target.value)} placeholder="München" />
           </div>
         </div>
@@ -346,6 +346,7 @@ function Step1({ data, setData }) {
           <div>
             <label className="ob-label">IBAN (für Zahlungsziel)</label>
             <input className="ob-input" value={data.iban || ""} onChange={e => upd("iban", e.target.value)} placeholder="DE89 3704 0044 0532 0130 00" />
+            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>Optional — kann später in den Einstellungen ergänzt werden.</div>
           </div>
           <div>
             <label className="ob-label">Leitweg-ID (für Behörden)</label>
@@ -377,8 +378,11 @@ function Step2({ data, setData }) {
       <h2 className="fu2" style={{ fontFamily: F.display, fontSize: 28, fontWeight: 400, color: C.navy, marginBottom: 6, letterSpacing: "-.025em" }}>
         Ihr ERP-System.
       </h2>
-      <p className="fu3" style={{ color: C.textMuted, fontSize: 15, marginBottom: 28, lineHeight: 1.6 }}>
+      <p className="fu3" style={{ color: C.textMuted, fontSize: 15, marginBottom: 8, lineHeight: 1.6 }}>
         Woher kommen Ihre Ausgangsrechnungen? Wir richten die Verbindung für Sie ein.
+      </p>
+      <p className="fu3" style={{ color: C.textLight, fontSize: 12.5, marginBottom: 28 }}>
+        Optional — können Sie auch später in den Einstellungen einrichten.
       </p>
 
       <div className="fu3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
@@ -675,10 +679,13 @@ export default function OnboardingWizard({ user, onComplete }) {
   const [generatedXML, setGeneratedXML] = useState(null);
   const [saving, setSaving]           = useState(false);
 
+  // Im Wizard sind ab jetzt nur die im Vorfeld (Registrierung) bereits
+  // erfassten Unternehmensdaten geprüft. Adresse, ERP-Anbindung und Format
+  // sind optional/überspringbar — IBAN/ERP werden NICHT erzwungen.
   const canAdvance = () => {
-    if (step === 1) return !!data.org_name && !!data.address && !!data.city;
-    if (step === 2) return !!data.erp;
-    if (step === 3) return !!data.format;
+    if (step === 1) return !!data.org_name;
+    if (step === 2) return true;  // ERP-Auswahl optional, jederzeit später nachrüstbar
+    if (step === 3) return !!data.format; // hat sinnvollen Default (xrechnung)
     if (step === 4) return true; // optional step
     return true;
   };

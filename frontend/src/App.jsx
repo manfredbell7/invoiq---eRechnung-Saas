@@ -1292,7 +1292,11 @@ function Landing({onEnter,onLegal=()=>{}}){
 
 // ── AUTH ──────────────────────────────────────────────────────
 function Auth({mode,onSwitch,onSuccess,loading}){
-  const[form,setForm]=useState({email:"demo@invoiq.io",password:"demo123",full_name:"",org_name:""});
+  // Registrierung bewusst schlank gehalten: Name, Firma, E-Mail, Passwort, Adresse.
+  // IBAN/SEPA und ERP-Anbindung werden NICHT mehr bei der Registrierung verlangt —
+  // diese können später im Onboarding-Wizard (überspringbar) oder in den
+  // Einstellungen ergänzt werden.
+  const[form,setForm]=useState({email:"demo@invoiq.io",password:"demo123",full_name:"",org_name:"",address:"",zip:"",city:"",country:"DE"});
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
   return(<div style={{minHeight:"100vh",background:T.bgSubtle,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
     <div style={{width:"100%",maxWidth:400}}>
@@ -1304,6 +1308,12 @@ function Auth({mode,onSwitch,onSuccess,loading}){
           {mode==="register"&&<>
             <div><label className="label">Name</label><input className="input" value={form.full_name} onChange={e=>upd("full_name",e.target.value)} placeholder="Max Mustermann"/></div>
             <div><label className="label">Unternehmen</label><input className="input" value={form.org_name} onChange={e=>upd("org_name",e.target.value)} placeholder="Mustermann GmbH"/></div>
+            <div><label className="label">Straße & Hausnummer</label><input className="input" value={form.address} onChange={e=>upd("address",e.target.value)} placeholder="Musterstraße 1"/></div>
+            <div style={{display:"grid",gridTemplateColumns:"100px 1fr",gap:10}}>
+              <div><label className="label">PLZ</label><input className="input" value={form.zip} onChange={e=>upd("zip",e.target.value)} placeholder="80331"/></div>
+              <div><label className="label">Stadt</label><input className="input" value={form.city} onChange={e=>upd("city",e.target.value)} placeholder="München"/></div>
+            </div>
+            <div style={{fontSize:11.5,color:T.textMuted,marginTop:-4}}>IBAN und ERP-Anbindung können Sie später im Setup oder in den Einstellungen ergänzen.</div>
           </>}
           <div><label className="label">E-Mail</label><input className="input" type="email" value={form.email} onChange={e=>upd("email",e.target.value)} onKeyDown={e=>e.key==="Enter"&&onSuccess(form)}/></div>
           <div><label className="label">Passwort</label><input className="input" type="password" value={form.password} onChange={e=>upd("password",e.target.value)} onKeyDown={e=>e.key==="Enter"&&onSuccess(form)}/></div>
@@ -1459,6 +1469,18 @@ function Dashboard({user,org,notify,onNav}){
       </div>
       <button className="btn btn-primary btn-sm" onClick={()=>onNav('invoices','create')}>+ Neue Rechnung</button>
     </div>
+
+    {/* Eingangs-E-Mail-Adresse — zentral sichtbar, auch auf dem Dashboard */}
+    {org?.inbound_email_slug&&(
+      <div style={{padding:'12px 16px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+        <div>
+          <div style={{fontSize:12.5,fontWeight:600,color:T.accent,marginBottom:2}}>Ihre e-Rechnungs-Adresse</div>
+          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{org.inbound_email_slug}@rechnungen.invoiq.io</div>
+          <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Schicken Sie Rechnungen an diese Adresse — invoiq erfasst sie automatisch.</div>
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`${org.inbound_email_slug}@rechnungen.invoiq.io`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
+      </div>
+    )}
 
     {/* KPIs — klickbar */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
@@ -2776,6 +2798,7 @@ function ArchiveScreen({notify}){
 // SETTINGS — Firmendaten, API, Plan, Team
 // ══════════════════════════════════════════════════════════════
 function SettingsScreen({user,org,notify}){
+  const inboundAddress = org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.io` : null;
   const[tab,setTab]   = useState('company');
   const[saving,setSaving] = useState(false);
   const[form,setForm] = useState({
@@ -2859,11 +2882,27 @@ function SettingsScreen({user,org,notify}){
                   <div><label className="label">Telefon</label><input className="input" value={form.phone} onChange={e=>upd('phone',e.target.value)} placeholder="+49 30 123456"/></div>
                 </div>
                 <div style={{background:T.bgSubtle,borderRadius:8,padding:'14px 16px',border:`1px solid ${T.bgBorder}`,marginTop:4}}>
-                  <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:12,letterSpacing:.4,textTransform:'uppercase'}}>Bankverbindung (für SEPA-Zahlungen)</div>
+                  <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:12,letterSpacing:.4,textTransform:'uppercase'}}>Bankverbindung (für SEPA-Zahlungen) — optional</div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                    <div><label className="label">IBAN (eigene)</label><input className="input" value={form.iban} onChange={e=>upd('iban',e.target.value)} placeholder="DE89 3704 0044 0532 0130 00" style={{fontFamily:F.mono}}/><div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Wird als Auftraggeber in SEPA-Dateien verwendet</div></div>
+                    <div><label className="label">IBAN (eigene)</label><input className="input" value={form.iban} onChange={e=>upd('iban',e.target.value)} placeholder="DE89 3704 0044 0532 0130 00" style={{fontFamily:F.mono}}/><div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Optional — kann jederzeit ergänzt werden. Wird als Auftraggeber in SEPA-Dateien verwendet.</div></div>
                     <div><label className="label">BIC / SWIFT</label><input className="input" value={form.bic} onChange={e=>upd('bic',e.target.value)} placeholder="COBADEFFXXX" style={{fontFamily:F.mono}}/><div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Optional — für ältere Banksysteme</div></div>
                   </div>
+                </div>
+
+                {/* e-Rechnungs-Adresse für Eingang */}
+                <div style={{background:T.accentLight,borderRadius:8,padding:'14px 16px',border:`1px solid ${T.accentPale}`,marginTop:4}}>
+                  <div style={{fontSize:12,fontWeight:700,color:T.accent,marginBottom:8,letterSpacing:.4,textTransform:'uppercase'}}>Ihre e-Rechnungs-Adresse (Eingang)</div>
+                  {inboundAddress?(
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+                      <div>
+                        <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{inboundAddress}</div>
+                        <div style={{fontSize:11.5,color:T.textMuted,marginTop:3}}>Senden Sie Rechnungen an diese Adresse, um sie automatisch zu erfassen.</div>
+                      </div>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(inboundAddress); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
+                    </div>
+                  ):(
+                    <div style={{fontSize:12.5,color:T.textMuted}}>Wird geladen…</div>
+                  )}
                 </div>
 
               </div>
