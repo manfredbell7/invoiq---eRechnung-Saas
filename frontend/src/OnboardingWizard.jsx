@@ -846,7 +846,6 @@ export default function OnboardingWizard({ user, onComplete }) {
                            )}
                           </div>
               </div>
-                  )}
           )}
 
           {/* Skip entire onboarding */}

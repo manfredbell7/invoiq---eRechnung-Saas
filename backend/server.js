@@ -15,7 +15,9 @@ import { scannerRoutes }  from './routes/scanner/index.js';
 import { paymentRoutes }  from './routes/payments/index.js';
 import { inboundRoutes }  from './routes/inbound/index.js';
 
-import { registerSecurityHooks } from './middleware/security.js'; const PORT = process.env.PORT || 3000;
+import { registerSecurityHooks } from './middleware/security.js';
+import { incrementCounter } from './lib/rateLimiter.js';
+const PORT = process.env.PORT || 3000;
 const API = `/v1`;  // Changed from /api/v1 — Railway blocks /api/* prefix
 
 
@@ -104,21 +106,17 @@ export async function buildServer() {
   // DB (Supabase client) — no ready() needed, connects on first query
 
   // ── RATE LIMITING ───────────────────────────────────────────
+  // Redis-backed (siehe lib/rateLimiter.js) — in production ohne REDIS_URL
+  // bricht der Prozessstart ab, da In-Memory-Zähler bei mehreren Instanzen
+  // wirkungslos sind.
   fastify.addHook('onRequest', async (req, reply) => {
-    // Simple in-memory rate limiting (use Redis in production)
-    const key = req.ip;
-    if (!fastify._rateLimits) fastify._rateLimits = new Map();
-    const now = Date.now();
-    const window = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000');
+    const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000');
     const max = parseInt(process.env.RATE_LIMIT_MAX || '200');
-    const entry = fastify._rateLimits.get(key) || { count: 0, reset: now + window };
-    if (now > entry.reset) { entry.count = 0; entry.reset = now + window; }
-    entry.count++;
-    fastify._rateLimits.set(key, entry);
+    const { count, resetAt } = await incrementCounter(`global:${req.ip}`, windowMs);
     reply.header('X-RateLimit-Limit', max);
-    reply.header('X-RateLimit-Remaining', Math.max(0, max - entry.count));
-    reply.header('X-RateLimit-Reset', entry.reset);
-    if (entry.count > max) return reply.code(429).send({ error: 'Zu viele Anfragen. Bitte warten.' });
+    reply.header('X-RateLimit-Remaining', Math.max(0, max - count));
+    reply.header('X-RateLimit-Reset', resetAt);
+    if (count > max) return reply.code(429).send({ error: 'Zu viele Anfragen. Bitte warten.' });
   });
 
   // ── ERROR HANDLER ───────────────────────────────────────────

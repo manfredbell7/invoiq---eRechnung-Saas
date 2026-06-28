@@ -47,11 +47,16 @@ async function createInvoice(data) {
   return assertNoError(res, 'createInvoice');
 }
 
-async function updateInvoice(id, patch) {
+// orgId ist erforderlich: verhindert, dass eine Org versehentlich (oder durch
+// einen Bug an der Aufrufstelle) Rechnungen einer anderen Org aktualisiert.
+// Der Service-Role-Key umgeht RLS — Mandantentrennung MUSS hier erzwungen werden.
+async function updateInvoice(id, orgId, patch) {
+  if (!orgId) throw new Error('[db/updateInvoice] orgId ist erforderlich (Tenant-Isolation)');
   const res = await supabase
     .from('invoices')
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('org_id', orgId)
     .select()
     .single();
   return assertNoError(res, 'updateInvoice');
@@ -188,6 +193,52 @@ async function revokeRefreshToken(tokenHash) {
   await supabase.from('refresh_tokens').delete().eq('token_hash', tokenHash);
 }
 
+// ── WEBHOOKS ───────────────────────────────────────────────────────────────
+async function findWebhooks(orgId) {
+  const { data, error } = await supabase
+    .from('webhooks')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(`[db/findWebhooks] ${error.message}`);
+  return data ?? [];
+}
+
+async function createWebhook(data) {
+  const row = { id: uuidv4(), ...data, created_at: new Date().toISOString() };
+  const res = await supabase.from('webhooks').insert(row).select().single();
+  return assertNoError(res, 'createWebhook');
+}
+
+async function deleteWebhook(id, orgId) {
+  const { data, error } = await supabase
+    .from('webhooks')
+    .delete()
+    .eq('id', id)
+    .eq('org_id', orgId)
+    .select();
+  if (error) throw new Error(`[db/deleteWebhook] ${error.message}`);
+  return (data ?? []).length > 0;
+}
+
+// ── ARCHIVE RECORDS (GoBD, §147 AO) ────────────────────────────────────────
+async function createArchiveRecord(data) {
+  const row = { id: uuidv4(), ...data, created_at: new Date().toISOString() };
+  const res = await supabase.from('archive_records').insert(row).select().single();
+  return assertNoError(res, 'createArchiveRecord');
+}
+
+async function findArchiveRecords(orgId, limit = 100) {
+  const { data, error } = await supabase
+    .from('archive_records')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`[db/findArchiveRecords] ${error.message}`);
+  return data ?? [];
+}
+
 // ── EMAIL SERVICE ──────────────────────────────────────────────────────────
 async function sendInvoiceEmail({ to, subject, invoice, xmlBuffer, pdfBuffer }) {
   const { sendInvoiceEmail: send } = await import('../services/email.js');
@@ -222,4 +273,11 @@ export const db = {
   // Audit
   createAuditLog,
   getAuditLogs,
+  // Webhooks
+  findWebhooks,
+  createWebhook,
+  deleteWebhook,
+  // Archive (GoBD)
+  createArchiveRecord,
+  findArchiveRecords,
 };

@@ -188,6 +188,16 @@ export function generateZUGFeRD(invoice) {
   const vatAmt = (invoice.line_items || []).reduce((s, i) => s + (i.quantity * i.unit_price * ((i.vat_rate || 19) / 100)), 0);
   const gross = net + vatAmt;
 
+  // Group VAT by rate (BG-23) — keine pauschale 19%-Annahme, jede Position
+  // kann ihren eigenen Steuersatz haben (z.B. 7% / 19% gemischt).
+  const vatGroups = {};
+  (invoice.line_items || []).forEach(item => {
+    const rate = item.vat_rate ?? 19;
+    if (!vatGroups[rate]) vatGroups[rate] = { taxableAmount: 0, taxAmount: 0 };
+    vatGroups[rate].taxableAmount += item.quantity * item.unit_price;
+    vatGroups[rate].taxAmount += item.quantity * item.unit_price * (rate / 100);
+  });
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice
   xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
@@ -270,13 +280,14 @@ export function generateZUGFeRD(invoice) {
 
     <ram:ApplicableHeaderTradeSettlement>
       <ram:InvoiceCurrencyCode>${invoice.currency || 'EUR'}</ram:InvoiceCurrencyCode>
+      ${Object.entries(vatGroups).map(([rate, g]) => `
       <ram:ApplicableTradeTax>
-        <ram:CalculatedAmount>${fmt(vatAmt)}</ram:CalculatedAmount>
+        <ram:CalculatedAmount>${fmt(g.taxAmount)}</ram:CalculatedAmount>
         <ram:TypeCode>VAT</ram:TypeCode>
-        <ram:BasisAmount>${fmt(net)}</ram:BasisAmount>
+        <ram:BasisAmount>${fmt(g.taxableAmount)}</ram:BasisAmount>
         <ram:CategoryCode>S</ram:CategoryCode>
-        <ram:RateApplicablePercent>19</ram:RateApplicablePercent>
-      </ram:ApplicableTradeTax>
+        <ram:RateApplicablePercent>${rate}</ram:RateApplicablePercent>
+      </ram:ApplicableTradeTax>`).join('')}
       ${invoice.due_date ? `
       <ram:SpecifiedTradePaymentTerms>
         <ram:DueDateDateTime>

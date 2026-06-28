@@ -77,8 +77,9 @@ export async function adminRoutes(fastify) {
         status: u.active === false ? 'suspended' : 'active',
       })),
     };
- - 20 realistische Demo-Rechnungen seeden  
-  // -- SEED DEMO DATA
+  });
+
+  // -- SEED DEMO DATA: 20 realistische Demo-Rechnungen seeden
   fastify.post('/seed-demo',{preHandler:adminGuard},async(req)=>{
     const orgId=req.org.id;
     const buyers=['Mustermann GmbH','ACME AG','Tech Solutions GmbH','Bauer & Partner KG','Schmidt Consulting','Weber Industries','Krause Digital','Fischer & Co','Lehmann Solutions','Becker Enterprises'];

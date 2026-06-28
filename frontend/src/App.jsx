@@ -3127,7 +3127,7 @@ function AdminOverview({notify,isSuper}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
       <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super-Admin":mandanten[0].name}</p></div>
-      {isSuper&&<><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Export</button><button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo"}</button></>}}
+      {isSuper&&<><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Export</button><button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo"}</button></>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
       {loadingA?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:90}}><div className="skeleton" style={{height:"100%"}}/></div>)
@@ -3251,8 +3251,6 @@ function AdminRevenue(){
 // ══════════════════════════════════════════════════════════════
 
 // mandanten entfernt — Kanzlei-Portal lädt echte Daten aus API
-
-class PortalBoundary extends React.Component { constructor(p){super(p);this.state={err:null};} componentDidCatch(e){this.setState({err:e});} render(){if(this.state.err)return <div style={{padding:20,color:'red'}}>Portal-Fehler: {this.state.err.message}</div>;return this.props.children;} } 
 
 
 function SteuerberaterPortal({ user, org, notify, onBack }) { const [portalErr,setPortalErr]=useState(null); if(portalErr) return <div style={{padding:40,textAlign:'center'}}><h3>Kanzlei-Portal</h3><p style={{color:'#ef4444'}}>Fehler beim Laden. <button onClick={()=>setPortalErr(null)}>Erneut versuchen</button></p></div>;
@@ -3890,7 +3888,8 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
     {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
     {screen==="loading"&&(
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:T.bgSubtle}}>
-onBack={()=>setNav('dashboard')}/>          <div style={{width:40,height:40,border:`3px solid ${T.accentLight}`,borderTopColor:T.accent,borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto 16px'}}></div>
+        <div>
+          <div style={{width:40,height:40,border:`3px solid ${T.accentLight}`,borderTopColor:T.accent,borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto 16px'}}></div>
           <div style={{fontSize:14,color:T.textMuted,fontFamily:F.ui}}>Wird geladen...</div>
         </div>
       </div>
@@ -3906,7 +3905,7 @@ onBack={()=>setNav('dashboard')}/>          <div style={{width:40,height:40,bord
           {nav==="inbound"&&<InboundScreen notify={notify} org={org}/>}
           {nav==="steuerberater"&&(
             hasKanzlei
-              ? <PortalErrorBoundary>onBack={()=>setNav('dashboard')}/></PortalErrorBoundary> user={user} org={org} notify={notify} onBack={()=>setNav('dashboard')}/>
+              ? <PortalErrorBoundary><SteuerberaterPortal user={user} org={org} notify={notify} onBack={()=>setNav('dashboard')}/></PortalErrorBoundary>
               : <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'60vh',flexDirection:'column',gap:14,padding:40,textAlign:'center'}}>
                   <div style={{width:64,height:64,borderRadius:16,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>🔒</div>
                   <div style={{fontSize:20,fontWeight:700,color:T.textPrimary,letterSpacing:'-.02em'}}>Kanzlei-Portal</div>

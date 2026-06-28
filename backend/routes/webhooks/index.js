@@ -2,12 +2,13 @@
 import { randomBytes } from 'crypto';
 import { db } from '../../config/db.js';
 import { authMiddleware } from '../../middleware/auth.js';
-import { stripeWebhookRoutes } from './stripe.js';
+
+// HINWEIS: Es gab zwei konkurrierende Stripe-Webhook-Implementierungen
+// (routes/payments/index.js und routes/webhooks/stripe.js). Letztere war
+// nur ein TODO-Stub ohne echte DB-Updates und wurde entfernt — die
+// vollständige Implementierung lebt unter POST /v1/payments/webhook.
 
 export async function webhookRoutes(fastify) {
-
-    // Mount Stripe webhook routes
-    fastify.register(stripeWebhookRoutes);
 
   fastify.get('/', { preHandler: authMiddleware }, async (req) => {
     const whs = await db.findWebhooks(req.org.id);

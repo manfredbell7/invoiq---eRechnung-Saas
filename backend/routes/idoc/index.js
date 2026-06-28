@@ -122,7 +122,7 @@ export async function idocRoutes(fastify) {
           format:        'xrechnung',
           invoiceNumber: invoice.invoice_number,
         });
-        await db.updateInvoice(invoice.id, {
+        await db.updateInvoice(invoice.id, org.id, {
           archived:     true,
           archived_at:  archiveResult.archived_at,
           archive_path: archiveResult.s3_key,
@@ -143,7 +143,7 @@ export async function idocRoutes(fastify) {
           invoiceData.xml_content,
           org
         );
-        await db.updateInvoice(invoice.id, { status: 'sent' });
+        await db.updateInvoice(invoice.id, org.id, { status: 'sent' });
       } catch(deliveryErr) {
         console.error('Versandfehler:', deliveryErr.message);
       }

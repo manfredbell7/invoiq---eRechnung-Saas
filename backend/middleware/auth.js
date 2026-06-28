@@ -24,14 +24,7 @@ export async function authMiddleware(request, reply) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (e) {
-      // Übergang: Tokens die mit dem früheren Fallback-Secret signiert wurden
-      // weiterhin akzeptieren, damit aktive Sessions einen Deploy überleben.
-      decoded = jwt.verify(token, JWT_SECRET);
-    }
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     const user = await db.findUserById(decoded.userId);
     if (!user || !user.active) return reply.code(401).send({ error: 'Benutzer nicht gefunden' });
@@ -48,7 +41,8 @@ export async function authMiddleware(request, reply) {
     if (err.name === 'JsonWebTokenError') return reply.code(401).send({ error: 'Ungültiges Token' });
     return reply.code(401).send({ error: 'Authentifizierung fehlgeschlagen' });
   }
-org.plan?.toLowerCase() !== 'enterprise'
+}
+
 // ── ROLE CHECK ────────────────────────────────────────────────
 export function requireRole(...roles) {
   return async (request, reply) => {

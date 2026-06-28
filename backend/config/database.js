@@ -12,6 +12,11 @@ if (!supabaseUrl || !supabaseKey) {
   );
 }
 
+// ACHTUNG — Service-Role-Key: dieser Client umgeht Row Level Security (RLS)
+// vollständig. Mandantentrennung (org_id) wird dadurch NICHT von der
+// Datenbank erzwungen — jede Query, die mandantenspezifische Daten liest
+// oder schreibt, MUSS auf Anwendungsebene explizit nach org_id filtern
+// (siehe config/db.js, z.B. updateInvoice).
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: false,

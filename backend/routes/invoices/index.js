@@ -266,7 +266,7 @@ export async function invoiceRoutes(fastify) {
     if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
 
     const validation = validateEN16931(invoice);
-    await db.updateInvoice(invoice.id, {
+    await db.updateInvoice(invoice.id, req.org.id, {
       validation_result: validation,
       validation_passed: validation.passed,
       status: validation.passed ? 'validated' : invoice.status,
@@ -288,7 +288,7 @@ export async function invoiceRoutes(fastify) {
 
     const result = await deliveryService.deliver(invoiceToSend, invoice.xml_content, req.org);
 
-    await db.updateInvoice(invoice.id, {
+    await db.updateInvoice(invoice.id, req.org.id, {
       status: 'sent',
       delivery_attempts: (invoice.delivery_attempts || 0) + 1,
       peppol_document_id: result.peppol_document_id || invoice.peppol_document_id,
@@ -317,7 +317,7 @@ export async function invoiceRoutes(fastify) {
       invoiceNumber: invoice.invoice_number,
     });
 
-    await db.updateInvoice(invoice.id, {
+    await db.updateInvoice(invoice.id, req.org.id, {
       archived: true,
       archived_at: archiveResult.archived_at,
       archive_path: archiveResult.s3_key,
@@ -384,7 +384,7 @@ export async function invoiceRoutes(fastify) {
     if (invoice.status !== 'draft') {
       return reply.code(409).send({ error: 'Nur Entwürfe können gelöscht werden' });
     }
-    await db.updateInvoice(invoice.id, { status: 'deleted', active: false });
+    await db.updateInvoice(invoice.id, req.org.id, { status: 'deleted', active: false });
     return { message: 'Entwurf gelöscht', invoice_id: invoice.id };
   });
 
@@ -450,7 +450,7 @@ export async function invoiceRoutes(fastify) {
       }
     }
 
-    await db.updateInvoice(invoice.id, {
+    await db.updateInvoice(invoice.id, req.org.id, {
       status: 'delivered', delivery_method: 'email', recipient_email,
     });
     await db.createAuditLog({
@@ -510,7 +510,7 @@ function sanitizeInvoice(inv) {
     });
 
     // Update status
-    await db.updateInvoice(invoice.id, {
+    await db.updateInvoice(invoice.id, req.org.id, {
       status: 'delivered',
       delivery_method: 'peppol',
       peppol_transmission_id: result.transmission_id,

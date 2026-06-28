@@ -27,7 +27,7 @@ BEGIN
 
   IF demo_org_id IS NOT NULL THEN
     DELETE FROM inbound_invoices WHERE org_id = demo_org_id;
-    DELETE FROM archive_entries   WHERE org_id = demo_org_id;
+    DELETE FROM archive_records   WHERE org_id = demo_org_id;
     DELETE FROM audit_logs        WHERE org_id = demo_org_id;
     DELETE FROM invoices          WHERE org_id = demo_org_id;
     RAISE NOTICE 'Demo-Daten gelöscht für org_id: %', demo_org_id;

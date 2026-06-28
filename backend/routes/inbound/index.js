@@ -8,6 +8,7 @@
 
 import { authMiddleware } from '../../middleware/auth.js';
 import { supabase } from '../../config/database.js';
+import { db } from '../../config/db.js';
 import { parseInboundXML, validateEN16931, hashXML } from '../../services/xmlEngine.js';
 import { renderInvoicePDF } from '../../services/pdfRenderer.js';
 

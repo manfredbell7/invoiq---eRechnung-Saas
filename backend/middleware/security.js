@@ -1,7 +1,7 @@
 // backend/middleware/security.js
 // DSGVO Art. 32 + OWASP Security Headers + Rate Limiting
 
-const loginAttempts = new Map();
+import { incrementCounter, resetCounter } from '../lib/rateLimiter.js';
 
 // Security-Headers Hook (OWASP, DSGVO Art. 32)
 export function registerSecurityHooks(fastify) {
@@ -15,23 +15,19 @@ export function registerSecurityHooks(fastify) {
   });
 
   // Rate Limiting fuer Login (Brute-Force-Schutz gem. DSGVO Art. 32)
+  // Redis-backed (siehe lib/rateLimiter.js), damit das Limit auch bei
+  // mehreren Server-Instanzen konsistent durchgesetzt wird.
   fastify.addHook('preHandler', async (request, reply) => {
     if (request.url.includes('/auth/login') && request.method === 'POST') {
       const ip = (request.headers['x-forwarded-for'] || request.ip || 'unknown').split(',')[0].trim();
-      const now = Date.now();
-      const window = 15 * 60 * 1000; // 15 Minuten
-      const attempts = loginAttempts.get(ip) || { count: 0, resetAt: now + window };
-      if (now > attempts.resetAt) {
-        attempts.count = 0;
-        attempts.resetAt = now + window;
-      }
-      attempts.count++;
-      loginAttempts.set(ip, attempts);
-      if (attempts.count > 10) {
-        reply.header('Retry-After', Math.ceil((attempts.resetAt - now) / 1000));
+      const windowMs = 15 * 60 * 1000; // 15 Minuten
+      const { count, resetAt } = await incrementCounter(`login:${ip}`, windowMs);
+      if (count > 10) {
+        const retryAfter = Math.ceil((resetAt - Date.now()) / 1000);
+        reply.header('Retry-After', retryAfter);
         return reply.code(429).send({
           error: 'Zu viele Anmeldeversuche. Bitte 15 Minuten warten.',
-          retryAfter: Math.ceil((attempts.resetAt - now) / 1000)
+          retryAfter,
         });
       }
     }
@@ -39,6 +35,6 @@ export function registerSecurityHooks(fastify) {
 }
 
 // Nach erfolgreichem Login: Zaehler zuruecksetzen
-export function resetLoginAttempts(ip) {
-  loginAttempts.delete(ip);
+export async function resetLoginAttempts(ip) {
+  await resetCounter(`login:${ip}`);
 }

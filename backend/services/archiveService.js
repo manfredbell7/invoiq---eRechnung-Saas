@@ -4,29 +4,47 @@
 
 import { createHash } from 'crypto';
 import { db } from '../config/db.js';
-// ── MOCK S3 (replace with real AWS S3 in production) ──────────
-class MockS3 {
-  constructor() { this.store = new Map(); }
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
-  async putObject({ Bucket, Key, Body, Metadata, ServerSideEncryption }) {
-    this.store.set(Key, { body: Body, metadata: Metadata, bucket: Bucket });
-    return { ETag: `"${createHash('md5').update(Body).digest('hex')}"` };
-  }
-
-  async getObject({ Bucket, Key }) {
-    const item = this.store.get(Key);
-    if (!item) throw new Error(`NoSuchKey: ${Key}`);
-    return { Body: item.body, Metadata: item.metadata };
-  }
-
-  async headObject({ Bucket, Key }) {
-    const item = this.store.get(Key);
-    if (!item) throw new Error(`NoSuchKey: ${Key}`);
-    return { ContentLength: item.body.length, Metadata: item.metadata };
-  }
+// ── AWS S3 (Frankfurt, GoBD 10-Jahres-Aufbewahrung §147 AO) ────
+// WICHTIG: GoBD verlangt revisionssichere Archivierung über 10 Jahre.
+// Ein In-Memory-Mock überlebt keinen Prozess-Neustart/Deploy und ist
+// damit für Production untauglich — ohne vollständige AWS-Konfiguration
+// darf der Prozess nicht starten.
+const requiredEnv = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'AWS_S3_BUCKET'];
+const missingEnv = requiredEnv.filter(k => !process.env[k]);
+if (missingEnv.length) {
+  console.error(`[archiveService] FATAL: Fehlende AWS-S3-Umgebungsvariablen: ${missingEnv.join(', ')}. GoBD-Archivierung erfordert echtes S3 — siehe .env.example.`);
+  process.exit(1);
 }
 
-const s3 = new MockS3();
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+// Dünner Adapter, damit der Rest der Datei mit den bisherigen
+// putObject/getObject/headObject-Aufrufen weiterarbeiten kann.
+const s3 = {
+  async putObject({ Bucket, Key, Body, Metadata, ServerSideEncryption }) {
+    const res = await s3Client.send(new PutObjectCommand({
+      Bucket, Key, Body, Metadata, ServerSideEncryption,
+    }));
+    return { ETag: res.ETag };
+  },
+  async getObject({ Bucket, Key }) {
+    const res = await s3Client.send(new GetObjectCommand({ Bucket, Key }));
+    const body = await res.Body.transformToString('utf-8');
+    return { Body: body, Metadata: res.Metadata };
+  },
+  async headObject({ Bucket, Key }) {
+    const res = await s3Client.send(new HeadObjectCommand({ Bucket, Key }));
+    return { ContentLength: res.ContentLength, Metadata: res.Metadata };
+  },
+};
 
 // ── ARCHIVE SERVICE ───────────────────────────────────────────
 export const archiveService = {
