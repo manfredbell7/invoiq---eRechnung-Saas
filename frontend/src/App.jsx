@@ -9,37 +9,39 @@ import OnboardingWizard from "./OnboardingWizard.jsx"; class PortalErrorBoundary
    ═══════════════════════════════════════════════════════════════ */
 
 const T = {
-  // Stripe-exact palette
-  brand:     "#0A2540",   // Stripe's deep navy
-  brandMid:  "#1a3a5c",
-  brandLite: "#425466",
-  accent:    "#635BFF",   // Stripe purple-blue
-  accentHover:"#4F46E5",
-  accentLight:"#F0EFFF",
-  accentPale: "#E5E4FF",
+  // invoiq v3 — richer, more vivid SaaS palette (deep indigo brand, vivid violet accent)
+  brand:     "#101B3D",   // deeper, richer navy-indigo
+  brandMid:  "#1E2A57",
+  brandLite: "#3D4A7A",
+  accent:    "#6D5BFF",   // vivid violet-blue
+  accentHover:"#5A45F0",
+  accentLight:"#EFEBFF",
+  accentPale: "#DCD4FF",
 
   bg:        "#FFFFFF",
-  bgSubtle:  "#F6F9FC",   // Stripe's signature off-white
-  bgMuted:   "#EEF2F7",
-  bgBorder:  "#DDE1E7",   // Stripe border gray
+  bgSubtle:  "#F7F8FF",   // soft violet-tinted off-white (was flat gray)
+  bgGradient:"linear-gradient(180deg,#F7F8FF 0%,#F1F3FC 100%)", // for full-page backgrounds only
+  bgMuted:   "#ECEEFA",
+  bgBorder:  "#DBDDF0",
 
-  textPrimary:  "#0A2540",
-  textSecondary:"#425466",
-  textMuted:    "#697386",
-  textPlaceholder:"#9AA8B7",
+  textPrimary:  "#101B3D",
+  textSecondary:"#3D4A7A",
+  textMuted:    "#6B7399",
+  textPlaceholder:"#9FA6C4",
 
-  // Semantic — muted like Stripe
-  green:    "#1A9C5B",  greenBg:"#F0FBF5",  greenBdr:"#C3E9D5",
-  red:      "#C0392B",  redBg:  "#FEF4F4",  redBdr:  "#F5C6C4",
-  amber:    "#B45309",  amberBg:"#FEFBF0",  amberBdr:"#F5E0A0",
-  blue:     "#2563EB",  blueBg: "#F0F5FF",  blueBdr: "#C3D4F8",
-  gray:     "#697386",  grayBg: "#F6F9FC",  grayBdr: "#DDE1E7",
+  // Semantic — more saturated, more "alive"
+  green:    "#0F9D58",  greenBg:"#E9FBF1",  greenBdr:"#B7EBCD",
+  red:      "#E0392B",  redBg:  "#FEEDEC",  redBdr:  "#F8C4C0",
+  amber:    "#D97706",  amberBg:"#FFF6E5",  amberBdr:"#FBDFA0",
+  blue:     "#2D6BFF",  blueBg: "#EAF1FF",  blueBdr: "#BFD4FF",
+  purple:   "#6D5BFF",  purpleBg:"#EFEBFF", purpleBdr:"#DCD4FF",
+  gray:     "#6B7399",  grayBg: "#F7F8FF",  grayBdr: "#DBDDF0",
 
-  // Stripe-style minimal shadows
-  shadow1: "0 1px 1px rgba(0,0,0,.04), 0 2px 4px rgba(10,37,64,.08)",
-  shadow2: "0 2px 4px rgba(0,0,0,.04), 0 4px 12px rgba(10,37,64,.1)",
-  shadow3: "0 4px 8px rgba(0,0,0,.04), 0 8px 24px rgba(10,37,64,.1)",
-  shadowXl:"0 8px 16px rgba(0,0,0,.04), 0 20px 48px rgba(10,37,64,.12)",
+  // Deeper, more present shadows for visible elevation/depth
+  shadow1: "0 1px 2px rgba(16,27,61,.06), 0 2px 6px rgba(35,30,110,.10)",
+  shadow2: "0 3px 6px rgba(16,27,61,.07), 0 6px 16px rgba(35,30,110,.14)",
+  shadow3: "0 6px 12px rgba(16,27,61,.08), 0 12px 32px rgba(35,30,110,.16)",
+  shadowXl:"0 10px 22px rgba(16,27,61,.10), 0 28px 64px rgba(35,30,110,.20)",
 };
 // Stripe uses -apple-system / Inter — NO decorative display fonts in UI
 const F={
@@ -118,7 +120,7 @@ const CSS=`
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-size:14px;line-height:1.5;letter-spacing:-.01em;}
+body{font-family:${F.ui};background:${T.bgGradient};color:${T.textPrimary};font-size:14px;line-height:1.5;letter-spacing:-.01em;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:${T.bgBorder};border-radius:2px;}
@@ -1328,9 +1330,9 @@ function Auth({mode,onSwitch,onSuccess,loading}){
 
 // ── APP SHELL ─────────────────────────────────────────────────
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
-  // Kanzlei-Portal nur für Business/Enterprise
-  const plan = org?.plan?.toLowerCase() || 'starter';
-  const hasKanzlei = plan === 'enterprise' || plan === 'pro';
+  // Kanzlei-Portal ab Business-Plan (siehe Pricing: Business/Pro/Enterprise enthalten es)
+  const plan = (org?.plan||'starter').toLowerCase();
+  const hasKanzlei = plan === 'business' || plan === 'enterprise' || plan === 'pro';
 
   const items=[
     {key:"dashboard",   label:"Übersicht"},
@@ -3292,7 +3294,32 @@ function AdminRevenue(){
 // mandanten entfernt — Kanzlei-Portal lädt echte Daten aus API
 
 
-function SteuerberaterPortal({ user, org, notify, onBack }) { const [portalErr,setPortalErr]=useState(null); if(portalErr) return <div style={{padding:40,textAlign:'center'}}><h3>Kanzlei-Portal</h3><p style={{color:'#ef4444'}}>Fehler beim Laden. <button onClick={()=>setPortalErr(null)}>Erneut versuchen</button></p></div>;
+const MANDANTEN_LIMITS = { business: 10, pro: 25, enterprise: Infinity };
+
+// Normalisiert die rohe /admin/orgs API-Antwort (plan_doc_used/plan_doc_limit/name/vat_id/...)
+// auf die Feldnamen, die die Portal-UI überall erwartet (docs_this_month/docs_limit/vat/erp/contact/...).
+// Wichtig: jedes Feld hat einen sicheren Default, damit nichts mit "undefined" crasht oder NaN anzeigt.
+function normalizeMandant(o) {
+  return {
+    id: o.id,
+    name: o.name || 'Unbenannte Organisation',
+    vat: o.vat_id || o.vat || '—',
+    vat_id: o.vat_id || '',
+    plan: (o.plan || 'starter').toLowerCase(),
+    status: o.status || 'active',
+    erp: o.erp || 'Manuell',
+    contact: o.contact || o.email || '—',
+    last_invoice: o.last_invoice || '—',
+    compliance: typeof o.compliance === 'number' ? o.compliance : 100,
+    open_errors: o.open_errors || 0,
+    pending_inbound: o.pending_inbound || 0,
+    docs_this_month: o.plan_doc_used ?? o.docs_used ?? 0,
+    docs_limit: o.plan_doc_limit ?? o.docs_limit ?? 100,
+    mrr: o.mrr || 0,
+  };
+}
+
+function SteuerberaterPortal({ user, org, notify, onBack }) {
   const [view, setView]           = useState('overview');
   const [selected, setSelected]   = useState(null);
   const [search, setSearch]       = useState('');
@@ -3301,20 +3328,44 @@ function SteuerberaterPortal({ user, org, notify, onBack }) { const [portalErr,s
   const [inviteModal, setInviteModal] = useState(false);
   const [mandanten, setMandanten] = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(()=>{
-    api.get('/admin/orgs').then(d=>setMandanten(d.orgs||[])).catch(()=>setMandanten([])).finally(()=>setLoading(false));
+    let active = true;
+    setLoadError(null);
+    api.get('/admin/orgs')
+      .then(d=>{ if(active) setMandanten((d.orgs||[]).map(normalizeMandant)); })
+      .catch(err=>{ if(active){ setMandanten([]); setLoadError(err?.message||'Mandanten konnten nicht geladen werden.'); } })
+      .finally(()=>{ if(active) setLoading(false); });
+    return ()=>{ active = false; };
   },[]);
+
+  const plan = (org?.plan||'starter').toLowerCase();
+  const mandantenLimit = MANDANTEN_LIMITS[plan] ?? 5;
+  const limitReached = mandanten.length >= mandantenLimit;
 
   const filtered = mandanten.filter(m => {
     const matchSearch = !search || (m.name||'').toLowerCase().includes(search.toLowerCase()) || (m.vat_id||'').includes(search);
-    const matchFilter = filter === 'all' || m.status === filter || (filter === 'errors' && (m.open_errors||0) > 0);
+    const matchFilter = filter === 'all' || m.status === filter || (filter === 'errors' && (m.open_errors||0) > 0) || (filter === 'limit' && Math.round((m.docs_this_month/(m.docs_limit||100))*100) > 80);
     return matchSearch && matchFilter;
   });
 
-  const totalDocs     = mandanten.reduce((s, m) => s + (m.plan_doc_used||0), 0);
+  const totalDocs     = mandanten.reduce((s, m) => s + (m.docs_this_month||0), 0);
   const totalErrors   = mandanten.reduce((s, m) => s + (m.open_errors||0), 0);
   const totalPending  = mandanten.reduce((s, m) => s + (m.pending_inbound||0), 0);
+
+  // Echte Aktivitäten-API gibt es (noch) nicht — statt eines undefinierten Mocks
+  // leiten wir einen ehrlichen Feed aus den tatsächlich geladenen Mandanten-Daten ab.
+  const recentActivity = mandanten
+    .filter(m => (m.open_errors||0) > 0 || (m.pending_inbound||0) > 0)
+    .slice(0, 6)
+    .map(m => ({
+      mandant: m.name,
+      action: m.open_errors > 0 ? `${m.open_errors} Validierungsfehler` : `${m.pending_inbound} Inbound ausstehend`,
+      detail: m.open_errors > 0 ? 'Handlungsbedarf' : 'Zu verarbeiten',
+      time: '',
+      type: m.open_errors > 0 ? 'error' : 'info',
+    }));
   const avgCompliance = mandanten.length ? Math.round(mandanten.reduce((s, m) => s + (m.compliance||100), 0) / mandanten.length) : 100;
 
   // ── MANDANT DETAIL VIEW ──────────────────────────────────────
@@ -3478,6 +3529,25 @@ function SteuerberaterPortal({ user, org, notify, onBack }) { const [portalErr,s
     );
   }
 
+  // ── LOADING / ERROR ──────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="fi" style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'50vh' }}>
+        <div style={{ width:32, height:32, border:`3px solid ${T.accentLight}`, borderTopColor:T.accent, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+      </div>
+    );
+  }
+  if (loadError && mandanten.length === 0) {
+    return (
+      <div className="fi" style={{ padding:40, textAlign:'center' }}>
+        <div style={{ fontSize:32, marginBottom:10 }}>⚠️</div>
+        <h3 style={{ color:T.textPrimary, marginBottom:8 }}>Kanzlei-Portal</h3>
+        <p style={{ color:T.textMuted, marginBottom:16 }}>Mandanten konnten nicht geladen werden ({loadError}).</p>
+        <button className="btn btn-primary btn-sm" onClick={onBack}>Zurück</button>
+      </div>
+    );
+  }
+
   // ── OVERVIEW ─────────────────────────────────────────────────
   return (
     <div className="fi">
@@ -3610,8 +3680,11 @@ function SteuerberaterPortal({ user, org, notify, onBack }) { const [portalErr,s
           <div className="card" style={{ padding: 16, position: 'sticky', top: 24 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 14 }}>Aktivitäten — heute</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {MOCK_RECENT_ACTIVITY.map((a, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, padding: '9px 0', borderBottom: i < MOCK_RECENT_ACTIVITY.length - 1 ? `1px solid ${T.bgSubtle}` : 'none', alignItems: 'flex-start' }}>
+              {recentActivity.length === 0 && (
+                <div style={{ fontSize: 12.5, color: T.textMuted, textAlign: 'center', padding: '16px 0' }}>Noch keine Aktivität</div>
+              )}
+              {recentActivity.map((a, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: '9px 0', borderBottom: i < recentActivity.length - 1 ? `1px solid ${T.bgSubtle}` : 'none', alignItems: 'flex-start' }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: a.type === 'success' ? T.green : a.type === 'error' ? T.red : T.accent, flexShrink: 0, marginTop: 4 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 11.5, fontWeight: 600, color: T.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.mandant}</div>
