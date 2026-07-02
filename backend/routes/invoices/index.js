@@ -270,6 +270,24 @@ export async function invoiceRoutes(fastify) {
       details: { format: invoice.format, amount_gross: gross, validation_passed: validation.passed, draft: wantDraft }
     });
 
+    // Stammdaten-Lernen: Empfänger als Kunde speichern/aktualisieren
+    // (SAP-ready Stufe 1 — Belege füttern die Geschäftspartner-Stammdaten).
+    // Fehler hier dürfen die Rechnungserstellung nie blockieren.
+    try {
+      const { upsertCustomer } = await import('../customers/index.js');
+      await upsertCustomer(req.org.id, {
+        name: invoiceData.buyer_name,
+        vat_id: invoiceData.buyer_vat_id,
+        address: invoiceData.buyer_address,
+        city: invoiceData.buyer_city,
+        country: invoiceData.buyer_country,
+        email: invoiceData.buyer_email,
+        peppol_id: invoiceData.buyer_peppol_id,
+      }, { countInvoice: !wantDraft });
+    } catch (e) {
+      req.log?.warn?.(e, 'Kunden-Upsert fehlgeschlagen (nicht kritisch)');
+    }
+
     return reply.code(201).send({
       ...sanitizeInvoice(invoice),
       ...(invoiceData.xml_content ? { xml_preview: invoiceData.xml_content.substring(0, 500) + '...' } : {}),

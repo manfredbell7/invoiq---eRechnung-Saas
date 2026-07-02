@@ -101,6 +101,8 @@ const api={
   // Einstellungen
   saveSettings:(b)=>api.post('/auth/settings',b),
   getOrgSettings:()=>api.get('/auth/settings'),
+  // Kundenstammdaten
+  listCustomers:(search='')=>api.get(`/customers${search?`?search=${encodeURIComponent(search)}`:''}`),
   // Cashflow & Stats
   getCashflowStats:()=>api.get('/invoices/cashflow-stats'),
   getInboundStats:()=>api.get('/inbound/stats'),
@@ -1744,6 +1746,19 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   const[fieldErrors,setFieldErrors]=useState({});
   const[saving,setSaving]=useState(false);
   const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",template:"modern",delivery_method:"email",seller_name : "",_orgLoaded:false,seller_vat_id:"",seller_address:"",seller_city:"",buyer_name:"",buyer_address:"",buyer_zip:"",buyer_city:"",buyer_country:"DE",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
+  // Kundenstammdaten für Schnellauswahl (SAP-ready: Stammdaten → Beleg)
+  const[customers,setCustomers]=useState([]);
+  useEffect(()=>{if(view==="create")api.listCustomers().then(d=>setCustomers(d.customers||[])).catch(()=>setCustomers([]));},[view]);
+  const pickCustomer=(id)=>{
+    const c=customers.find(x=>x.id===id);
+    if(!c)return;
+    setForm(p=>({...p,
+      buyer_name:c.name||"",buyer_address:c.address||"",buyer_zip:c.zip||"",
+      buyer_city:c.city||"",buyer_country:c.country||"DE",buyer_email:c.email||"",
+      due_date:c.payment_terms_days?new Date(Date.now()+c.payment_terms_days*86400000).toISOString().split("T")[0]:p.due_date,
+    }));
+    setFieldErrors({});
+  };
   const load=useCallback(()=>{setLoading(true);api.listInvoices().then(d=>setInvoices(d.invoices||[])).catch(()=>setInvoices([])).finally(()=>setLoading(false));},[]);
   useEffect(()=>load(),[load]);
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1798,8 +1813,17 @@ function Invoices({notify,initialView=null,onNavDone=null}){
         </div>
       </div>
       <div className="card" style={{padding:20}}>
-        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Empfänger</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase"}}>Empfänger</div>
+          {customers.length>0&&(
+            <select className="select" style={{width:200,fontSize:12.5,padding:"5px 10px"}} value="" onChange={e=>pickCustomer(e.target.value)}>
+              <option value="">Bestehenden Kunden wählen…</option>
+              {customers.map(c=><option key={c.id} value={c.id}>{c.name}{c.city?` · ${c.city}`:''}</option>)}
+            </select>
+          )}
+        </div>
                 {[["buyer_name","Firma"],["buyer_address","Straße"],["buyer_zip","PLZ"],["buyer_city","Stadt"],["buyer_country","Land"],["buyer_email","Email"]].map(([k,l])=>(<div key={k}><label className="label">{l}</label><input className="input" value={form[k]||''} onChange={e=>{upd(k,e.target.value);if(fieldErrors[k])setFieldErrors(p=>({...p,[k]:false}));}} placeholder={l} style={{borderColor:fieldErrors[k]?T.red:undefined}}/></div>))}
+        <div style={{fontSize:11,color:T.textMuted,marginTop:10}}>Neue Empfänger werden automatisch als Kunde gespeichert und stehen beim nächsten Mal zur Auswahl.</div>
       </div>
     </div>
     <div className="card" style={{padding:20,marginBottom:12}}>
