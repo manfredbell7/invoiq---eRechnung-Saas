@@ -1292,13 +1292,49 @@ function Landing({onEnter,onLegal=()=>{}}){
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
-function Auth({mode,onSwitch,onSuccess,loading}){
+function Auth({mode,onSwitch,onSuccess,loading,notify}){
   // Registrierung bewusst schlank gehalten: Name, Firma, E-Mail, Passwort, Adresse.
   // IBAN/SEPA und ERP-Anbindung werden NICHT mehr bei der Registrierung verlangt —
   // diese können später im Onboarding-Wizard (überspringbar) oder in den
   // Einstellungen ergänzt werden.
   const[form,setForm]=useState({email:"",password:"",full_name:"",org_name:"",address:"",zip:"",city:"",country:"DE"});
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const[forgot,setForgot]=useState(false);
+  const[forgotSent,setForgotSent]=useState(false);
+  const[forgotBusy,setForgotBusy]=useState(false);
+
+  const requestReset=async()=>{
+    if(!form.email){notify?.("Bitte E-Mail-Adresse eingeben","error");return;}
+    setForgotBusy(true);
+    try{await api.post('/auth/forgot-password',{email:form.email});setForgotSent(true);}
+    catch(e){notify?.(e.message||'Anfrage fehlgeschlagen','error');}
+    setForgotBusy(false);
+  };
+
+  if(forgot)return(<div style={{minHeight:"100vh",background:T.bgSubtle,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+    <div style={{width:"100%",maxWidth:400}}>
+      <div style={{textAlign:"center",marginBottom:28}}><Wordmark size={24}/></div>
+      <div className="card sci" style={{padding:30,boxShadow:T.shadow3}}>
+        <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:5,letterSpacing:"-.02em"}}>Passwort vergessen?</h2>
+        {forgotSent?(
+          <>
+            <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.6,marginBottom:20}}>Falls ein Konto mit <strong>{form.email}</strong> existiert, haben wir einen Reset-Link gesendet. Der Link ist 1 Stunde gültig — bitte auch den Spam-Ordner prüfen.</p>
+            <button className="btn btn-ghost" style={{width:"100%",justifyContent:"center"}} onClick={()=>{setForgot(false);setForgotSent(false);}}>← Zurück zur Anmeldung</button>
+          </>
+        ):(
+          <>
+            <p style={{fontSize:13,color:T.textMuted,marginBottom:20}}>Wir senden Ihnen einen Link zum Zurücksetzen.</p>
+            <div style={{display:"flex",flexDirection:"column",gap:13}}>
+              <div><label className="label">E-Mail</label><input className="input" type="email" value={form.email} onChange={e=>upd("email",e.target.value)} onKeyDown={e=>e.key==="Enter"&&requestReset()} autoFocus/></div>
+              <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",padding:"11px"}} onClick={requestReset} disabled={forgotBusy}>{forgotBusy?<><Spinner color="#fff"/>&nbsp;Sendet...</>:"Reset-Link senden →"}</button>
+              <button onClick={()=>setForgot(false)} style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:13,fontFamily:F.ui}}>← Zurück zur Anmeldung</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  </div>);
+
   return(<div style={{minHeight:"100vh",background:T.bgSubtle,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
     <div style={{width:"100%",maxWidth:400}}>
       <div style={{textAlign:"center",marginBottom:28}}><Wordmark size={24}/></div>
@@ -1320,7 +1356,59 @@ function Auth({mode,onSwitch,onSuccess,loading}){
           <div><label className="label">Passwort</label><input className="input" type="password" value={form.password} onChange={e=>upd("password",e.target.value)} onKeyDown={e=>e.key==="Enter"&&onSuccess(form)}/></div>
           <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",marginTop:4,padding:"11px"}} onClick={()=>onSuccess(form)} disabled={loading}>{loading?<><Spinner color="#fff"/>&nbsp;Bitte warten...</>:mode==="login"?"Anmelden →":"Konto erstellen →"}</button>
           <button onClick={onSwitch} style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:13,fontFamily:F.ui}}>{mode==="login"?"Noch kein Konto? Registrieren →":"Bereits registriert? Anmelden →"}</button>
+          {mode==="login"&&<button onClick={()=>setForgot(true)} style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:12.5,fontFamily:F.ui}}>Passwort vergessen?</button>}
         </div>
+      </div>
+    </div>
+  </div>);
+}
+
+// ── RESET PASSWORD (via /reset-password?token=...) ────────────
+function ResetPassword({onDone,notify}){
+  const token=new URLSearchParams(window.location.search).get('token')||'';
+  const[pw,setPw]=useState('');
+  const[pw2,setPw2]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[done,setDone]=useState(false);
+
+  const submit=async()=>{
+    if(pw.length<8){notify('Passwort muss mindestens 8 Zeichen haben','error');return;}
+    if(pw!==pw2){notify('Passwörter stimmen nicht überein','error');return;}
+    setBusy(true);
+    try{
+      await api.post('/auth/reset-password',{token,password:pw});
+      setDone(true);
+    }catch(e){notify(e.message||'Reset fehlgeschlagen','error');}
+    setBusy(false);
+  };
+
+  return(<div style={{minHeight:"100vh",background:T.bgSubtle,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+    <div style={{width:"100%",maxWidth:400}}>
+      <div style={{textAlign:"center",marginBottom:28}}><Wordmark size={24}/></div>
+      <div className="card sci" style={{padding:30,boxShadow:T.shadow3}}>
+        {done?(
+          <>
+            <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:8}}>Passwort geändert ✓</h2>
+            <p style={{fontSize:13.5,color:T.textSecondary,marginBottom:20}}>Sie können sich jetzt mit dem neuen Passwort anmelden.</p>
+            <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",padding:"11px"}} onClick={onDone}>Zur Anmeldung →</button>
+          </>
+        ):!token?(
+          <>
+            <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:8}}>Link ungültig</h2>
+            <p style={{fontSize:13.5,color:T.textSecondary,marginBottom:20}}>Dieser Reset-Link ist unvollständig. Bitte fordern Sie über „Passwort vergessen?" einen neuen an.</p>
+            <button className="btn btn-ghost" style={{width:"100%",justifyContent:"center"}} onClick={onDone}>Zur Anmeldung →</button>
+          </>
+        ):(
+          <>
+            <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:5}}>Neues Passwort vergeben</h2>
+            <p style={{fontSize:13,color:T.textMuted,marginBottom:20}}>Mindestens 8 Zeichen.</p>
+            <div style={{display:"flex",flexDirection:"column",gap:13}}>
+              <div><label className="label">Neues Passwort</label><input className="input" type="password" value={pw} onChange={e=>setPw(e.target.value)} autoFocus/></div>
+              <div><label className="label">Passwort wiederholen</label><input className="input" type="password" value={pw2} onChange={e=>setPw2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+              <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",padding:"11px"}} onClick={submit} disabled={busy}>{busy?<><Spinner color="#fff"/>&nbsp;Speichert...</>:"Passwort ändern →"}</button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   </div>);
@@ -1645,6 +1733,13 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   const[view,setView]=useState(initialView||"list");const[filter,setFilter]=useState("all");
   useEffect(()=>{if(initialView){setView(initialView);onNavDone&&onNavDone();}},[]);
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
+  const[detail,setDetail]=useState(null);          // ausgewählte Rechnung (Detail-Modal)
+  const[auditLogs,setAuditLogs]=useState(null);    // Audit-Trail der Detail-Rechnung
+  const openDetail=async(inv)=>{
+    setDetail(inv);setAuditLogs(null);
+    try{const d=await api.get(`/invoices/${inv.id}/audit`);setAuditLogs(d.logs||[]);}
+    catch(e){setAuditLogs([]);}
+  };
   const[generating,setGenerating]=useState(false);const[xml,setXml]=useState(null);
   const[fieldErrors,setFieldErrors]=useState({});
   const[saving,setSaving]=useState(false);
@@ -1755,13 +1850,13 @@ function Invoices({notify,initialView=null,onNavDone=null}){
         <thead><tr>{["Nummer","Empfänger","Betrag","Format","Status","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
         <tbody>
           {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14}}/></td></tr>)
-          :filtered.map(inv=><tr key={inv.id} className="tr-hover">
+          :filtered.map(inv=><tr key={inv.id} className="tr-hover" onClick={()=>openDetail(inv)} style={{cursor:"pointer"}}>
             <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12.5,color:T.textPrimary}}>{inv.invoice_number}</td>
             <td>{inv.buyer_name||"—"}</td>
             <td style={{fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
             <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
             <td><StatusBadge status={inv.status}/></td>
-            <td><div style={{display:"flex",gap:5}}>
+            <td onClick={e=>e.stopPropagation()}><div style={{display:"flex",gap:5}}>
               {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>{setCurrentInvId(inv.id);setEmailTo(inv.buyer_email||'');setEmailModal(true);}}>✉ Senden</button>}
               {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
               <button className="btn btn-ghost btn-sm" onClick={()=>api.openPDF(inv.id).catch(e=>notify(e.message,"error"))}>PDF</button>
@@ -1786,6 +1881,81 @@ function Invoices({notify,initialView=null,onNavDone=null}){
           <div style={{display:"flex",gap:7}}><button className="btn btn-primary btn-sm" onClick={()=>{const b=new Blob([xml.content],{type:"application/xml"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`${xml.number}.xml`;a.click();}}>↓ Herunterladen</button><button className="btn btn-ghost btn-sm" onClick={()=>setXml(null)}>×</button></div>
         </div>
         <pre style={{background:T.bgSubtle,borderRadius:8,padding:14,fontSize:10.5,color:T.textSecondary,overflow:"auto",maxHeight:420,lineHeight:1.55,fontFamily:F.mono}}>{xml.content}</pre>
+      </div>
+    </div>}
+    {detail&&<div className="modal-overlay" onClick={()=>setDetail(null)}>
+      <div className="modal sci" style={{maxWidth:640,maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        {/* Kopf */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+              <span style={{fontSize:17,fontWeight:700,fontFamily:F.mono,color:T.textPrimary}}>{detail.invoice_number}</span>
+              <StatusBadge status={detail.status}/>
+              {detail.validation_passed===false&&<span className="badge badge-red">Validierung fehlgeschlagen</span>}
+            </div>
+            <div style={{fontSize:12.5,color:T.textMuted}}>{detail.buyer_name||"—"} · {detail.format?.toUpperCase()} · {detail.invoice_date?new Date(detail.invoice_date).toLocaleDateString("de-DE"):"—"}</div>
+          </div>
+          <button onClick={()=>setDetail(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.textMuted}}>×</button>
+        </div>
+
+        {/* Beträge & Eckdaten */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+          {[["Netto",fmtEUR(detail.amount_net)],["MwSt.",fmtEUR(detail.amount_vat)],["Brutto",fmtEUR(detail.amount_gross)]].map(([l,v])=>(
+            <div key={l} style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:7,padding:"9px 12px"}}>
+              <div style={{fontSize:10,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:3}}>{l}</div>
+              <div style={{fontSize:15,fontWeight:700,color:T.textPrimary}}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px",fontSize:12.5,marginBottom:14}}>
+          {[["Fällig",detail.due_date?new Date(detail.due_date).toLocaleDateString("de-DE"):"—"],
+            ["Zustellweg",detail.delivery_method||"—"],
+            ["Empfänger-E-Mail",detail.buyer_email||"—"],
+            ["Archiviert",detail.archived?`✓ ${detail.archived_at?new Date(detail.archived_at).toLocaleDateString("de-DE"):""}`:"Nein"]].map(([l,v])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${T.bgSubtle}`}}>
+              <span style={{color:T.textMuted}}>{l}</span><span style={{fontWeight:500,color:T.textPrimary}}>{v}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Validierungsfehler, falls vorhanden */}
+        {Array.isArray(detail.validation_result?.errors)&&detail.validation_result.errors.length>0&&(
+          <div style={{background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:7,padding:"10px 13px",marginBottom:14}}>
+            <div style={{fontSize:11.5,fontWeight:700,color:T.red,marginBottom:6}}>Validierungsfehler (EN 16931)</div>
+            {detail.validation_result.errors.map((er,i)=>(
+              <div key={i} style={{fontSize:12,color:T.red,marginBottom:3}}><span style={{fontFamily:F.mono,fontSize:10.5}}>{er.code}</span> — {er.msg}</div>
+            ))}
+          </div>
+        )}
+
+        {/* Audit-Verlauf */}
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:8}}>Verlauf (Audit-Trail)</div>
+        {auditLogs===null?<div className="skeleton" style={{height:48,marginBottom:8}}/>
+        :auditLogs.length===0?<div style={{fontSize:12.5,color:T.textMuted,padding:"8px 0"}}>Keine Einträge.</div>
+        :<div style={{marginBottom:6}}>
+          {auditLogs.map((log,i)=>{
+            const labels={created:"Erstellt",validated:"Validiert",sent:"Versendet",sent_email:"Per E-Mail gesendet",sent_peppol:"Per Peppol gesendet",delivered:"Zugestellt",archived:"Archiviert (GoBD)",viewed:"Angesehen",inbound_received:"Empfangen",delivery_failed:"Zustellung fehlgeschlagen",integrity_check:"Integritätsprüfung"};
+            const isErr=(log.action||"").includes("failed")||(log.action||"").includes("error");
+            return(
+              <div key={log.id||i} style={{display:"flex",gap:10,padding:"7px 0",borderBottom:i<auditLogs.length-1?`1px solid ${T.bgSubtle}`:"none",alignItems:"flex-start"}}>
+                <div style={{width:7,height:7,borderRadius:"50%",background:isErr?T.red:T.accent,flexShrink:0,marginTop:5}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12.5,fontWeight:600,color:isErr?T.red:T.textPrimary}}>{labels[log.action]||log.action}</div>
+                  {log.details?.recipient_email&&<div style={{fontSize:11.5,color:T.textMuted}}>an {log.details.recipient_email}</div>}
+                  {log.details?.method&&!log.details?.recipient_email&&<div style={{fontSize:11.5,color:T.textMuted}}>via {log.details.method}</div>}
+                </div>
+                <div style={{fontSize:11,color:T.textMuted,flexShrink:0,fontFamily:F.mono}}>{log.created_at?new Date(log.created_at).toLocaleString("de-DE"):""}</div>
+              </div>
+            );
+          })}
+        </div>}
+
+        {/* Aktionen */}
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:14,paddingTop:14,borderTop:`1px solid ${T.bgBorder}`}}>
+          {detail.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(detail.id).then(c=>setXml({content:c,id:detail.id,number:detail.invoice_number})).catch(e=>notify(e.message,"error"))}>XML ansehen</button>}
+          <button className="btn btn-ghost btn-sm" onClick={()=>api.openPDF(detail.id).catch(e=>notify(e.message,"error"))}>PDF öffnen</button>
+          {detail.status==="validated"&&<button className="btn btn-primary btn-sm" onClick={()=>{setCurrentInvId(detail.id);setEmailTo(detail.buyer_email||'');setDetail(null);setEmailModal(true);}}>✉ Senden</button>}
+        </div>
       </div>
     </div>}
     {emailModal&&<div className="modal-overlay" onClick={()=>setEmailModal(false)}>
@@ -3953,7 +4123,7 @@ function InstallPrompt(){
 }
 
 export default function App(){
-  const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'loading';return'landing';}); // loading|landing|auth|app|admin|onboarding|impressum|datenschutz|agb
+  const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p.startsWith('/reset-password'))return'reset';if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'loading';return'landing';}); // loading|landing|auth|reset|app|admin|onboarding|impressum|datenschutz|agb
 const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/register'||p.startsWith('/register'))?'register':'login';});
   const[nav,setNav]=useState("dashboard");
   const[subNav,setSubNav]=useState(null);
@@ -4008,7 +4178,8 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
     {screen==="impressum"&&<Impressum onBack={()=>setScreen("landing")}/>}
     {screen==="datenschutz"&&<Datenschutz onBack={()=>setScreen("landing")}/>}
     {screen==="agb"&&<AGB onBack={()=>setScreen("landing")}/>}
-    {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading}/>}
+    {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading} notify={notify}/>}
+    {screen==="reset"&&<ResetPassword notify={notify} onDone={()=>{window.history.replaceState(null,'','/');setMode('login');setScreen('auth');}}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup abgeschlossen — willkommen bei invoiq! 🎉","success");}}/>}
     {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
       {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={onNav}/>}

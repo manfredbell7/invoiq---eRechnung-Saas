@@ -144,6 +144,95 @@ export async function authRoutes(fastify) {
     };
   });
 
+  // ── PASSWORT VERGESSEN ───────────────────────────────────────
+  // Antwortet IMMER 200 mit derselben Meldung — sonst ließe sich über die
+  // Antwort ausspähen, welche E-Mail-Adressen registriert sind.
+  fastify.post('/forgot-password', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['email'],
+        properties: { email: { type: 'string', format: 'email' } },
+      },
+    },
+  }, async (req, reply) => {
+    const { email } = req.body;
+    const genericResponse = { message: 'Falls ein Konto mit dieser E-Mail existiert, wurde ein Reset-Link gesendet.' };
+
+    // Brute-Force-/Spam-Schutz: max. 3 Anfragen pro E-Mail pro 15 Minuten
+    const { incrementCounter } = await import('../../lib/rateLimiter.js');
+    const { count } = await incrementCounter(`pwreset:${email.toLowerCase()}`, 15 * 60 * 1000);
+    if (count > 3) return reply.send(genericResponse);
+
+    const user = await db.findUserByEmail(email);
+    if (!user || !user.active) return reply.send(genericResponse);
+
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1h
+
+    const { error } = await supabase.from('password_reset_tokens').insert({
+      user_id: user.id, token_hash: tokenHash, expires_at: expiresAt,
+    });
+    if (error) {
+      fastify.log.error(error, 'password_reset_tokens insert failed');
+      return reply.send(genericResponse);
+    }
+
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://invoiq.io'}/reset-password?token=${token}`;
+    try {
+      const { sendPasswordResetEmail } = await import('../../services/email.js');
+      await sendPasswordResetEmail({ to: user.email, resetUrl, fullName: user.full_name });
+    } catch (err) {
+      // Fehler nicht an den Client durchreichen (Enumeration/Infoleck),
+      // aber loggen — ohne RESEND_API_KEY kommt die Mail nicht an.
+      fastify.log.error(err, 'Passwort-Reset-Mail konnte nicht gesendet werden');
+    }
+
+    await db.createAuditLog({ org_id: user.org_id, user_id: user.id, action: 'password_reset_requested', details: {} });
+    return reply.send(genericResponse);
+  });
+
+  // ── PASSWORT ZURÜCKSETZEN ────────────────────────────────────
+  fastify.post('/reset-password', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['token', 'password'],
+        properties: {
+          token: { type: 'string', minLength: 32 },
+          password: { type: 'string', minLength: 8 },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const { token, password } = req.body;
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+
+    const { data: row } = await supabase
+      .from('password_reset_tokens').select('*')
+      .eq('token_hash', tokenHash).single();
+
+    if (!row || row.used_at || new Date(row.expires_at) < new Date()) {
+      return reply.code(400).send({ error: 'Der Reset-Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.' });
+    }
+
+    const user = await db.findUserById(row.user_id);
+    if (!user || !user.active) {
+      return reply.code(400).send({ error: 'Der Reset-Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await db.updateUser(user.id, { password_hash: passwordHash });
+    await supabase.from('password_reset_tokens').update({ used_at: new Date().toISOString() }).eq('id', row.id);
+    // Alle bestehenden Sessions invalidieren — nach einem Reset (z.B. wegen
+    // kompromittiertem Passwort) darf kein alter Refresh-Token weiterleben.
+    await supabase.from('refresh_tokens').delete().eq('user_id', user.id);
+
+    await db.createAuditLog({ org_id: user.org_id, user_id: user.id, action: 'password_reset_completed', details: {} });
+    return { message: 'Passwort erfolgreich geändert. Bitte melden Sie sich mit dem neuen Passwort an.' };
+  });
+
   // ── REFRESH ──────────────────────────────────────────────────
   fastify.post('/refresh', async (req, reply) => {
     const { refresh_token } = req.body || {};
