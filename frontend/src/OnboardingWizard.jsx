@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 
+// Gleiche API-Basis wie App.jsx — inkl. /v1-Prefix
+const API_BASE = (import.meta?.env?.VITE_API_URL) || "https://api.invoiq.io/v1";
+
 /* ═══════════════════════════════════════════════════════════════
    invoiq — Onboarding Wizard
    5 Schritte · Smooth Animationen · Weißes Navy-Design
@@ -647,7 +650,7 @@ function Step5({ data, onFinish }) {
           { icon: "💳", text: "Plan aktivieren", sub: "Starter ab 49 €/Monat", plan: localStorage.getItem("invoiq_selected_plan")||"starter" },
           { icon: "👥", text: "Team einladen", sub: "Kollegen hinzufügen" },
         ].map((s, i) => (
-          <div key={i} onClick={s.plan?async()=>{const r=await fetch(`${import.meta?.env?.VITE_API_URL||"http://localhost:3000"}/payments/checkout`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("invoiq_token")}`},body:JSON.stringify({plan:s.plan})});const d=await r.json();if(d.checkout_url)window.location.href=d.checkout_url;}:undefined} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", transition: "border-color .15s" }} onMouseEnter={e => e.currentTarget.style.borderColor = C.navyLite} onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+          <div key={i} onClick={s.plan?async()=>{const r=await fetch(`${API_BASE}/payments/checkout`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("invoiq_token")}`},body:JSON.stringify({plan:s.plan})});const d=await r.json();if(d.checkout_url)window.location.href=d.checkout_url;}:undefined} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", transition: "border-color .15s" }} onMouseEnter={e => e.currentTarget.style.borderColor = C.navyLite} onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
             <span style={{ fontSize: 20 }}>{s.icon}</span>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, color: C.navy, fontSize: 13.5 }}>{s.text}</div>
@@ -697,7 +700,7 @@ export default function OnboardingWizard({ user, onComplete }) {
     setGenerating(true);
     try {
       // Try real API
-      const res = await fetch(`${import.meta?.env?.VITE_API_URL || "http://localhost:3000"}/api/v1/invoices`, {
+      const res = await fetch(`${API_BASE}/invoices`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("invoiq_token")}` },
         body: JSON.stringify({
@@ -717,7 +720,7 @@ export default function OnboardingWizard({ user, onComplete }) {
 
       if (res.ok) {
         const invoice = await res.json();
-        const xmlRes = await fetch(`${import.meta?.env?.VITE_API_URL || "http://localhost:3000"}/api/v1/invoices/${invoice.id}/xml`, {
+        const xmlRes = await fetch(`${API_BASE}/invoices/${invoice.id}/xml`, {
           headers: { "Authorization": `Bearer ${localStorage.getItem("invoiq_token")}` }
         });
         const xml = await xmlRes.text();
@@ -781,10 +784,10 @@ export default function OnboardingWizard({ user, onComplete }) {
     setSaving(true);
     // Save onboarding data to API
     try {
-      await fetch(`${import.meta?.env?.VITE_API_URL || "http://localhost:3000"}/api/v1/auth/onboarding`, {
+      await fetch(`${API_BASE}/auth/settings`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("invoiq_token")}` },
-        body: JSON.stringify({ onboarding_completed: true, ...data }),
+        body: JSON.stringify(data),
       });
     } catch(e) { /* continue */ }
     setSaving(false);

@@ -31,6 +31,12 @@ async function deliverViaPeppol(invoice, xml) {
     return { success: true, peppol_document_id: mockId, method: 'peppol', simulated: true };
   }
 
+  // In production ohne konfigurierten Provider ehrlich fehlschlagen —
+  // ein "erfolgreicher" Versand, der nie stattfand, wäre fatal.
+  if (!process.env.STORECOVE_API_KEY) {
+    throw new Error('Peppol-Versand ist nicht konfiguriert. Bitte E-Mail-Versand nutzen oder Support kontaktieren.');
+  }
+
   const res = await fetch('https://api.storecove.com/api/v2/document_submissions', {
     method: 'POST',
     headers: {

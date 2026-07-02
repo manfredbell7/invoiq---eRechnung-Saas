@@ -3,21 +3,13 @@
   "version": "1.1.0",
   "description": "invoiq E-Invoice Platform API",
   "type": "module",
-  "main": "src/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit --detectOpenHandles",
-    "test:verbose": "node --experimental-vm-modules node_modules/.bin/jest --verbose --forceExit",
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test tests/*.test.js",
     "migrate": "node scripts/migrate.js",
     "migrate:status": "node scripts/migrate.js status"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "testMatch": [
-      "**/tests/**/*.test.js"
-    ],
-    "transform": {}
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.692.0",

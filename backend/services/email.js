@@ -18,6 +18,9 @@ const FROM_NAME = 'invoiq E-Rechnung';
  * @param {Buffer} params.pdfBuffer - Optional PDF attachment
  */
 export async function sendInvoiceEmail({ to, invoice, xmlBuffer, pdfBuffer }) {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY fehlt).');
+  }
   try {
     const attachments = [
       {

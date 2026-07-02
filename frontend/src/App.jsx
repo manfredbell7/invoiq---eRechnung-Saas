@@ -73,15 +73,26 @@ const api={
   // Peppol
   sendViaPeppol:(id,peppol_id)=>api.post(`/invoices/${id}/send-peppol`,{peppol_id}),
   lookupPeppol:(peppol_id)=>api.get(`/invoices/peppol/lookup?peppol_id=${encodeURIComponent(peppol_id)}`),
+  // Authentifizierter Datei-Download (Backend akzeptiert nur den
+  // Authorization-Header — window.open mit ?token= lief immer auf 401).
+  async downloadFile(path,filename){
+    const res=await fetch(`${API_BASE}${path}`,{headers:{Authorization:`Bearer ${api._token}`}});
+    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||`Download fehlgeschlagen (${res.status})`);}
+    const blob=await res.blob();
+    const cd=res.headers.get('content-disposition')||'';
+    const name=filename||(cd.match(/filename="?([^";]+)"?/)?.[1])||'download';
+    const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click();
+    setTimeout(()=>URL.revokeObjectURL(u),5000);
+  },
   // DATEV Export
-  datevExport:()=>{ window.open(`${API_BASE}/invoices/datev-export?token=${api._token}`,'_blank'); },
-  datevExportInbound:(orgId,from,to)=>{ window.open(`${API_BASE}/inbound/datev-export?org_id=${orgId}&from=${from||''}&to=${to||''}`,'_blank'); },
+  datevExport:()=>api.downloadFile('/invoices/datev-export'),
+  datevExportInbound:(orgId,from,to)=>api.downloadFile(`/inbound/datev-export?from=${from||''}&to=${to||''}`),
   // Inbound
   listInbound:(params='')=>api.get(`/inbound${params}`),
-  getInboundPdf:(id)=>`${API_BASE}/inbound/${id}/pdf`,
+  openInboundPDF:(id)=>fetch(`${API_BASE}/inbound/${id}/pdf`,{headers:{Authorization:`Bearer ${api._token}`}}).then(r=>{if(!r.ok)throw new Error(`PDF konnte nicht geladen werden (${r.status})`);return r.blob();}).then(b=>{const u=URL.createObjectURL(b);window.open(u,'_blank');}),
   markInboundPaid:(id)=>api.post(`/inbound/${id}/mark-paid`,{}),
   forwardInbound:(id,email)=>api.post(`/inbound/${id}/forward`,{recipient_email:email}),
-  getSepaDownloadUrl:(id,discount=false)=>`${API_BASE}/inbound/${id}/sepa-pain001?discount=${discount}&token=${api._token}`,
+  downloadSepa:(id,discount=false)=>api.downloadFile(`/inbound/${id}/sepa-pain001?discount=${discount}`),
   checkDiscount:(id)=>api.get(`/inbound/${id}/discount-check`),
   getInboundDetail:(id)=>api.get(`/inbound/${id}/detail`),
   patchInbound:(id,fields)=>api.patch(`/inbound/${id}`,fields),
@@ -95,22 +106,10 @@ const api={
   getInboundStats:()=>api.get('/inbound/stats'),
   // Payments
   createCheckout:(plan,billing='monthly')=>api.post('/payments/checkout',{plan,billing}),
-  openBillingPortal:(customer_id)=>api.post('/payments/portal',{customer_id}),
+  openBillingPortal:()=>api.post('/payments/portal',{}),
   getPlans:()=>api.get('/payments/plans'),
 };
 
-const mandanten=[
-  {id:"o1",name:"Müller & Partner GmbH",plan:"business",status:"active",docs_used:284,docs_limit:1000,mrr:199,vat_id:"DE123456789",users:3,errors:2},
-  {id:"o2",name:"TechVision AG",plan:"pro",status:"active",docs_used:1840,docs_limit:10000,mrr:599,vat_id:"DE987654321",users:8,errors:0},
-  {id:"o3",name:"Stadtwerke Süd GmbH",plan:"starter",status:"active",docs_used:67,docs_limit:100,mrr:49,vat_id:"DE456789123",users:1,errors:1},
-  {id:"o4",name:"Bauer Logistik KG",plan:"business",status:"trial",docs_used:12,docs_limit:1000,mrr:0,vat_id:"DE321654987",users:2,errors:0},
-];
-const MOCK_INV=[
-  {id:"i1",org:"Müller & Partner GmbH",number:"INV-2025-284",amount:4284,format:"xrechnung",status:"delivered",date:"2025-05-25"},
-  {id:"i2",org:"TechVision AG",number:"INV-2025-1840",amount:22900,format:"zugferd",status:"delivered",date:"2025-05-25"},
-  {id:"i3",org:"Stadtwerke Süd GmbH",number:"INV-2025-067",amount:780,format:"peppol",status:"error",date:"2025-05-24"},
-  {id:"i4",org:"Bauer Logistik KG",number:"INV-2025-012",amount:1250,format:"xrechnung",status:"validated",date:"2025-05-24"},
-];
 const fmtEUR=n=>new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(n||0);
 const fmtNum=n=>new Intl.NumberFormat("de-DE").format(n||0);
 const fmtAgo=d=>{const s=Date.now()-new Date(d);if(s<3600000)return`vor ${Math.floor(s/60000)} Min.`;if(s<86400000)return`vor ${Math.floor(s/3600000)} Std.`;return"gestern";};
@@ -664,24 +663,24 @@ function Landing({onEnter,onLegal=()=>{}}){
       cta:'Kostenlos starten',ctaStyle:'outline',
     },
     {
-      name:'Starter',price:49,yearlyPrice:39,docs:'100 Dok./Monat',
+      name:'Starter',price:29,yearlyPrice:25,docs:'100 Dok./Monat',
       sub:'Pro Monat, jederzeit kündbar',
       badge:null,
-      features:['XRechnung + ZUGFeRD','Inbound-Empfang + Parsing','E-Mail-Versand','GoBD-Archiv','1 ERP-Konnektor','1 Nutzer'],
+      features:['XRechnung + ZUGFeRD','Inbound-Empfang + Parsing','E-Mail-Versand','GoBD-Archiv','API Basic'],
       cta:'14 Tage gratis testen',ctaStyle:'outline',
     },
     {
-      name:'Business',price:199,yearlyPrice:159,docs:'1.000 Dok./Monat',
+      name:'Business',price:99,yearlyPrice:85,docs:'500 Dok./Monat',
       sub:'Pro Monat, jederzeit kündbar',
       badge:'EMPFOHLEN',
-      features:['Alles in Starter','Peppol BIS 3.0 Versand','KI-Rechnungserkennung (Scanner)','DATEV-Export inklusive','Kanzlei-Portal Zugang','ViDA-Reporting ready','5 Nutzer'],
+      features:['Alles in Starter','Peppol BIS 3.0 Versand','KI-Rechnungserkennung (Scanner)','DATEV-Export inklusive','Kanzlei-Portal Zugang','ViDA-Reporting ready'],
       cta:'Jetzt starten',ctaStyle:'primary',
     },
     {
-      name:'Pro',price:599,yearlyPrice:479,docs:'10.000 Dok./Monat',
+      name:'Enterprise',price:299,yearlyPrice:250,docs:'Unbegrenzt',
       sub:'Pro Monat, jederzeit kündbar',
       badge:null,
-      features:['Alles in Business','Kanzlei-Portal inklusive','DATEV-Export inklusive','Public REST API + Webhooks','GoBD-Archiv 10 Jahre','Unbegrenzte Rechnungen','15 Nutzer'],
+      features:['Alles in Business','Multi-Mandanten','Public REST API + Webhooks','GoBD-Archiv 10 Jahre','Account Manager','SLA & Telefon-Support'],
       cta:'Demo buchen',ctaStyle:'outline',
     },
   ];
@@ -1298,7 +1297,7 @@ function Auth({mode,onSwitch,onSuccess,loading}){
   // IBAN/SEPA und ERP-Anbindung werden NICHT mehr bei der Registrierung verlangt —
   // diese können später im Onboarding-Wizard (überspringbar) oder in den
   // Einstellungen ergänzt werden.
-  const[form,setForm]=useState({email:"demo@invoiq.io",password:"demo123",full_name:"",org_name:"",address:"",zip:"",city:"",country:"DE"});
+  const[form,setForm]=useState({email:"",password:"",full_name:"",org_name:"",address:"",zip:"",city:"",country:"DE"});
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
   return(<div style={{minHeight:"100vh",background:T.bgSubtle,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
     <div style={{width:"100%",maxWidth:400}}>
@@ -1321,7 +1320,6 @@ function Auth({mode,onSwitch,onSuccess,loading}){
           <div><label className="label">Passwort</label><input className="input" type="password" value={form.password} onChange={e=>upd("password",e.target.value)} onKeyDown={e=>e.key==="Enter"&&onSuccess(form)}/></div>
           <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",marginTop:4,padding:"11px"}} onClick={()=>onSuccess(form)} disabled={loading}>{loading?<><Spinner color="#fff"/>&nbsp;Bitte warten...</>:mode==="login"?"Anmelden →":"Konto erstellen →"}</button>
           <button onClick={onSwitch} style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:13,fontFamily:F.ui}}>{mode==="login"?"Noch kein Konto? Registrieren →":"Bereits registriert? Anmelden →"}</button>
-          {mode==="login"&&<div style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:"9px 13px",fontSize:12,color:T.textMuted,textAlign:"center"}}>Demo: <strong style={{color:T.textPrimary}}>demo@invoiq.io</strong> / <strong style={{color:T.textPrimary}}>demo123</strong></div>}
         </div>
       </div>
     </div>
@@ -1345,7 +1343,8 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
   ];
 
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
-  const isAdmin=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
+  // Admin-Panel rollenbasiert (Backend prüft zusätzlich serverseitig)
+  const isAdmin=["owner","admin","super_admin"].includes(user?.role);
 
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
     <aside className="sidebar">
@@ -1743,7 +1742,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
       <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Ausgang</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} Rechnungen gesamt</p></div>
-      <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Exportieren</button><button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontSize:13.5,fontWeight:700}} onClick={()=>setView("create")}>+ Neue Rechnung</button></div>
+      <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>api.datevExport().then(()=>notify("DATEV-Export heruntergeladen ✓","success")).catch(e=>notify(e.message,"error"))}>↓ DATEV-Export</button><button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontSize:13.5,fontWeight:700}} onClick={()=>setView("create")}>+ Neue Rechnung</button></div>
     </div>
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
       {["all","delivered","validated","sent","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
@@ -1803,63 +1802,6 @@ function Invoices({notify,initialView=null,onNavDone=null}){
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button className="btn btn-ghost" onClick={()=>setEmailModal(false)}>Abbrechen</button>
           <button className="btn btn-primary" onClick={doSendEmail} disabled={sending}>{sending?<><Spinner size={14} color="#fff"/>&nbsp;Wird gesendet...</>:"Senden →"}</button>
-        </div>
-      </div>
-    </div>}
-  </div>);
-}
-
-// ── CONNECTORS ────────────────────────────────────────────────
-const CONN=[{type:"sap_s4",name:"SAP S/4HANA",icon:"⚙️",cat:"Enterprise",method:"RFC / IDoc / REST"},{type:"sap_ecc",name:"SAP ECC 6.0",icon:"⚙️",cat:"Enterprise",method:"IDoc Classic"},{type:"dynamics",name:"MS Dynamics 365",icon:"🔷",cat:"Enterprise",method:"Dataverse API"},{type:"oracle",name:"Oracle Fusion",icon:"🔴",cat:"Enterprise",method:"Oracle REST"},{type:"datev",name:"DATEV",icon:"📊",cat:"German ERP",method:"Connect Online",cert:true},{type:"lexware",name:"Lexware",icon:"📋",cat:"German ERP",method:"XML / SFTP"},{type:"weclapp",name:"Weclapp",icon:"🌐",cat:"German ERP",method:"REST API"},{type:"sevdesk",name:"sevDesk",icon:"📱",cat:"SME",method:"API v2"},{type:"lexoffice",name:"lexoffice",icon:"📄",cat:"SME",method:"REST API"},{type:"odoo",name:"Odoo",icon:"🟣",cat:"SME",method:"JSON-RPC"},{type:"xero",name:"Xero",icon:"💙",cat:"SME",method:"OAuth 2.0"},{type:"quickbooks",name:"QuickBooks",icon:"🟢",cat:"SME",method:"QBO API v3"},{type:"rest",name:"REST API",icon:"🔌",cat:"Universal",method:"HTTP / JSON"},{type:"sftp",name:"SFTP",icon:"📁",cat:"Universal",method:"SFTP / SSH"},{type:"email",name:"Email Import",icon:"📧",cat:"Universal",method:"IMAP"}];
-
-function ConnectorsView({notify}){
-  const[connected,setConnected]=useState({"rest":true,"sftp":true});
-  const[modal,setModal]=useState(null);const[cat,setCat]=useState("All");
-  const cats=["All","Enterprise","German ERP","SME","Universal"];
-  const filtered=cat==="All"?CONN:CONN.filter(c=>c.cat===cat);
-  return(<div className="fi">
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Connectors</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{CONN.length} systems · {Object.keys(connected).length} connected</p></div>
-      <span className="badge badge-green">✓ {Object.keys(connected).length} Active</span>
-    </div>
-    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:18}}>
-      {cats.map(c=><button key={c} className={`tab ${cat===c?"active":""}`} onClick={()=>setCat(c)}>{c}</button>)}
-    </div>
-    {Object.keys(connected).length>0&&<div style={{marginBottom:18}}>
-      <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:8}}>Connected</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(240px,100%),1fr))",gap:9}}>
-        {CONN.filter(c=>connected[c.type]).map(conn=><div key={conn.type} className="connector-card connected">
-          <div style={{display:"flex",alignItems:"center",gap:11}}><span style={{fontSize:22}}>{conn.icon}</span><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13.5,color:T.textPrimary}}>{conn.name}</div><div style={{fontSize:11,color:T.textMuted}}>{conn.method}</div></div><span className="badge badge-green" style={{fontSize:11}}>Active</span></div>
-          <div style={{marginTop:11,display:"flex",gap:7}}><button className="btn btn-ghost btn-sm" onClick={()=>notify(`${conn.name} test OK ✓`,"success")}>Test</button><button className="btn btn-ghost btn-sm" onClick={()=>setModal(conn)}>Configure</button></div>
-        </div>)}
-      </div>
-    </div>}
-    <div>
-      <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:8}}>Available</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(220px,100%),1fr))",gap:9}}>
-        {filtered.filter(c=>!connected[c.type]).map(conn=><div key={conn.type} className="connector-card card-hover" style={{position:"relative"}} onClick={()=>setModal(conn)}>
-          {conn.cert&&<span className="badge badge-amber" style={{position:"absolute",top:11,right:11,fontSize:10}}>Cert. req.</span>}
-          <div style={{width:32,height:32,borderRadius:6,background:T.bgMuted,border:`1px solid ${T.bgBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:9,fontFamily:F.mono}}>{conn.type.substring(0,3).toUpperCase()}</div>
-          <div style={{fontWeight:600,fontSize:13.5,color:T.textPrimary,marginBottom:3}}>{conn.name}</div>
-          <div style={{fontSize:11.5,color:T.textMuted,marginBottom:9}}>{conn.method}</div>
-          <span className="badge badge-gray" style={{fontSize:10.5}}>{conn.cat}</span>
-          <button className="btn btn-primary btn-sm" style={{width:"100%",justifyContent:"center",marginTop:12}}>Verbinden →</button>
-        </div>)}
-      </div>
-    </div>
-    {modal&&<div className="modal-overlay" onClick={()=>setModal(null)}>
-      <div className="modal sci" onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:26}}>{modal.icon}</span><div><div style={{fontFamily:F.ui,fontSize:19,fontWeight:400,color:T.textPrimary}}>{modal.name}</div><div style={{fontSize:12,color:T.textMuted}}>{modal.method}</div></div></div>
-          <button onClick={()=>setModal(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:T.textMuted}}>×</button>
-        </div>
-        {modal.cert&&<div style={{background:T.amberBg,border:`1px solid ${T.amberBdr}`,borderRadius:8,padding:"9px 13px",marginBottom:14,fontSize:13,color:T.amber}}>⚠️ Certification required. Contact <strong>manfred@invoiq.io</strong></div>}
-        <div style={{display:"flex",flexDirection:"column",gap:11,marginBottom:18}}>
-          {[["API Key","Your API Key","password"],["Endpoint URL","https://...","text"],["Organization ID","org_...","text"]].map(([l,p,t])=><div key={l}><label className="label">{l}</label><input className="input" type={t} placeholder={p}/></div>)}
-        </div>
-        <div style={{display:"flex",gap:9,justifyContent:"flex-end"}}>
-          <button className="btn btn-ghost" onClick={()=>setModal(null)}>Cancel</button>
-          <button className="btn btn-primary" onClick={()=>{setConnected(p=>({...p,[modal.type]:true}));notify(`${modal.name} connected ✓`,"success");setModal(null);}}>Speichern & Verbinden</button>
         </div>
       </div>
     </div>}
@@ -1944,11 +1886,9 @@ function DokumentenScanner({ notify }) {
       setXml({content:xmlContent, number:inv.invoice_number});
       notify('XRechnung generiert ✓','success');
     } catch(e) {
-      // Demo fallback
-      const net=(editResult.line_items||[]).reduce((s,i)=>s+(i.quantity||1)*(i.unit_price||0),0);
-      setXml({ number:editResult.invoice_number||'SCAN-001',
-        content:`<?xml version="1.0" encoding="UTF-8"?>\n<ubl:Invoice xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"\n  xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">\n  <cbc:ID>${editResult.invoice_number||'SCAN-001'}</cbc:ID>\n  <cbc:IssueDate>${editResult.invoice_date||''}</cbc:IssueDate>\n  <cbc:PayableAmount currencyID="EUR">${(net*1.19).toFixed(2)}</cbc:PayableAmount>\n</ubl:Invoice>` });
-      notify('XRechnung generiert ✓','success');
+      // Kein Fake-XML bei Fehlern — der Nutzer muss wissen, dass nichts
+      // gespeichert wurde (fehlende Pflichtfelder etc. korrigierbar machen).
+      notify(e.message||'XRechnung konnte nicht erstellt werden — bitte Felder prüfen','error');
     }
     setGenerating(false);
   };
@@ -2365,7 +2305,7 @@ function InboundScreen({notify, org}){
           <p style={{fontSize:13,color:T.textMuted}}>Eingehende Rechnungen per E-Mail — automatisch geparst, mit SEPA-Zahlung per Klick.</p>
         </div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null)}>↓ DATEV-Export</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null).then(()=>notify('DATEV-Export heruntergeladen ✓','success')).catch(e=>notify(e.message,'error'))}>↓ DATEV-Export</button>
           <button className="btn btn-ghost btn-sm" onClick={()=>{
             navigator.clipboard.writeText(`${emailSlug}@rechnungen.invoiq.io`);
             notify(`E-Mail-Adresse kopiert ✓`,'success');
@@ -2477,7 +2417,7 @@ function InboundScreen({notify, org}){
                   <td><StatusBadge status={inv.status==='bezahlt'?'delivered':inv.validation_passed?'validated':'error'}/></td>
                   <td>
                     <div style={{display:'flex',gap:5,flexWrap:'wrap'}} onClick={e=>e.stopPropagation()}>
-                      {(inv.has_xml||inv.format==='pdf')&&<button className="btn btn-ghost btn-sm" onClick={()=>setPdfModal(inv)}>📄 PDF</button>}
+                      {(inv.has_xml||inv.format==='pdf')&&<button className="btn btn-ghost btn-sm" onClick={()=>api.openInboundPDF(inv.id).catch(e=>notify(e.message,'error'))}>📄 PDF</button>}
                       {inv.status!=='bezahlt'&&inv.seller_iban&&(
                         <button className="btn btn-sm btn-primary" style={{fontSize:11,padding:'3px 8px'}}
                           onClick={()=>setSepaModal({...inv,_applyDiscount:dk?.active||false})}>
@@ -2630,11 +2570,12 @@ function InboundScreen({notify, org}){
 
           <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn btn-ghost" onClick={()=>setSepaModal(null)}>Abbrechen</button>
-            <button className="btn btn-primary" onClick={()=>{
-              const url = api.getSepaDownloadUrl(sepaModal.id, sepaModal._applyDiscount||false);
-              window.open(url,'_blank');
-              notify('SEPA-Datei wird heruntergeladen ✓','success');
-              setSepaModal(null);
+            <button className="btn btn-primary" onClick={async()=>{
+              try{
+                await api.downloadSepa(sepaModal.id, sepaModal._applyDiscount||false);
+                notify('SEPA-Datei heruntergeladen ✓','success');
+                setSepaModal(null);
+              }catch(e){ notify(e.message,'error'); }
             }}>
               ↓ SEPA-Datei herunterladen
             </button>
@@ -2668,13 +2609,44 @@ function ArchiveScreen({notify}){
   const[search,setSearch]=useState('');
   const[filter,setFilter]=useState('all');
   const[selected,setSelected]=useState(null);
+  const[verifying,setVerifying]=useState(false);
 
   useEffect(()=>{
-    api.listInvoices('?archived=true&limit=30')
+    api.listInvoices('?archived=true&limit=100')
       .then(d=>setDocs(d.invoices||[]))
       .catch(()=>setDocs([]))
       .finally(()=>setLoading(false));
   },[]);
+
+  const runIntegrityCheck=async()=>{
+    setVerifying(true);
+    try{
+      const r=await api.get('/archive/verify/integrity');
+      if(r.failed>0)notify(`⚠ ${r.failed} von ${r.total} Dokumenten fehlerhaft — bitte Support kontaktieren`,'error');
+      else notify(`Integrität geprüft: ${r.total} Dokumente, alle unverändert ✓`,'success');
+    }catch(e){notify(e.message,'error');}
+    setVerifying(false);
+  };
+
+  const downloadXml=async(doc)=>{
+    try{
+      const c=await api.getXML(doc.id);
+      const b=new Blob([c],{type:'application/xml'});const u=URL.createObjectURL(b);
+      const a=document.createElement('a');a.href=u;a.download=`${doc.invoice_number}.xml`;a.click();
+      setTimeout(()=>URL.revokeObjectURL(u),5000);
+    }catch(e){notify(e.message,'error');}
+  };
+
+  const downloadAuditLog=async()=>{
+    try{
+      const r=await api.get('/archive/audit/logs');
+      const b=new Blob([JSON.stringify(r.logs,null,2)],{type:'application/json'});
+      const u=URL.createObjectURL(b);const a=document.createElement('a');
+      a.href=u;a.download=`audit-log-${new Date().toISOString().slice(0,10)}.json`;a.click();
+      setTimeout(()=>URL.revokeObjectURL(u),5000);
+      notify('Audit-Protokoll heruntergeladen ✓','success');
+    }catch(e){notify(e.message,'error');}
+  };
 
   const filtered=docs.filter(d=>{
     const matchSearch=!search||d.invoice_number?.toLowerCase().includes(search.toLowerCase())||d.buyer_name?.toLowerCase().includes(search.toLowerCase());
@@ -2693,8 +2665,8 @@ function ArchiveScreen({notify}){
           <p style={{fontSize:13,color:T.textMuted}}>SHA-256-gesichert · unveränderlich · §147 AO · 10 Jahre Aufbewahrung</p>
         </div>
         <div style={{display:'flex',gap:8}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>notify('Audit-Report wird generiert...','info')}>↓ Audit-Report</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>notify('Export gestartet','success')}>↓ Export</button>
+          <button className="btn btn-ghost btn-sm" onClick={downloadAuditLog}>↓ Audit-Protokoll</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExport().then(()=>notify('DATEV-Export heruntergeladen ✓','success')).catch(e=>notify(e.message,'error'))}>↓ DATEV-Export</button>
         </div>
       </div>
 
@@ -2723,7 +2695,7 @@ function ArchiveScreen({notify}){
           <div style={{fontSize:13.5,fontWeight:700,color:T.textPrimary,marginBottom:3}}>Revisionssicheres Archiv — automatisch</div>
           <div style={{fontSize:12.5,color:T.textSecondary}}>Jedes Dokument wird beim Speichern gehasht (SHA-256), unveränderlich in AWS Frankfurt gespeichert und automatisch 10 Jahre aufbewahrt. Jede Änderung ist im Audit-Trail protokolliert.</div>
         </div>
-        <button className="btn btn-success btn-sm" onClick={()=>notify('Archiv-Integrität geprüft ✓','success')}>Integrität prüfen</button>
+        <button className="btn btn-success btn-sm" onClick={runIntegrityCheck} disabled={verifying}>{verifying?'Prüft...':'Integrität prüfen'}</button>
       </div>
 
       {/* Search + Filter */}
@@ -2756,8 +2728,8 @@ function ArchiveScreen({notify}){
                 <td style={{fontFamily:F.mono,fontSize:10,color:T.textMuted}}>{doc.archive_hash?.substring(0,12)}...</td>
                 <td onClick={e=>e.stopPropagation()}>
                   <div style={{display:'flex',gap:5}}>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>notify('Hash verifiziert ✓','success')}>Prüfen</button>
-                    <button className="btn btn-outline btn-sm" onClick={()=>notify('Download gestartet','success')}>↓ XML</button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setSelected(doc)}>Details</button>
+                    <button className="btn btn-outline btn-sm" onClick={()=>downloadXml(doc)}>↓ XML</button>
                   </div>
                 </td>
               </tr>
@@ -2786,8 +2758,8 @@ function ArchiveScreen({notify}){
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button className="btn btn-ghost" onClick={()=>setSelected(null)}>Schließen</button>
-              <button className="btn btn-success" onClick={()=>notify('Hash verifiziert — Dokument unverändert ✓','success')}>✓ Hash verifizieren</button>
-              <button className="btn btn-primary" onClick={()=>notify('XML wird heruntergeladen','success')}>↓ XML herunterladen</button>
+              <button className="btn btn-success" onClick={runIntegrityCheck} disabled={verifying}>{verifying?'Prüft...':'✓ Integrität prüfen'}</button>
+              <button className="btn btn-primary" onClick={()=>downloadXml(selected)}>↓ XML herunterladen</button>
             </div>
           </div>
         </div>
@@ -2799,6 +2771,111 @@ function ArchiveScreen({notify}){
 // ══════════════════════════════════════════════════════════════
 // SETTINGS — Firmendaten, API, Plan, Team
 // ══════════════════════════════════════════════════════════════
+
+// API & Webhooks — echte Daten statt hartkodiertem Demo-Key
+function ApiSettingsTab({org,notify}){
+  const[apiKey,setApiKey]=useState(org?.api_key||'');
+  const[keyVisible,setKeyVisible]=useState(false);
+  const[rotating,setRotating]=useState(false);
+  const[webhooks,setWebhooks]=useState([]);
+  const[whUrl,setWhUrl]=useState('');
+  const[whSaving,setWhSaving]=useState(false);
+  const[newSecret,setNewSecret]=useState(null);
+
+  useEffect(()=>{
+    if(!apiKey)api.me().then(d=>setApiKey(d.org?.api_key||'')).catch(()=>{});
+    api.get('/webhooks').then(d=>setWebhooks(d.webhooks||[])).catch(()=>setWebhooks([]));
+  },[]);
+
+  const rotate=async()=>{
+    if(!window.confirm('API-Key wirklich rotieren? Bestehende Integrationen mit dem alten Key funktionieren danach nicht mehr.'))return;
+    setRotating(true);
+    try{const d=await api.post('/auth/rotate-api-key',{});setApiKey(d.api_key);setKeyVisible(true);notify('Neuer API-Key generiert ✓','success');}
+    catch(e){notify(e.message,'error');}
+    setRotating(false);
+  };
+
+  const addWebhook=async()=>{
+    if(!whUrl||!whUrl.startsWith('https://')){notify('Bitte eine gültige https://-URL eingeben','error');return;}
+    setWhSaving(true);
+    try{
+      const d=await api.post('/webhooks',{url:whUrl});
+      setNewSecret(d.secret_shown_once);
+      setWhUrl('');
+      const l=await api.get('/webhooks');setWebhooks(l.webhooks||[]);
+      notify('Webhook angelegt ✓','success');
+    }catch(e){notify(e.message,'error');}
+    setWhSaving(false);
+  };
+
+  const deleteWebhook=async(id)=>{
+    try{
+      await api.req('DELETE',`/webhooks/${id}`);
+      setWebhooks(w=>w.filter(x=>x.id!==id));
+      notify('Webhook gelöscht','success');
+    }catch(e){notify(e.message,'error');}
+  };
+
+  const maskedKey=apiKey?(keyVisible?apiKey:apiKey.slice(0,12)+'••••••••••••••••'):'';
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div className="card" style={{padding:22}}>
+        <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>API-Zugang</div>
+        <div style={{marginBottom:14}}>
+          <label className="label">Live API Key</label>
+          {apiKey?(
+            <div style={{display:'flex',gap:8}}>
+              <input className="input" readOnly value={maskedKey} style={{fontFamily:F.mono,fontSize:12,color:T.textSecondary}}/>
+              <button className="btn btn-ghost btn-sm" style={{flexShrink:0}} onClick={()=>setKeyVisible(v=>!v)}>{keyVisible?'Verbergen':'Anzeigen'}</button>
+              <button className="btn btn-ghost btn-sm" style={{flexShrink:0}} onClick={()=>{navigator.clipboard.writeText(apiKey);notify('API-Key kopiert ✓','success');}}>Kopieren</button>
+              <button className="btn btn-danger btn-sm" style={{flexShrink:0}} onClick={rotate} disabled={rotating}>{rotating?'Rotiert...':'Rotieren'}</button>
+            </div>
+          ):(
+            <div style={{fontSize:12.5,color:T.textMuted,padding:'9px 12px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`}}>API-Key ist nur für Owner/Admin sichtbar.</div>
+          )}
+        </div>
+        <div style={{marginBottom:14}}>
+          <label className="label">Base URL</label>
+          <div style={{fontFamily:F.mono,fontSize:12,color:T.accent,background:T.bgSubtle,borderRadius:6,padding:'9px 12px',border:`1px solid ${T.bgBorder}`}}>{API_BASE}</div>
+        </div>
+        <div style={{background:T.bgSubtle,borderRadius:7,padding:'14px 16px',border:`1px solid ${T.bgBorder}`}}>
+          <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:10,letterSpacing:.4,textTransform:'uppercase'}}>Schnellstart</div>
+          <pre style={{fontFamily:F.mono,fontSize:11,color:T.textSecondary,lineHeight:1.7,overflow:'auto'}}>{`curl -X POST ${API_BASE}/invoices \\
+  -H "Authorization: Bearer ${apiKey?apiKey.slice(0,12)+'...':'<Ihr API-Key>'}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"invoice_number":"INV-001","format":"xrechnung",...}'`}</pre>
+        </div>
+      </div>
+      <div className="card" style={{padding:22}}>
+        <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Webhooks</div>
+        {newSecret&&(
+          <div style={{padding:'12px 14px',background:T.amberBg,border:`1px solid ${T.amberBdr}`,borderRadius:7,marginBottom:12,fontSize:12.5,color:T.amber}}>
+            <strong>Webhook-Secret (wird nur einmal angezeigt):</strong>
+            <div style={{fontFamily:F.mono,fontSize:11,marginTop:6,wordBreak:'break-all',color:T.textPrimary}}>{newSecret}</div>
+            <button className="btn btn-ghost btn-sm" style={{marginTop:8}} onClick={()=>{navigator.clipboard.writeText(newSecret);notify('Secret kopiert ✓','success');}}>Kopieren</button>
+          </div>
+        )}
+        <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:14}}>
+          {webhooks.length===0&&<div style={{fontSize:12.5,color:T.textMuted,textAlign:'center',padding:'14px 0'}}>Noch keine Webhooks konfiguriert.</div>}
+          {webhooks.map(w=>(
+            <div key={w.id} style={{display:'flex',alignItems:'center',gap:12,padding:'9px 12px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`}}>
+              <span style={{fontFamily:F.mono,fontSize:11,color:T.accent,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{w.url}</span>
+              <span className={`badge ${w.active?'badge-green':'badge-gray'}`} style={{fontSize:10}}>{w.active?'Aktiv':'Inaktiv'}</span>
+              <button className="btn btn-danger btn-sm" onClick={()=>deleteWebhook(w.id)}>Löschen</button>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:10,alignItems:'center'}}>
+          <input className="input" placeholder="https://ihre-app.de/webhook" style={{flex:1}} value={whUrl} onChange={e=>setWhUrl(e.target.value)}/>
+          <button className="btn btn-primary btn-sm" onClick={addWebhook} disabled={whSaving}>{whSaving?'Speichert...':'Hinzufügen'}</button>
+        </div>
+        <div style={{fontSize:11.5,color:T.textMuted,marginTop:8}}>Events: invoice.created · invoice.sent · invoice.delivered · invoice.rejected — signiert per HMAC-SHA256 (Header X-Invoiq-Signature).</div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsScreen({user,org,notify}){
   const inboundAddress = org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.io` : null;
   const[tab,setTab]   = useState('company');
@@ -2963,79 +3040,23 @@ function SettingsScreen({user,org,notify}){
             </div>
           )}
 
-          {tab==='api'&&(
-            <div style={{display:'flex',flexDirection:'column',gap:14}}>
-              <div className="card" style={{padding:22}}>
-                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>API-Zugang</div>
-                <div style={{marginBottom:14}}>
-                  <label className="label">Live API Key</label>
-                  <div style={{display:'flex',gap:8}}>
-                    <input className="input" readOnly value="iq_live_demo_key_001_xxxxxxxxxxxxxxxx" style={{fontFamily:F.mono,fontSize:12,color:T.textMuted}}/>
-                    <button className="btn btn-ghost btn-sm" style={{flexShrink:0}} onClick={()=>notify('API Key kopiert','success')}>Kopieren</button>
-                    <button className="btn btn-danger btn-sm" style={{flexShrink:0}} onClick={()=>notify('Neuer API Key generiert','success')}>Rotieren</button>
-                  </div>
-                </div>
-                <div style={{marginBottom:14}}>
-                  <label className="label">Base URL</label>
-                  <div style={{fontFamily:F.mono,fontSize:12,color:T.accent,background:T.bgSubtle,borderRadius:6,padding:'9px 12px',border:`1px solid ${T.bgBorder}`}}>https://invoiq-erechnung-saas-production.up.railway.app/api/v1</div>
-                </div>
-                <div style={{background:T.bgSubtle,borderRadius:7,padding:'14px 16px',border:`1px solid ${T.bgBorder}`}}>
-                  <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:10,letterSpacing:.4,textTransform:'uppercase'}}>Schnellstart</div>
-                  <pre style={{fontFamily:F.mono,fontSize:11,color:T.textSecondary,lineHeight:1.7,overflow:'auto'}}>{`curl -X POST https://invoiq-erechnung-saas-production.up.railway.app/api/v1/invoices \\
-  -H "Authorization: Bearer iq_live_demo_key_001" \\
-  -H "Content-Type: application/json" \\
-  -d '{"invoice_number":"INV-001","format":"xrechnung",...}'`}</pre>
-                </div>
-              </div>
-              <div className="card" style={{padding:22}}>
-                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Webhooks</div>
-                <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:14}}>
-                  {[['invoice.created','Neue Rechnung erstellt'],['invoice.delivered','Rechnung zugestellt'],['invoice.error','Validierungsfehler'],['inbound.received','Eingehende Rechnung']].map(([ev,desc])=>(
-                    <div key={ev} style={{display:'flex',alignItems:'center',gap:12,padding:'9px 12px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`}}>
-                      <span style={{fontFamily:F.mono,fontSize:11,color:T.accent,flex:'0 0 180px'}}>{ev}</span>
-                      <span style={{fontSize:12.5,color:T.textSecondary,flex:1}}>{desc}</span>
-                      <span className="badge badge-green" style={{fontSize:10}}>Aktiv</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{display:'flex',gap:10,alignItems:'center'}}>
-                  <input className="input" placeholder="https://ihre-app.de/webhook" style={{flex:1}}/>
-                  <button className="btn btn-primary btn-sm" onClick={()=>notify('Webhook hinzugefügt ✓','success')}>Hinzufügen</button>
-                </div>
-              </div>
-            </div>
-          )}
+          {tab==='api'&&<ApiSettingsTab org={org} notify={notify}/>}
 
           {tab==='team'&&(
             <div className="card" style={{padding:22}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>
-                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary}}>Team-Mitglieder</div>
-                <button className="btn btn-primary btn-sm" onClick={()=>notify('Einladung versendet ✓','success')}>+ Einladen</button>
-              </div>
+              <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Team-Mitglieder</div>
               <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
-                {[
-                  {name:user?.full_name||'Manfred Bell',email:user?.email||'manfred@invoiq.io',role:'Owner',you:true},
-                ].map((m,i)=>(
-                  <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:T.bgSubtle,borderRadius:7,border:`1px solid ${T.bgBorder}`}}>
-                    <div className="avatar">{(m.name||'U')[0]}</div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{m.name} {m.you&&<span style={{fontSize:11,color:T.textMuted}}>(Sie)</span>}</div>
-                      <div style={{fontSize:12,color:T.textMuted}}>{m.email}</div>
-                    </div>
-                    <span className="badge badge-blue" style={{fontSize:10.5}}>{m.role}</span>
+                <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:T.bgSubtle,borderRadius:7,border:`1px solid ${T.bgBorder}`}}>
+                  <div className="avatar">{(user?.full_name||'U')[0]}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{user?.full_name||'—'} <span style={{fontSize:11,color:T.textMuted}}>(Sie)</span></div>
+                    <div style={{fontSize:12,color:T.textMuted}}>{user?.email||''}</div>
                   </div>
-                ))}
-              </div>
-              <div style={{background:T.bgSubtle,borderRadius:7,padding:'12px 14px',border:`1px solid ${T.bgBorder}`}}>
-                <div style={{fontSize:12.5,fontWeight:600,color:T.textPrimary,marginBottom:5}}>Benutzer einladen</div>
-                <div style={{display:'flex',gap:10}}>
-                  <input className="input" placeholder="E-Mail-Adresse" style={{flex:1}}/>
-                  <select className="select" style={{width:140}}>
-                    <option>Admin</option><option>Member</option><option>Viewer</option>
-                  </select>
-                  <button className="btn btn-primary btn-sm" onClick={()=>notify('Einladung versendet ✓','success')}>Einladen</button>
+                  <span className="badge badge-blue" style={{fontSize:10.5,textTransform:'capitalize'}}>{user?.role||'owner'}</span>
                 </div>
-                <div style={{fontSize:11.5,color:T.textMuted,marginTop:8}}>Add-on: +9€/Monat pro zusätzlichem Nutzer</div>
+              </div>
+              <div style={{background:T.accentLight,borderRadius:7,padding:'12px 14px',border:`1px solid ${T.accentPale}`,fontSize:12.5,color:T.textSecondary}}>
+                <strong style={{color:T.accent}}>Team-Einladungen sind in Vorbereitung.</strong> Bis dahin arbeitet jede Organisation mit einem Konto. Sobald das Feature live ist, informieren wir Sie per E-Mail.
               </div>
             </div>
           )}
@@ -3046,30 +3067,23 @@ function SettingsScreen({user,org,notify}){
                 <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Aktueller Plan</div>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
                   <div>
-                    <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:4}}>{org?.plan?.toUpperCase()||'STARTER'}</div>
-                    <div style={{fontSize:13.5,color:T.textSecondary}}>{org?.plan==="business"?"99€/Monat · 500 Rechnungen":org?.plan==="enterprise"?"299€/Monat · Unbegrenzt":"49€/Monat · 100 Rechnungen"}/Monat · Jährlich kündbar</div>
+                    <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:4}}>{org?.plan?.toUpperCase()||'FREE'}</div>
+                    <div style={{fontSize:13.5,color:T.textSecondary}}>{org?.plan_doc_limit||10} Dokumente/Monat · monatlich kündbar</div>
                   </div>
                   <div style={{display:'flex',gap:8}}>
                     <button className="btn btn-ghost" onClick={async()=>{
                       try{
-                        const d = await api.openBillingPortal(org?.stripe_customer_id);
-                        if(d.portal_url && !d.demo) window.open(d.portal_url,'_blank');
-                        else notify('Stripe Portal: STRIPE_SECRET_KEY in Railway setzen','info');
+                        const d = await api.openBillingPortal();
+                        if(d.portal_url) window.open(d.portal_url,'_blank');
                       }catch(e){notify(e.message,'error');}
                     }}>Abrechnung verwalten</button>
                     <button className="btn btn-primary" onClick={async()=>{
                       try{
-                        const currentPlan = org?.plan || 'free';
+                        const currentPlan = (org?.plan||'free').toLowerCase();
+                        if(currentPlan==='enterprise'){ notify('Sie haben bereits den höchsten Plan','info'); return; }
                         const nextPlan = currentPlan==='free'?'starter':currentPlan==='starter'?'business':'enterprise';
-                        if(nextPlan==='enterprise'&&currentPlan==='enterprise'){
-                          notify('Sie haben bereits den höchsten Plan','info'); return;
-                        }
                         const d = await api.createCheckout(nextPlan,'monthly');
-                        if(d.checkout_url && !d.demo){
-                          window.open(d.checkout_url,'_blank');
-                        } else {
-                          notify('Stripe-Checkout wird geöffnet...','info');
-                        }
+                        if(d.checkout_url) window.location.href = d.checkout_url;
                       }catch(e){notify(e.message,'error');}
                     }}>Upgrade →</button>
                   </div>
@@ -3077,7 +3091,7 @@ function SettingsScreen({user,org,notify}){
                 <div style={{marginBottom:14}}>
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:T.textMuted,marginBottom:5}}>
                     <span>Dokumente diesen Monat</span>
-                    <span style={{fontWeight:600,color:T.textPrimary}}>{org?.plan_doc_used||41} / {org?.plan_doc_limit||100}</span>
+                    <span style={{fontWeight:600,color:T.textPrimary}}>{org?.plan_doc_used||0} / {org?.plan_doc_limit||100}</span>
                   </div>
                   <div className="progress"><div className="progress-fill" style={{width:`${Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||10))*100)}%`}}/></div>
                 </div>
@@ -3086,21 +3100,16 @@ function SettingsScreen({user,org,notify}){
                 </div>
               </div>
               <div className="card" style={{padding:22}}>
-                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Zahlungshistorie</div>
-                {['Mai 2025','April 2025','März 2025'].map(m=>(
-                  <div key={m} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:`1px solid ${T.bgSubtle}`}}>
-                    <div style={{fontSize:13.5,fontWeight:500,color:T.textPrimary}}>{m}</div>
-                    <div style={{display:'flex',gap:12,alignItems:'center'}}>
-                      <span style={{fontSize:13.5,fontWeight:700,color:T.textPrimary}}>29,00€</span>
-                      <span className="badge badge-green" style={{fontSize:10.5}}>Bezahlt</span>
-                      <button className="btn btn-ghost btn-sm" onClick={()=>notify('PDF heruntergeladen','success')}>↓ PDF</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{padding:'12px 16px',background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:7}}>
-                <button style={{background:'none',border:'none',color:T.red,cursor:'pointer',fontSize:13,fontFamily:F.ui,fontWeight:600}} onClick={()=>notify('Kündigungsanfrage gesendet','error')}>Konto kündigen</button>
-                <span style={{fontSize:12,color:T.red,marginLeft:8}}>— Jederzeit möglich, keine Mindestlaufzeit</span>
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Zahlungshistorie & Kündigung</div>
+                <div style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>
+                  Rechnungen, Zahlungsmethoden und Kündigung verwalten Sie sicher im Stripe-Kundenportal — jederzeit, ohne Mindestlaufzeit.
+                </div>
+                <button className="btn btn-ghost" style={{marginTop:12}} onClick={async()=>{
+                  try{
+                    const d = await api.openBillingPortal();
+                    if(d.portal_url) window.open(d.portal_url,'_blank');
+                  }catch(e){notify(e.message,'error');}
+                }}>Stripe-Kundenportal öffnen →</button>
               </div>
             </div>
           )}
@@ -3167,8 +3176,8 @@ function AdminOverview({notify,isSuper}){
   const openErrors = adminStats?.open_errors || 0;
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super-Admin":mandanten[0].name}</p></div>
-      {isSuper&&<><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Export</button><button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo"}</button></>}
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super-Admin":(orgs[0]?.name||"")}</p></div>
+      {isSuper&&<button className="btn btn-ghost btn-sm" onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo (nur Dev)"}</button>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
       {loadingA?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:90}}><div className="skeleton" style={{height:"100%"}}/></div>)
@@ -3230,7 +3239,7 @@ function AdminDocs({notify}){
           <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
           <td><StatusBadge status={inv.status}/></td>
           <td style={{color:T.textMuted,fontSize:12}}>{inv.created_at?new Date(inv.created_at).toLocaleDateString("de-DE"):"—"}</td>
-          <td>{inv.status==="error"&&<button className="btn btn-danger btn-sm" onClick={()=>notify("Wird geprüft","info")}>Prüfen</button>}</td>
+          <td></td>
         </tr>)}
       </tbody>
     </table></div>
@@ -3246,7 +3255,6 @@ function AdminUsers({notify}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}>
       <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Nutzer</h1>
-      <button className="btn btn-primary btn-sm" onClick={()=>notify("Einladung gesendet ✓","success")}>+ Einladen</button>
     </div>
     <div className="card"><table className="table"><thead><tr>{["Nutzer","Rolle","Organisation","Status","Letzter Login","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
       <tbody>
@@ -3269,21 +3277,31 @@ function AdminUsers({notify}){
 }
 
 function AdminRevenue(){
-  const plans=[{name:"Starter",count:2,price:49},{name:"Business",count:2,price:199},{name:"Pro",count:1,price:599}];
-  const mrr=plans.reduce((s,p)=>s+p.count*p.price,0);
+  const[orgs,setOrgs]=useState([]);
+  const[loading,setLoading]=useState(true);
+  useEffect(()=>{
+    api.get('/admin/orgs').then(d=>setOrgs(d.orgs||[])).catch(()=>setOrgs([])).finally(()=>setLoading(false));
+  },[]);
+  const active=orgs.filter(o=>o.status==='active');
+  const mrr=active.reduce((s,o)=>s+(o.mrr||0),0);
+  const planCounts=active.reduce((acc,o)=>{const p=(o.plan||'free').toLowerCase();acc[p]=(acc[p]||0)+1;return acc;},{});
   return(<div className="fi">
     <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:18}}>Revenue</h1>
+    {loading?<div className="card" style={{padding:18}}><div className="skeleton" style={{height:60}}/></div>:<>
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-      {[["MRR",fmtEUR(mrr)],["ARR",fmtEUR(mrr*12)],["Avg/Customer",fmtEUR(mrr/5)]].map(([l,v])=><div key={l} className="card" style={{padding:18}}><div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:9}}>{l}</div><div className="stat-num">{v}</div></div>)}
+      {[["MRR",fmtEUR(mrr)],["ARR",fmtEUR(mrr*12)],["Ø/Kunde",fmtEUR(active.length?mrr/active.length:0)]].map(([l,v])=><div key={l} className="card" style={{padding:18}}><div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:9}}>{l}</div><div className="stat-num">{v}</div></div>)}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-      <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Plan Distribution</div>
-        {plans.map(p=><div key={p.name} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{fontWeight:600}}>{p.name}</span><span style={{color:T.textMuted}}>{p.count} · {fmtEUR(p.count*p.price)}/mo</span></div><div className="progress"><div className="progress-fill" style={{width:`${(p.count/5)*100}%`}}/></div></div>)}
+      <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Plan-Verteilung</div>
+        {Object.keys(planCounts).length===0&&<div style={{fontSize:12.5,color:T.textMuted,textAlign:'center',padding:'12px 0'}}>Noch keine aktiven Kunden</div>}
+        {Object.entries(planCounts).map(([p,count])=><div key={p} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{fontWeight:600,textTransform:'capitalize'}}>{p}</span><span style={{color:T.textMuted}}>{count} Kunde{count>1?'n':''}</span></div><div className="progress"><div className="progress-fill" style={{width:`${(count/Math.max(active.length,1))*100}%`}}/></div></div>)}
       </div>
-      <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Document Volume</div>
-        {mandanten.filter(o=>o.status==="active").map(org=><div key={org.id} style={{marginBottom:11}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:140,fontWeight:500}}>{org.name}</span><span style={{color:T.textMuted,flexShrink:0}}>{fmtNum(org.docs_used)}</span></div><div className="progress"><div className="progress-fill" style={{width:`${(org.docs_used/org.docs_limit)*100}%`}}/></div></div>)}
+      <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Dokumenten-Volumen</div>
+        {active.length===0&&<div style={{fontSize:12.5,color:T.textMuted,textAlign:'center',padding:'12px 0'}}>Noch keine aktiven Kunden</div>}
+        {active.map(org=><div key={org.id} style={{marginBottom:11}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:140,fontWeight:500}}>{org.name}</span><span style={{color:T.textMuted,flexShrink:0}}>{fmtNum(org.plan_doc_used||0)}</span></div><div className="progress"><div className="progress-fill" style={{width:`${Math.min(100,((org.plan_doc_used||0)/(org.plan_doc_limit||100))*100)}%`}}/></div></div>)}
       </div>
     </div>
+    </>}
   </div>);
 }
 
@@ -3386,9 +3404,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
             <p style={{ fontSize: 12, color: T.textMuted, marginTop: 3 }}>{m.vat} · {m.erp} · {m.contact}</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => notify(`E-Mail an ${m.contact} geöffnet`, 'info')}>✉ Kontaktieren</button>
-            <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound(selected?.id,null,null)}>↓ DATEV-Export</button>
-            <button className="btn btn-primary btn-sm" onClick={() => notify('Einloggen als Mandant...', 'info')}>Als Mandant einloggen →</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound(selected?.id,null,null).then(()=>notify('DATEV-Export heruntergeladen ✓','success')).catch(e=>notify(e.message,'error'))}>↓ DATEV-Export</button>
           </div>
         </div>
 
@@ -3419,7 +3435,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
           </div>
           {pct > 80 && (
             <div style={{ marginTop: 10, padding: '8px 12px', background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 6, fontSize: 12.5, color: T.amber }}>
-              ⚠ Nähert sich dem Limit — <button style={{ background: 'none', border: 'none', color: T.accent, cursor: 'pointer', fontWeight: 600, fontSize: 12.5, fontFamily: F.ui }} onClick={() => notify('Upgrade-Anfrage für ' + m.name, 'success')}>Plan upgraden →</button>
+              ⚠ Nähert sich dem Limit — der Mandant kann seinen Plan unter Einstellungen → Plan & Abrechnung upgraden.
             </div>
           )}
         </div>
@@ -3469,29 +3485,11 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
         )}
 
         {mandantTab === 'invoices' && (
-          <div className="card">
-            <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.bgBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: T.textPrimary }}>Rechnungen</div>
-              <button className="btn btn-primary btn-sm" onClick={() => notify('Neue Rechnung für ' + m.name, 'success')}>+ Neue Rechnung</button>
+          <div className="card" style={{ padding: 24, textAlign: 'center', color: T.textMuted }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: T.textPrimary, marginBottom: 6 }}>Rechnungsliste pro Mandant</div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 420, margin: '0 auto' }}>
+              Die mandantenspezifische Rechnungsansicht ist in Vorbereitung. Nutzen Sie bis dahin den DATEV-Export oben — er enthält alle Eingangsbelege des Mandanten.
             </div>
-            <table className="table">
-              <thead><tr>{['Nummer', 'Betrag', 'Format', 'Status', 'Datum'].map(h => <th key={h}>{h}</th>)}</tr></thead>
-              <tbody>
-                {[
-                  { num: 'INV-2025-014', amt: 1840, fmt: 'xrechnung', st: 'delivered', date: '2025-05-27' },
-                  { num: 'INV-2025-013', amt: 920, fmt: 'zugferd', st: 'archived', date: '2025-05-20' },
-                  { num: 'INV-2025-012', amt: 3400, fmt: 'xrechnung', st: 'delivered', date: '2025-05-14' },
-                ].map((inv, i) => (
-                  <tr key={i} className="tr-hover">
-                    <td style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 600, color: T.textPrimary }}>{inv.num}</td>
-                    <td style={{ fontWeight: 600 }}>{fmtEUR(inv.amt)}</td>
-                    <td><span style={{ background: T.bgMuted, color: T.textSecondary, borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700, fontFamily: F.mono }}>{inv.fmt.toUpperCase()}</span></td>
-                    <td><StatusBadge status={inv.st} /></td>
-                    <td style={{ fontSize: 12, color: T.textMuted }}>{inv.date}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
 
@@ -3499,29 +3497,28 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
           <div className="card" style={{ padding: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 14 }}>Eingehende Rechnungen</div>
             {m.pending_inbound > 0 ? (
-              <div style={{ background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: T.amber }}>
-                ⚠ {m.pending_inbound} Eingang{m.pending_inbound > 1 ? 'änge' : ''} warte{m.pending_inbound === 1 ? 't' : 'n'} auf Verarbeitung
+              <div style={{ background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, padding: '12px 14px', fontSize: 13, color: T.amber }}>
+                ⚠ {m.pending_inbound} Eingang{m.pending_inbound > 1 ? 'änge' : ''} warte{m.pending_inbound === 1 ? 't' : 'n'} auf Verarbeitung — Prüfung erfolgt im Bereich „Eingang" des Mandanten.
               </div>
             ) : (
-              <div style={{ background: T.greenBg, border: `1px solid ${T.greenBdr}`, borderRadius: 7, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: T.green }}>
+              <div style={{ background: T.greenBg, border: `1px solid ${T.greenBdr}`, borderRadius: 7, padding: '12px 14px', fontSize: 13, color: T.green }}>
                 ✓ Alle Eingänge verarbeitet
               </div>
             )}
-            <button className="btn btn-primary btn-sm" onClick={() => notify('Alle Eingänge von ' + m.name + ' verarbeitet ✓', 'success')}>Alle verarbeiten →</button>
           </div>
         )}
 
         {mandantTab === 'settings' && (
           <div className="card" style={{ padding: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 16 }}>Mandanten-Einstellungen</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-              {[['Unternehmensname', m.name], ['USt-IdNr.', m.vat], ['ERP-System', m.erp], ['Kontakt-E-Mail', m.contact]].map(([l, v]) => (
-                <div key={l}><label className="label">{l}</label><input className="input" defaultValue={v} /></div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16, gap: 8 }}>
-              <button className="btn btn-danger btn-sm" onClick={() => notify(m.name + ' aus Portal entfernt', 'error')}>Mandant entfernen</button>
-              <button className="btn btn-primary" onClick={() => notify('Gespeichert ✓', 'success')}>Speichern</button>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 16 }}>Mandanten-Stammdaten</div>
+            {[['Unternehmensname', m.name], ['USt-IdNr.', m.vat], ['Plan', m.plan]].map(([l, v]) => (
+              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${T.bgSubtle}`, fontSize: 13 }}>
+                <span style={{ color: T.textMuted }}>{l}</span>
+                <span style={{ fontWeight: 500, color: T.textPrimary, textTransform: l==='Plan'?'capitalize':'none' }}>{v}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 14, fontSize: 12.5, color: T.textMuted }}>
+              Stammdaten verwaltet der Mandant selbst unter Einstellungen → Unternehmen.
             </div>
           </div>
         )}
@@ -3561,7 +3558,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
           <p style={{ fontSize: 13, color: T.textMuted }}>{mandanten.length} Mandanten · Zentrales Dashboard für alle Ihre Mandanten</p>{limitReached&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,padding:'10px 14px',marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontSize:13,color:'#92400E'}}>⚠️ Mandanten-Limit ({mandanten.length}/{mandantenLimit===Infinity?'∞':mandantenLimit})</span><button onClick={onBack} style={{fontSize:13,fontWeight:600,color:'#D97706',background:'none',border:'none',cursor:'pointer',padding:0}}>Plan upgraden →</button></div>}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => notify('Sammel-Report wird generiert...', 'info')}>↓ Monats-Report</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null).then(()=>notify('DATEV-Export heruntergeladen ✓','success')).catch(e=>notify(e.message,'error'))}>↓ DATEV-Export</button>
           <button className="btn btn-primary btn-sm" onClick={()=>limitReached?notify(`Mandanten-Limit erreicht (${mandantenLimit} max). Bitte Plan upgraden.`,'warning'):setInviteModal(true)}>{limitReached?`🔒 Limit erreicht`:'+ Mandant einladen'}</button>
         </div>
       </div>
@@ -3661,7 +3658,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
                     <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setSelected(m); setView('mandant'); setMandantTab('inbound'); }}>
                       Inbound {m.pending_inbound > 0 && <span style={{ background: T.amber, color: '#fff', borderRadius: 8, padding: '0 5px', fontSize: 10, marginLeft: 3 }}>{m.pending_inbound}</span>}
                     </button>
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => notify('Einloggen als ' + m.name, 'info')}>Öffnen →</button>
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setSelected(m); setView('mandant'); }}>Öffnen →</button>
                   </div>
                 </div>
               );
@@ -3695,7 +3692,6 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
                 </div>
               ))}
             </div>
-            <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={() => notify('Vollständiges Protokoll wird geladen...', 'info')}>Alle Aktivitäten →</button>
           </div>
         </div>
       </div>
@@ -3722,12 +3718,12 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
                 </select>
               </div>
             </div>
-            <div style={{ padding: '10px 14px', background: T.bgSubtle, border: `1px solid ${T.bgBorder}`, borderRadius: 7, fontSize: 12.5, color: T.textSecondary, marginBottom: 16 }}>
-              White-Label: Der Mandant sieht <strong style={{ color: T.textPrimary }}>Ihre Kanzlei</strong> als Absender, nicht invoiq.
+            <div style={{ padding: '10px 14px', background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, fontSize: 12.5, color: T.amber, marginBottom: 16 }}>
+              Der automatische Einladungs-Flow ist in Vorbereitung. Bis dahin: Der Mandant registriert sich selbst unter invoiq.io — melden Sie sich beim Support, um die Verknüpfung mit Ihrer Kanzlei einzurichten.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button className="btn btn-ghost" onClick={() => setInviteModal(false)}>Abbrechen</button>
-              <button className="btn btn-primary" onClick={() => { notify('Einladung an Mandant gesendet ✓', 'success'); setInviteModal(false); }}>Einladung senden →</button>
+              <button className="btn btn-ghost" onClick={() => setInviteModal(false)}>Schließen</button>
+              <button className="btn btn-primary" onClick={() => { window.location.href = 'mailto:support@invoiq.io?subject=Mandanten-Verknüpfung Kanzlei-Portal'; }}>Support kontaktieren →</button>
             </div>
           </div>
         </div>
@@ -3984,16 +3980,18 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
       if(isNew&&mode==="register"){setScreen("onboarding");}else{setScreen("app");setNav("dashboard");}
       notify(`Willkommen${d.user.full_name?`, ${d.user.full_name.split(" ")[0]}`:""}!`,"success");
     }catch(e){
-      setUser({full_name:form.full_name||"Manfred Bell",email:form.email,role:"owner"});
-      setOrg({name:form.org_name||"invoiq Demo",plan:"business",plan_doc_limit:1000,plan_doc_used:41});
-      if(mode==="register"){setScreen("onboarding");}else{setScreen("app");setNav("dashboard");}
-      notify(mode==="register"?"Willkommen bei invoiq!":"Demo-Modus aktiv","info");
+      // Kein Fake-Fallback: ein fehlgeschlagener Login darf niemals eine
+      // Schein-Session öffnen. Fehler ehrlich anzeigen.
+      const msg=e?.message&&e.message!==""?e.message:"Server nicht erreichbar — bitte in wenigen Sekunden erneut versuchen.";
+      notify(msg,"error");
     }
     setLoading(false);
   };
 
   const handleLogout=async()=>{await api.logout().catch(()=>{});api.setToken(null);setUser(null);setOrg(null);setScreen("landing");notify("Abgemeldet","info");};
-  const isSuper=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
+  // Rollenbasiert statt hartkodierter E-Mail-Adressen
+  const isSuper=user?.role==="super_admin";
+  const hasKanzlei=["business","pro","enterprise"].includes((org?.plan||"").toLowerCase());
 
   return(<>
     <style>{CSS}</style>
@@ -4006,13 +4004,15 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
         </div>
       </div>
     )}
-    {screen==="landing"&&<Landing onEnter={(plan)=>{if(plan==='login'){setMode('login');setScreen('auth');return;}if(plan)localStorage.setItem('invoiq_selected_plan',plan);if(api._token){setScreen("app");}else{setMode("register");setScreen("auth");}}}/>}
+    {screen==="landing"&&<Landing onEnter={(plan)=>{if(plan==='login'){setMode('login');setScreen('auth');return;}if(plan)localStorage.setItem('invoiq_selected_plan',plan);if(api._token){setScreen("app");}else{setMode("register");setScreen("auth");}}} onLegal={(s)=>{setScreen(s);window.scrollTo(0,0);}}/>}
+    {screen==="impressum"&&<Impressum onBack={()=>setScreen("landing")}/>}
+    {screen==="datenschutz"&&<Datenschutz onBack={()=>setScreen("landing")}/>}
+    {screen==="agb"&&<AGB onBack={()=>setScreen("landing")}/>}
     {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup abgeschlossen — willkommen bei invoiq! 🎉","success");}}/>}
     {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
       {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={onNav}/>}
       {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)}/>}
-      {nav==="connect"&&<ConnectorsView notify={notify}/>}
           {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify} org={org}/>}
           {nav==="steuerberater"&&(

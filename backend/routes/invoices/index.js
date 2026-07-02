@@ -10,9 +10,10 @@ export async function invoiceRoutes(fastify) {
 
   // ── LIST INVOICES ────────────────────────────────────────────
   fastify.get('/', { preHandler: authMiddleware }, async (req) => {
-    const { direction, status, limit = 50, offset = 0, search } = req.query;
+    const { direction, status, limit = 50, offset = 0, search, archived } = req.query;
     const result = await db.findInvoices(req.org.id, {
       direction, status,
+      archived: archived === 'true' ? true : undefined,
       limit: parseInt(limit),
       offset: parseInt(offset),
       search
@@ -148,6 +149,7 @@ export async function invoiceRoutes(fastify) {
           },
           notes: { type: 'string' },
           reference: { type: 'string' },
+          status: { type: 'string', enum: ['draft'] },
         }
       }
     }
@@ -203,22 +205,61 @@ export async function invoiceRoutes(fastify) {
     invoiceData.validation_result = validation;
     invoiceData.validation_passed = validation.passed;
 
-    if (!validation.passed) {
+    // "Als Entwurf speichern": Entwürfe dürfen unvollständig sein und werden
+    // ohne XML gespeichert. Nur der Generieren-Pfad erzwingt die Validierung.
+    const wantDraft = body.status === 'draft';
+
+    if (!validation.passed && !wantDraft) {
       return reply.code(422).send({
         error: 'EN 16931 Validierung fehlgeschlagen',
         validation,
       });
     }
 
-    // Generate XML
-    const xml = generateXML(invoiceData);
-    const xmlHash = hashXML(xml);
-    invoiceData.xml_content = xml;
-    invoiceData.xml_hash = xmlHash;
-    invoiceData.status = 'validated';
+    // Generate XML (nur wenn valide)
+    if (validation.passed) {
+      const xml = generateXML(invoiceData);
+      invoiceData.xml_content = xml;
+      invoiceData.xml_hash = hashXML(xml);
+    }
+    invoiceData.status = wantDraft ? 'draft' : 'validated';
 
-    // Save to DB
-    const invoice = await db.createInvoice({org_id:req.org.id,invoice_number:invoiceData.invoice_number,invoice_date:invoiceData.invoice_date,due_date:invoiceData.due_date||null,format:invoiceData.format||'xrechnung',direction:'outbound',status:'validated',seller_name:invoiceData.seller_name,seller_vat_id:invoiceData.seller_vat_id||null,seller_address:invoiceData.seller_address||null,seller_city:invoiceData.seller_city||null,seller_iban:invoiceData.seller_iban||null,buyer_name:invoiceData.buyer_name,buyer_vat_id:invoiceData.buyer_vat_id||null,buyer_address:invoiceData.buyer_address||null,buyer_city:invoiceData.buyer_city||null,buyer_country:invoiceData.buyer_country||'DE',buyer_email:invoiceData.buyer_email||null,amount_net:invoiceData.amount_net,amount_vat:invoiceData.amount_vat,amount_gross:invoiceData.amount_gross,currency:invoiceData.currency||'EUR',line_items:invoiceData.line_items,xml_content:invoiceData.xml_content,xml_hash:invoiceData.xml_hash,validation_passed:invoiceData.validation_passed});
+    // Save to DB (explizite Spalten-Whitelist — verhindert Supabase-Fehler
+    // durch unbekannte Felder). plan_doc_used wird per DB-Trigger
+    // (trg_invoice_doc_count) automatisch hochgezählt.
+    const invoice = await db.createInvoice({
+      org_id: req.org.id,
+      invoice_number: invoiceData.invoice_number,
+      invoice_date: invoiceData.invoice_date,
+      due_date: invoiceData.due_date || null,
+      format: invoiceData.format || 'xrechnung',
+      direction: 'outbound',
+      status: invoiceData.status,
+      delivery_method: invoiceData.delivery_method || 'email',
+      seller_name: invoiceData.seller_name,
+      seller_vat_id: invoiceData.seller_vat_id || null,
+      seller_address: invoiceData.seller_address || null,
+      seller_city: invoiceData.seller_city || null,
+      seller_iban: invoiceData.seller_iban || null,
+      buyer_name: invoiceData.buyer_name,
+      buyer_vat_id: invoiceData.buyer_vat_id || null,
+      buyer_address: invoiceData.buyer_address || null,
+      buyer_city: invoiceData.buyer_city || null,
+      buyer_country: invoiceData.buyer_country || 'DE',
+      buyer_email: invoiceData.buyer_email || null,
+      amount_net: invoiceData.amount_net,
+      amount_vat: invoiceData.amount_vat,
+      amount_gross: invoiceData.amount_gross,
+      currency: invoiceData.currency || 'EUR',
+      line_items: invoiceData.line_items,
+      notes: invoiceData.notes || null,
+      reference: invoiceData.reference || null,
+      xml_content: invoiceData.xml_content || null,
+      xml_hash: invoiceData.xml_hash || null,
+      validation_result: validation,
+      validation_passed: invoiceData.validation_passed,
+      created_by: req.user?.id || null,
+    });
 
     // Audit log
     await db.createAuditLog({
@@ -226,12 +267,12 @@ export async function invoiceRoutes(fastify) {
       user_id: req.user?.id,
       invoice_id: invoice.id,
       action: 'created',
-      details: { format: invoice.format, amount_gross: gross, validation_passed: true }
+      details: { format: invoice.format, amount_gross: gross, validation_passed: validation.passed, draft: wantDraft }
     });
 
     return reply.code(201).send({
       ...sanitizeInvoice(invoice),
-      xml_preview: xml.substring(0, 500) + '...',
+      ...(invoiceData.xml_content ? { xml_preview: invoiceData.xml_content.substring(0, 500) + '...' } : {}),
       validation,
     });
   });

@@ -62,8 +62,12 @@ export async function authRoutes(fastify) {
       city: city || '',
       zip: zip || '',
       country: country || 'DE',
-      plan: 'starter',
-      plan_doc_limit: 100,           inbound_email_slug: slug + '-' + uuidv4().substr(0, 6),
+      // Neue Konten starten auf Free — bezahlte Pläne werden ausschließlich
+      // über den Stripe-Checkout (mit 14-Tage-Trial) aktiviert. Vorher bekam
+      // jede Registrierung den bezahlten Starter-Plan geschenkt.
+      plan: 'free',
+      plan_doc_limit: 10,
+      inbound_email_slug: slug + '-' + uuidv4().substr(0, 6),
       api_key: apiKey,
       api_key_created_at: new Date().toISOString(),
     });
@@ -153,7 +157,15 @@ export async function authRoutes(fastify) {
     }
 
     const user = await db.findUserById(stored.user_id);
+    if (!user || !user.active) {
+      await db.revokeRefreshToken(tokenHash);
+      return reply.code(401).send({ error: 'Benutzer nicht gefunden oder deaktiviert' });
+    }
     const org = await db.findOrgById(user.org_id);
+    if (!org || !org.active) {
+      await db.revokeRefreshToken(tokenHash);
+      return reply.code(401).send({ error: 'Organisation nicht gefunden oder deaktiviert' });
+    }
 
     const { accessToken, refreshToken: newRefreshToken } = signTokens(user.id, org.id, user.role);
     await db.revokeRefreshToken(tokenHash);
@@ -178,10 +190,29 @@ export async function authRoutes(fastify) {
   // ── ME ───────────────────────────────────────────────────────
   fastify.get('/me', { preHandler: authMiddleware }, async (req) => {
     const { user, org } = req;
+    // API-Key nur an Owner/Admin herausgeben — Member/Viewer brauchen ihn nicht.
+    const canSeeApiKey = ['owner', 'admin', 'super_admin'].includes(user?.role);
     return {
       user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role, last_login_at: user.last_login_at },
-      org: { id: org.id, name: org.name, slug: org.slug, plan: org.plan, inbound_email_slug: org.inbound_email_slug, plan_doc_limit: org.plan_doc_limit, plan_doc_used: org.plan_doc_used, api_key: org.api_key, inbound_email_slug: org.inbound_email_slug || (org.slug ? org.slug : org.name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').substring(0,30)) },
+      org: {
+        id: org.id, name: org.name, slug: org.slug, plan: org.plan,
+        plan_doc_limit: org.plan_doc_limit, plan_doc_used: org.plan_doc_used,
+        stripe_customer_id: org.stripe_customer_id ? true : false,
+        ...(canSeeApiKey ? { api_key: org.api_key } : {}),
+        inbound_email_slug: org.inbound_email_slug || (org.slug ? org.slug : org.name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').substring(0,30)),
+      },
     };
+  });
+
+  // ── API-KEY ROTATION (nur Owner/Admin) ───────────────────────
+  fastify.post('/rotate-api-key', { preHandler: authMiddleware }, async (req, reply) => {
+    if (!['owner', 'admin', 'super_admin'].includes(req.user?.role)) {
+      return reply.code(403).send({ error: 'Nur Owner/Admin dürfen den API-Key rotieren' });
+    }
+    const newKey = `iq_live_${randomBytes(20).toString('hex')}`;
+    await db.updateOrg(req.org.id, { api_key: newKey, api_key_created_at: new Date().toISOString() });
+    await db.createAuditLog({ org_id: req.org.id, user_id: req.user.id, action: 'api_key_rotated', details: {} });
+    return { api_key: newKey };
   });
 
   // ── SETTINGS GET ─────────────────────────────────────────────

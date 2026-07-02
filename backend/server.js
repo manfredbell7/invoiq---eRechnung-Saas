@@ -140,21 +140,23 @@ export async function buildServer() {
 }
 
 // ── START ─────────────────────────────────────────────────────
+// Nur starten, wenn die Datei direkt ausgeführt wird (node server.js) —
+// Tests importieren buildServer() und dürfen keinen Listener öffnen.
+const isMain = import.meta.url === `file://${process.argv[1]}`;
+
 async function start() {
   const fastify = await buildServer();
   try {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
     console.log(`\n╔═══════════════════════════════════════════╗`);
     console.log(`║   invoiq API v1.0  ·  Port ${PORT}           ║`);
-    console.log(`║   http://localhost:${PORT}/api/v1            ║`);
+    console.log(`║   Base:   http://localhost:${PORT}${API}         ║`);
     console.log(`║   Health: http://localhost:${PORT}/health    ║`);
     console.log(`╚═══════════════════════════════════════════╝\n`);
-    console.log(`  Demo Login: demo@invoiq.io / demo123`);
-    console.log(`  API Key:    iq_live_demo_key_001\n`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
 }
 
-start();
+if (isMain) start();
