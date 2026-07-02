@@ -15,6 +15,7 @@ import { scannerRoutes }  from './routes/scanner/index.js';
 import { paymentRoutes }  from './routes/payments/index.js';
 import { inboundRoutes }  from './routes/inbound/index.js';
 import { customerRoutes } from './routes/customers/index.js';
+import { businessRoutes } from './routes/business/index.js';
 
 import { registerSecurityHooks } from './middleware/security.js';
 import { incrementCounter } from './lib/rateLimiter.js';
@@ -104,6 +105,7 @@ export async function buildServer() {
   fastify.register(paymentRoutes, { prefix: API });
   fastify.register(inboundRoutes,  { prefix: `${API}/inbound` });
   fastify.register(customerRoutes, { prefix: `${API}/customers` });
+  fastify.register(businessRoutes, { prefix: `${API}/business` });
 
   // DB (Supabase client) — no ready() needed, connects on first query
 

@@ -103,6 +103,18 @@ const api={
   getOrgSettings:()=>api.get('/auth/settings'),
   // Kundenstammdaten
   listCustomers:(search='')=>api.get(`/customers${search?`?search=${encodeURIComponent(search)}`:''}`),
+  // Belegfluss (SAP-nah): Anfrage/Angebot/Auftrag/Lieferung
+  listBusinessDocs:(q='')=>api.get(`/business/documents${q}`),
+  getBusinessDoc:(id)=>api.get(`/business/documents/${id}`),
+  createBusinessDoc:(b)=>api.post('/business/documents',b),
+  setBusinessDocStatus:(id,status)=>api.req('PATCH',`/business/documents/${id}/status`,{status}),
+  convertBusinessDoc:(id,target_type)=>api.post(`/business/documents/${id}/convert`,{target_type}),
+  // Artikel/Leistungen
+  listBusinessItems:(search='')=>api.get(`/business/items${search?`?search=${encodeURIComponent(search)}`:''}`),
+  createBusinessItem:(b)=>api.post('/business/items',b),
+  patchBusinessItem:(id,b)=>api.req('PATCH',`/business/items/${id}`,b),
+  deleteBusinessItem:(id)=>api.req('DELETE',`/business/items/${id}`),
+  getTaxCodes:()=>api.get('/business/tax-codes'),
   // Cashflow & Stats
   getCashflowStats:()=>api.get('/invoices/cashflow-stats'),
   getInboundStats:()=>api.get('/inbound/stats'),
@@ -432,9 +444,25 @@ body{font-family:${F.ui};background:${T.bgGradient};color:${T.textPrimary};font-
 .reveal{opacity:0;transform:translateY(20px);transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1);}
 .reveal.visible{opacity:1;transform:none;}
 
+/* Mobile-Navigation: Sidebar als Overlay-Drawer statt ersatzlos versteckt */
+.mobile-menu-btn{display:none;}
+.mobile-nav-overlay{display:none;}
 @media(max-width:768px){
   .sidebar{display:none;}
-  .topbar{padding:0 16px;}
+  .sidebar.mobile-open{
+    display:flex;position:fixed;top:0;left:0;bottom:0;z-index:1300;
+    width:min(280px,82vw);height:100vh;
+    box-shadow:0 0 0 100vmax rgba(10,37,64,.35),8px 0 32px rgba(10,37,64,.25);
+    animation:drawerIn .22s cubic-bezier(.16,1,.3,1);
+  }
+  @keyframes drawerIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+  .mobile-menu-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:34px;height:34px;border-radius:8px;flex-shrink:0;
+    background:${T.bgSubtle};border:1px solid ${T.bgBorder};cursor:pointer;
+  }
+  .mobile-nav-overlay{display:block;position:fixed;inset:0;z-index:1299;}
+  .topbar{padding:0 12px;gap:8px;}
 }
 `;
 
@@ -454,7 +482,9 @@ function Wordmark({size=22,inverted=false}){
 }
 
 function StatusBadge({status}){
-  const m={delivered:["badge-green","Delivered"],validated:["badge-blue","Validated"],sent:["badge-blue","Sent"],error:["badge-red","Error"],pending:["badge-amber","Pending"],archived:["badge-gray","Archived"],draft:["badge-gray","Draft"],active:["badge-green","Active"],trial:["badge-purple","Trial"],suspended:["badge-red","Suspended"],starter:["badge-gray","Starter"],business:["badge-blue","Business"],pro:["badge-amber","Pro"],super_admin:["badge-red","Super Admin"],owner:["badge-gray","Owner"],admin:["badge-blue","Admin"],member:["badge-gray","Member"]};
+  const m={delivered:["badge-green","Zugestellt"],validated:["badge-blue","Validiert"],sent:["badge-blue","Gesendet"],error:["badge-red","Fehler"],pending:["badge-amber","Ausstehend"],archived:["badge-gray","Archiviert"],draft:["badge-gray","Entwurf"],active:["badge-green","Aktiv"],trial:["badge-purple","Trial"],suspended:["badge-red","Gesperrt"],free:["badge-gray","Free"],starter:["badge-gray","Starter"],business:["badge-blue","Business"],enterprise:["badge-purple","Enterprise"],pro:["badge-amber","Pro"],super_admin:["badge-red","Super Admin"],owner:["badge-gray","Owner"],admin:["badge-blue","Admin"],member:["badge-gray","Member"],
+  // Belegfluss-Status (SAP-nah)
+  offen:["badge-amber","Offen"],beantwortet:["badge-blue","Beantwortet"],entwurf:["badge-gray","Entwurf"],gesendet:["badge-blue","Gesendet"],angenommen:["badge-green","Angenommen"],abgelehnt:["badge-red","Abgelehnt"],abgelaufen:["badge-gray","Abgelaufen"],bestaetigt:["badge-blue","Bestätigt"],geliefert:["badge-purple","Geliefert"],fakturiert:["badge-green","Fakturiert"],storniert:["badge-red","Storniert"]};
   const[cls,lbl]=m[status]||["badge-gray",status];
   return <span className={`badge ${cls}`}>{lbl}</span>;
 }
@@ -1421,38 +1451,53 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
   // Kanzlei-Portal ab Business-Plan (siehe Pricing: Business/Pro/Enterprise enthalten es)
   const plan = (org?.plan||'starter').toLowerCase();
   const hasKanzlei = plan === 'business' || plan === 'enterprise' || plan === 'pro';
+  const [mobileNav,setMobileNav]=useState(false);
+  const go=(key)=>{setNav(key);setMobileNav(false);};
 
-  const items=[
-    {key:"dashboard",   label:"Übersicht"},
-    {key:"invoices",    label:"Ausgang"},
-    {key:"inbound",     label:"Eingang"},
-    {key:"scanner",     label:"Scan & Import"},
-    {key:"archive",     label:"Archiv"},
-    {key:"settings",    label:"Einstellungen"},
-    // Kanzlei-Portal: ans Ende, nach Einstellungen
+  const sections=[
+    {title:"Rechnungen",items:[
+      {key:"dashboard",   label:"Übersicht"},
+      {key:"invoices",    label:"Ausgang"},
+      {key:"inbound",     label:"Eingang"},
+      {key:"scanner",     label:"Scan & Import"},
+      {key:"archive",     label:"Archiv"},
+    ]},
+    {title:"Vertrieb",items:[
+      {key:"belege",      label:"Belege & Aufträge"},
+      {key:"artikel",     label:"Artikel & Leistungen"},
+      {key:"kunden",      label:"Kunden"},
+    ]},
   ];
 
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
   // Admin-Panel rollenbasiert (Backend prüft zusätzlich serverseitig)
   const isAdmin=["owner","admin","super_admin"].includes(user?.role);
 
+  const NavDot=({active})=>(<span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:active?T.accent:"transparent",border:`1px solid ${active?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>);
+
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
-    <aside className="sidebar">
+    {mobileNav&&<div className="mobile-nav-overlay" onClick={()=>setMobileNav(false)}/>}
+    <aside className={`sidebar ${mobileNav?"mobile-open":""}`}>
       <div style={{padding:"14px 14px 10px",borderBottom:`1px solid ${T.bgBorder}`}}>
         <Wordmark size={20}/>
         {org&&<div style={{fontSize:11,color:T.textMuted,marginTop:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}}>{org.name}</div>}
       </div>
       <nav style={{flex:1,padding:"6px 8px 0"}}>
-        <div className="nav-section">Workspace</div>
-        {items.map(({key,label})=><button key={key} className={`nav-item ${nav===key?"active":""}`} onClick={()=>setNav(key)}>
-          <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav===key?T.accent:"transparent",border:`1px solid ${nav===key?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
-          {label}
-        </button>)}
+        {sections.map(sec=>(<div key={sec.title}>
+          <div className="nav-section">{sec.title}</div>
+          {sec.items.map(({key,label})=><button key={key} className={`nav-item ${nav===key?"active":""}`} onClick={()=>go(key)}>
+            <NavDot active={nav===key}/>{label}
+          </button>)}
+        </div>))}
 
-        {/* Kanzlei-Portal — immer sichtbar, Starter bekommt Upgrade-Modal */}
-        <button className={`nav-item ${nav==="steuerberater"?"active":""}`} onClick={()=>setNav("steuerberater")}
+        <div className="nav-section" style={{marginTop:6}}>Konto</div>
+        <button className={`nav-item ${nav==="settings"?"active":""}`} onClick={()=>go("settings")}>
+          <NavDot active={nav==="settings"}/>Einstellungen
+        </button>
+        {/* Kanzlei-Portal — immer sichtbar, Starter bekommt Upgrade-Hinweis */}
+        <button className={`nav-item ${nav==="steuerberater"?"active":""}`} onClick={()=>go("steuerberater")}
           style={{position:'relative'}}>
-          <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav==="steuerberater"?T.accent:"transparent",border:`1px solid ${nav==="steuerberater"?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
+          <NavDot active={nav==="steuerberater"}/>
           Kanzlei-Portal
           {!hasKanzlei&&<span style={{marginLeft:'auto',fontSize:9,background:'#7c3aed',color:'#fff',borderRadius:3,padding:'1px 5px',fontWeight:700}}>PRO</span>}
         </button>
@@ -1481,7 +1526,10 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
     </aside>
     <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
       <div className="topbar">
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
+        <button className="mobile-menu-btn" onClick={()=>setMobileNav(true)} aria-label="Menü öffnen">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke={T.textSecondary} strokeWidth="1.6" strokeLinecap="round"/></svg>
+        </button>
+        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
         <div style={{flex:1,maxWidth:300,margin:"0 20px"}}>
           <div style={{position:"relative"}}>
             <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:T.textMuted,fontSize:12}}>🔍</span>
@@ -2796,6 +2844,589 @@ function InboundScreen({notify, org}){
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// VERTRIEB — SAP-naher Belegfluss (Anfrage→Angebot→Auftrag→Lieferung→Rechnung)
+// ══════════════════════════════════════════════════════════════
+
+const DOC_LABELS={request:"Anfrage",quote:"Angebot",order:"Auftrag",delivery:"Lieferung",invoice:"Rechnung"};
+const DOC_CHAIN=["request","quote","order","delivery","invoice"];
+const STATUS_LABELS={offen:"Offen",beantwortet:"Beantwortet",entwurf:"Entwurf",gesendet:"Gesendet",angenommen:"Angenommen",abgelehnt:"Abgelehnt",abgelaufen:"Abgelaufen",bestaetigt:"Bestätigt",geliefert:"Geliefert",fakturiert:"Fakturiert",storniert:"Storniert"};
+
+// Client-seitige Steuer-Summierung (spiegelt services/taxEngine.js:
+// Rundung pro Kennzeichen-Gruppe). Verbindlich rechnet immer das Backend.
+function clientComputeTotals(items,taxCodes){
+  const r2=n=>Math.round((n+Number.EPSILON)*100)/100;
+  const rateOf=c=>taxCodes.find(t=>t.code===c)?.rate??19;
+  const groups={};
+  let net=0;
+  for(const it of items){
+    const code=it.tax_code||"S19";
+    const n=r2((parseFloat(it.quantity)||0)*(parseFloat(it.unit_price)||0));
+    groups[code]=r2((groups[code]||0)+n);
+    net=r2(net+n);
+  }
+  let tax=0;
+  const breakdown=Object.entries(groups).map(([code,gNet])=>{
+    const gTax=r2(gNet*(rateOf(code)/100));
+    tax=r2(tax+gTax);
+    return {code,rate:rateOf(code),net:gNet,tax:gTax,label:taxCodes.find(t=>t.code===code)?.label||code};
+  });
+  return {net,tax,gross:r2(net+tax),breakdown};
+}
+
+// Belegfluss-Kette: Anfrage → Angebot → Auftrag → Lieferung → Rechnung
+function FlowChain({flow,currentId,onOpen}){
+  const byType={};
+  (flow?.nodes||[]).forEach(n=>{(byType[n.type]=byType[n.type]||[]).push(n);});
+  return(
+    <div style={{display:"flex",alignItems:"stretch",gap:0,overflowX:"auto",padding:"4px 0"}}>
+      {DOC_CHAIN.map((t,i)=>{
+        const nodes=byType[t]||[];
+        return(
+          <div key={t} style={{display:"flex",alignItems:"center",flexShrink:0}}>
+            <div style={{minWidth:132}}>
+              <div style={{fontSize:10,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:5}}>{DOC_LABELS[t]}</div>
+              {nodes.length===0
+                ?<div style={{border:`1.5px dashed ${T.bgBorder}`,borderRadius:8,padding:"9px 11px",fontSize:11.5,color:T.textPlaceholder,textAlign:"center"}}>—</div>
+                :nodes.map(n=>(
+                  <div key={n.id} onClick={()=>n.id!==currentId&&onOpen&&onOpen(n)}
+                    style={{border:`1.5px solid ${n.id===currentId?T.accent:T.bgBorder}`,background:n.id===currentId?T.accentLight:T.bg,borderRadius:8,padding:"7px 11px",marginBottom:4,cursor:n.id===currentId?"default":"pointer",boxShadow:n.id===currentId?`0 0 0 2px ${T.accentPale}`:"none"}}>
+                    <div style={{fontFamily:F.mono,fontSize:11,fontWeight:700,color:T.textPrimary}}>{n.number}</div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,marginTop:3}}>
+                      <StatusBadge status={n.status}/>
+                      <span style={{fontSize:10.5,color:T.textMuted,fontWeight:600}}>{fmtEUR(n.amount_gross)}</span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+            {i<DOC_CHAIN.length-1&&<div style={{width:26,display:"flex",justifyContent:"center",color:T.textPlaceholder,fontSize:15,paddingTop:14}}>→</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BusinessScreen({notify,onOpenInvoice}){
+  const[tab,setTab]=useState("all");
+  const[docs,setDocs]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[search,setSearch]=useState("");
+  const[view,setView]=useState("list"); // list | create | detail
+  const[detail,setDetail]=useState(null); // {document, flow, next_statuses, convert_targets}
+  const[busy,setBusy]=useState(false);
+  const[taxCodes,setTaxCodes]=useState([]);
+  const[customers,setCustomers]=useState([]);
+  const[bizItems,setBizItems]=useState([]);
+  const[warnings,setWarnings]=useState([]);
+
+  const emptyForm={doc_type:"quote",partner_id:"",partner_name:"",doc_date:new Date().toISOString().slice(0,10),valid_until:"",delivery_date:"",reference:"",notes:"",items:[{description:"",quantity:1,unit_price:0,tax_code:"S19"}]};
+  const[form,setForm]=useState(emptyForm);
+  const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const updItem=(i,k,v)=>{const a=[...form.items];a[i]={...a[i],[k]:["quantity","unit_price"].includes(k)?(parseFloat(v)||0):v};upd("items",a);};
+
+  const load=useCallback(()=>{
+    setLoading(true);
+    api.listBusinessDocs(tab==="all"?"":`?type=${tab}`)
+      .then(d=>setDocs(d.documents||[])).catch(()=>setDocs([])).finally(()=>setLoading(false));
+  },[tab]);
+  useEffect(()=>{load();},[load]);
+  useEffect(()=>{
+    api.getTaxCodes().then(d=>setTaxCodes(d.tax_codes||[])).catch(()=>setTaxCodes([{code:"S19",rate:19,label:"USt 19 %"},{code:"S7",rate:7,label:"USt 7 %"}]));
+    api.listCustomers().then(d=>setCustomers(d.customers||[])).catch(()=>{});
+    api.listBusinessItems().then(d=>setBizItems(d.items||[])).catch(()=>{});
+  },[]);
+
+  const openDetail=async(id)=>{
+    try{const d=await api.getBusinessDoc(id);setDetail(d);setWarnings([]);setView("detail");window.scrollTo(0,0);}
+    catch(e){notify(e.message,"error");}
+  };
+
+  const pickItem=(rowIdx,itemId)=>{
+    const it=bizItems.find(x=>x.id===itemId);
+    if(!it)return;
+    const a=[...form.items];
+    a[rowIdx]={...a[rowIdx],item_id:it.id,description:it.name,unit_price:parseFloat(it.unit_price)||0,unit:it.unit||"C62",tax_code:it.tax_code||"S19"};
+    upd("items",a);
+  };
+
+  const create=async()=>{
+    setBusy(true);setWarnings([]);
+    try{
+      const r=await api.createBusinessDoc(form);
+      setWarnings(r.warnings||[]);
+      notify(`${DOC_LABELS[form.doc_type]} ${r.document.doc_number} angelegt ✓`,"success");
+      setForm(emptyForm);load();openDetail(r.document.id);
+    }catch(e){
+      // 422 mit fachlichen Warnungen strukturiert anzeigen
+      notify(e.message||"Beleg konnte nicht angelegt werden","error");
+    }
+    setBusy(false);
+  };
+
+  const doStatus=async(status)=>{
+    setBusy(true);
+    try{
+      await api.setBusinessDocStatus(detail.document.id,status);
+      notify(`Status: ${STATUS_LABELS[status]||status} ✓`,"success");
+      load();openDetail(detail.document.id);
+    }catch(e){notify(e.message,"error");}
+    setBusy(false);
+  };
+
+  const doConvert=async(target)=>{
+    setBusy(true);setWarnings([]);
+    try{
+      const r=await api.convertBusinessDoc(detail.document.id,target);
+      setWarnings(r.warnings||[]);
+      if(target==="invoice"){
+        notify(`Rechnung ${r.invoice.invoice_number} erzeugt ✓ (EN 16931 validiert)`,"success");
+        load();openDetail(detail.document.id);
+      }else{
+        notify(`${DOC_LABELS[target]} ${r.document.doc_number} angelegt ✓`,"success");
+        load();openDetail(r.document.id);
+      }
+    }catch(e){notify(e.message,"error");}
+    setBusy(false);
+  };
+
+  const totals=clientComputeTotals(form.items,taxCodes);
+  const filtered=docs.filter(d=>!search||(d.doc_number||"").toLowerCase().includes(search.toLowerCase())||(d.partner_name||"").toLowerCase().includes(search.toLowerCase()));
+
+  const WarningList=()=>warnings.length===0?null:(
+    <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
+      {warnings.map((w,i)=>(
+        <div key={i} style={{padding:"9px 13px",borderRadius:7,fontSize:12.5,display:"flex",gap:8,alignItems:"flex-start",
+          background:w.severity==="error"?T.redBg:T.amberBg,border:`1px solid ${w.severity==="error"?T.redBdr:T.amberBdr}`,color:w.severity==="error"?T.red:T.amber}}>
+          <span style={{flexShrink:0}}>{w.severity==="error"?"✗":"⚠"}</span>{w.msg}
+        </div>
+      ))}
+    </div>
+  );
+
+  // ── CREATE ────────────────────────────────────────────────────
+  if(view==="create")return(<div className="fi" style={{maxWidth:860}}>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+      <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setWarnings([]);}}>← Zurück</button>
+      <div><h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Neuen Beleg anlegen</h1>
+      <p style={{fontSize:12,color:T.textMuted}}>Anfrage, Angebot, Auftrag oder Lieferung — Folgebelege entstehen per „Anlegen mit Bezug".</p></div>
+    </div>
+    <WarningList/>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(300px,100%),1fr))",gap:12,marginBottom:12}}>
+      <div className="card" style={{padding:20}}>
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Belegart & Datum</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
+          <div><label className="label">Belegart</label>
+            <select className="select" value={form.doc_type} onChange={e=>upd("doc_type",e.target.value)}>
+              {["request","quote","order","delivery"].map(t=><option key={t} value={t}>{DOC_LABELS[t]}</option>)}
+            </select>
+          </div>
+          <div><label className="label">Belegdatum</label><input className="input" type="date" value={form.doc_date} onChange={e=>upd("doc_date",e.target.value)}/></div>
+          {form.doc_type==="quote"&&<div><label className="label">Gültig bis (Bindefrist)</label><input className="input" type="date" value={form.valid_until} onChange={e=>upd("valid_until",e.target.value)}/></div>}
+          {["order","delivery"].includes(form.doc_type)&&<div><label className="label">Liefertermin</label><input className="input" type="date" value={form.delivery_date} onChange={e=>upd("delivery_date",e.target.value)}/></div>}
+          <div><label className="label">Referenz (Bestell-Nr. des Kunden)</label><input className="input" value={form.reference} onChange={e=>upd("reference",e.target.value)} placeholder="z.B. PO-4711"/></div>
+        </div>
+      </div>
+      <div className="card" style={{padding:20}}>
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Geschäftspartner</div>
+        <div style={{marginBottom:10}}><label className="label">Kunde (aus Stammdaten)</label>
+          <select className="select" value={form.partner_id} onChange={e=>upd("partner_id",e.target.value)}>
+            <option value="">— Kunde wählen —</option>
+            {customers.map(c=><option key={c.id} value={c.id}>{c.name}{c.city?` · ${c.city}`:""}</option>)}
+          </select>
+        </div>
+        {!form.partner_id&&<div><label className="label">…oder Name frei eingeben</label><input className="input" value={form.partner_name} onChange={e=>upd("partner_name",e.target.value)} placeholder="Firma GmbH"/></div>}
+        <div style={{fontSize:11,color:T.textMuted,marginTop:10}}>Belege übernehmen die Partnerdaten als Momentaufnahme — spätere Stammdaten-Änderungen verändern bestehende Belege nicht.</div>
+      </div>
+    </div>
+    <div className="card" style={{padding:20,marginBottom:12}}>
+      <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Positionen</div>
+      {form.items.map((item,idx)=>(
+        <div key={idx} style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:12,marginBottom:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(180px,100%),1fr))",gap:8,marginBottom:8}}>
+            {bizItems.length>0&&<div><label className="label">Artikel/Leistung (Stammdaten)</label>
+              <select className="select" value={item.item_id||""} onChange={e=>pickItem(idx,e.target.value)}>
+                <option value="">— frei erfassen —</option>
+                {bizItems.map(b=><option key={b.id} value={b.id}>{b.name} · {fmtEUR(b.unit_price)}</option>)}
+              </select>
+            </div>}
+            <div style={{gridColumn:bizItems.length>0?"auto":"1 / -1"}}><label className="label">Beschreibung</label>
+              <input className="input" value={item.description} onChange={e=>updItem(idx,"description",e.target.value)} placeholder="Leistungsbeschreibung…"/>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"90px 130px 1fr auto",gap:8,alignItems:"end"}}>
+            <div><label className="label">Menge</label><input className="input" type="number" min="0" step="0.001" value={item.quantity} onChange={e=>updItem(idx,"quantity",e.target.value)}/></div>
+            <div><label className="label">Einzelpreis €</label><input className="input" type="number" min="0" step="0.01" value={item.unit_price} onChange={e=>updItem(idx,"unit_price",e.target.value)}/></div>
+            <div><label className="label">Steuerkennzeichen</label>
+              <select className="select" value={item.tax_code||"S19"} onChange={e=>updItem(idx,"tax_code",e.target.value)}>
+                {taxCodes.map(t=><option key={t.code} value={t.code}>{t.code} — {t.label}</option>)}
+              </select>
+            </div>
+            <button onClick={()=>upd("items",form.items.filter((_,j)=>j!==idx))} style={{background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:7,color:T.red,cursor:"pointer",fontSize:15,width:32,height:34}}>×</button>
+          </div>
+        </div>
+      ))}
+      <button onClick={()=>upd("items",[...form.items,{description:"",quantity:1,unit_price:0,tax_code:"S19"}])} style={{width:"100%",padding:"8px",border:`1.5px dashed ${T.bgBorder}`,background:"transparent",color:T.accent,cursor:"pointer",borderRadius:7,marginTop:4,fontSize:13,fontFamily:F.ui,fontWeight:500}}>+ Position hinzufügen</button>
+
+      {/* Steuer-Breakdown live */}
+      <div style={{display:"flex",justifyContent:"flex-end",marginTop:14}}>
+        <div style={{background:T.bgSubtle,borderRadius:9,padding:"12px 16px",minWidth:280,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:32,marginBottom:6,fontSize:13,color:T.textMuted}}><span>Netto</span><span>{fmtEUR(totals.net)}</span></div>
+          {totals.breakdown.map(b=>(
+            <div key={b.code} style={{display:"flex",justifyContent:"space-between",gap:32,marginBottom:4,fontSize:12,color:T.textMuted}}>
+              <span><span style={{fontFamily:F.mono,fontSize:10.5,background:T.bgMuted,borderRadius:3,padding:"1px 5px",marginRight:6}}>{b.code}</span>{b.rate} %</span>
+              <span>{fmtEUR(b.tax)}</span>
+            </div>
+          ))}
+          <div style={{height:1,background:T.bgBorder,margin:"7px 0"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",gap:32,fontSize:17,color:T.textPrimary,fontWeight:700}}><span>Brutto</span><span>{fmtEUR(totals.gross)}</span></div>
+        </div>
+      </div>
+    </div>
+    <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginBottom:16}}>
+      <button className="btn btn-ghost" onClick={()=>{setView("list");setWarnings([]);}}>Abbrechen</button>
+      <button className="btn btn-primary" style={{padding:"10px 24px"}} onClick={create} disabled={busy}>{busy?<><Spinner color="#fff" size={14}/>&nbsp;Legt an…</>:`${DOC_LABELS[form.doc_type]} anlegen →`}</button>
+    </div>
+  </div>);
+
+  // ── DETAIL ────────────────────────────────────────────────────
+  if(view==="detail"&&detail){
+    const d=detail.document;
+    return(<div className="fi">
+      <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setWarnings([]);load();}}>← Alle Belege</button>
+        <div style={{flex:1,minWidth:200}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary,fontFamily:F.mono}}>{d.doc_number}</h1>
+            <span className="badge badge-purple">{DOC_LABELS[d.doc_type]}</span>
+            <StatusBadge status={d.status}/>
+          </div>
+          <p style={{fontSize:12.5,color:T.textMuted,marginTop:3}}>{d.partner_name} · {d.doc_date?new Date(d.doc_date).toLocaleDateString("de-DE"):""}{d.reference?` · Ref: ${d.reference}`:""}</p>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {(detail.next_statuses||[]).map(s=>(
+            <button key={s} className={`btn btn-sm ${s==="storniert"?"btn-danger":"btn-ghost"}`} onClick={()=>doStatus(s)} disabled={busy}>
+              {s==="storniert"?"Stornieren":`→ ${STATUS_LABELS[s]||s}`}
+            </button>
+          ))}
+          {(detail.convert_targets||[]).map(t=>(
+            <button key={t} className="btn btn-primary btn-sm" onClick={()=>doConvert(t)} disabled={busy}>
+              {t==="invoice"?"⚡ Rechnung erzeugen":`+ ${DOC_LABELS[t]} mit Bezug`}
+            </button>
+          ))}
+        </div>
+      </div>
+      <WarningList/>
+
+      {/* Belegfluss */}
+      <div className="card" style={{padding:18,marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Belegfluss</div>
+        <FlowChain flow={detail.flow} currentId={d.id} onOpen={(n)=>{
+          if(n.type==="invoice"){onOpenInvoice&&onOpenInvoice();return;}
+          openDetail(n.id);
+        }}/>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(320px,100%),1fr))",gap:14}}>
+        {/* Positionen */}
+        <div className="card" style={{gridColumn:"1 / -1"}}>
+          <div style={{padding:"13px 18px",borderBottom:`1px solid ${T.bgBorder}`,fontSize:13,fontWeight:700,color:T.textPrimary}}>Positionen</div>
+          <div style={{overflowX:"auto"}}>
+          <table className="table">
+            <thead><tr>{["Pos.","Beschreibung","Menge","Einzelpreis","Steuer","Netto"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+            <tbody>
+              {(d.items||[]).map(it=>(
+                <tr key={it.id||it.position}>
+                  <td style={{color:T.textMuted,fontFamily:F.mono,fontSize:12}}>{it.position}</td>
+                  <td style={{fontWeight:500}}>{it.description}</td>
+                  <td>{parseFloat(it.quantity)}</td>
+                  <td>{fmtEUR(it.unit_price)}</td>
+                  <td><span style={{fontFamily:F.mono,fontSize:11,background:T.bgMuted,borderRadius:4,padding:"2px 6px",color:T.textSecondary}}>{it.tax_code}</span></td>
+                  <td style={{fontWeight:600}}>{fmtEUR(it.net_amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        {/* Steuerübersicht */}
+        <div className="card" style={{padding:18}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Steuerübersicht</div>
+          {(d.tax_breakdown||[]).map(b=>(
+            <div key={b.code} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${T.bgSubtle}`,fontSize:12.5}}>
+              <span><span style={{fontFamily:F.mono,fontSize:10.5,background:T.bgMuted,borderRadius:3,padding:"1px 5px",marginRight:7}}>{b.code}</span>{b.label||`${b.rate} %`}</span>
+              <span style={{fontWeight:600}}>{fmtEUR(b.net)} → {fmtEUR(b.tax)}</span>
+            </div>
+          ))}
+          <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:5,fontSize:13.5}}>
+            <div style={{display:"flex",justifyContent:"space-between",color:T.textMuted}}><span>Netto</span><span>{fmtEUR(d.amount_net)}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",color:T.textMuted}}><span>Steuer</span><span>{fmtEUR(d.amount_tax)}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontWeight:800,fontSize:16,color:T.textPrimary,paddingTop:5,borderTop:`1px solid ${T.bgBorder}`}}><span>Brutto</span><span>{fmtEUR(d.amount_gross)}</span></div>
+          </div>
+          {(d.tax_breakdown||[]).filter(b=>b.note).map(b=>(
+            <div key={b.code+"n"} style={{marginTop:10,fontSize:11.5,color:T.textSecondary,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:"8px 10px"}}>{b.note}</div>
+          ))}
+        </div>
+
+        {/* Partner-Snapshot */}
+        <div className="card" style={{padding:18}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Geschäftspartner (Belegstand)</div>
+          {[["Name",d.partner_name],["USt-IdNr.",d.partner_vat_id||"—"],["Adresse",[d.partner_address,`${d.partner_zip||""} ${d.partner_city||""}`.trim(),d.partner_country].filter(Boolean).join(", ")||"—"],["E-Mail",d.partner_email||"—"],["Zahlungsziel",d.payment_terms_days?`${d.payment_terms_days} Tage`:"—"]].map(([l,v])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"6px 0",borderBottom:`1px solid ${T.bgSubtle}`,fontSize:12.5}}>
+              <span style={{color:T.textMuted,flexShrink:0}}>{l}</span><span style={{fontWeight:500,color:T.textPrimary,textAlign:"right"}}>{v}</span>
+            </div>
+          ))}
+          {d.notes&&<div style={{marginTop:10,fontSize:12.5,color:T.textSecondary}}><strong>Notiz:</strong> {d.notes}</div>}
+        </div>
+      </div>
+    </div>);
+  }
+
+  // ── LISTE ─────────────────────────────────────────────────────
+  return(<div className="fi">
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
+      <div>
+        <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Belege & Aufträge</h1>
+        <p style={{fontSize:12.5,color:T.textMuted,marginTop:2}}>Anfrage → Angebot → Auftrag → Lieferung → Rechnung — mit durchgängigem Belegfluss.</p>
+      </div>
+      <button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontWeight:700}} onClick={()=>{setForm(emptyForm);setView("create");setWarnings([]);}}>+ Neuer Beleg</button>
+    </div>
+    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:12,overflowX:"auto"}}>
+      {["all","request","quote","order","delivery"].map(t=>(
+        <button key={t} className={`tab ${tab===t?"active":""}`} onClick={()=>setTab(t)}>
+          {t==="all"?"Alle":DOC_LABELS[t]+"n"}
+          {t!=="all"&&<span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:"1px 5px",borderRadius:7,color:T.textMuted}}>{docs.filter(d=>d.doc_type===t).length}</span>}
+        </button>
+      ))}
+    </div>
+    <div style={{marginBottom:12}}>
+      <input className="input" style={{maxWidth:320}} placeholder="Suche: Nummer, Partner, Referenz…" value={search} onChange={e=>setSearch(e.target.value)}/>
+    </div>
+    <div className="card">
+      <div style={{overflowX:"auto"}}>
+      <table className="table">
+        <thead><tr>{["Beleg","Art","Partner","Datum","Brutto","Status"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <tbody>
+          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14}}/></td></tr>)
+          :filtered.map(d=>(
+            <tr key={d.id} className="tr-hover" style={{cursor:"pointer"}} onClick={()=>openDetail(d.id)}>
+              <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12.5,color:T.textPrimary}}>{d.doc_number}</td>
+              <td><span className="badge badge-purple" style={{fontSize:10.5}}>{DOC_LABELS[d.doc_type]}</span></td>
+              <td>{d.partner_name||"—"}</td>
+              <td style={{fontSize:12.5,color:T.textMuted}}>{d.doc_date?new Date(d.doc_date).toLocaleDateString("de-DE"):"—"}</td>
+              <td style={{fontWeight:600}}>{fmtEUR(d.amount_gross)}</td>
+              <td><StatusBadge status={d.status}/></td>
+            </tr>
+          ))}
+          {!loading&&filtered.length===0&&(
+            <tr><td colSpan={6} style={{padding:0}}>
+              <div style={{textAlign:"center",padding:"56px 24px",color:T.textMuted}}>
+                <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 16px"}}>🔗</div>
+                <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>Noch keine Belege</div>
+                <div style={{fontSize:13.5,marginBottom:18,maxWidth:400,margin:"0 auto 18px"}}>Starte mit einer Anfrage oder direkt einem Angebot — Folgebelege bis zur Rechnung entstehen per Klick, mit vollständigem Belegfluss.</div>
+                <button className="btn btn-primary" onClick={()=>{setForm(emptyForm);setView("create");}}>Ersten Beleg anlegen →</button>
+              </div>
+            </td></tr>
+          )}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>);
+}
+
+// ── ARTIKEL & LEISTUNGEN (Stammdaten) ─────────────────────────
+function ItemsScreen({notify}){
+  const[items,setItems]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[taxCodes,setTaxCodes]=useState([]);
+  const[modal,setModal]=useState(null); // null | {} (neu) | item (edit)
+  const[busy,setBusy]=useState(false);
+
+  const load=()=>{setLoading(true);api.listBusinessItems().then(d=>setItems(d.items||[])).catch(()=>setItems([])).finally(()=>setLoading(false));};
+  useEffect(()=>{load();api.getTaxCodes().then(d=>setTaxCodes(d.tax_codes||[])).catch(()=>setTaxCodes([{code:"S19",rate:19,label:"USt 19 %"}]));},[]);
+
+  const save=async()=>{
+    if(!(modal.name||"").trim()||modal.name.trim().length<2){notify("Name (min. 2 Zeichen) erforderlich","error");return;}
+    setBusy(true);
+    try{
+      const payload={name:modal.name.trim(),item_number:modal.item_number||"",description:modal.description||"",unit:modal.unit||"C62",unit_price:parseFloat(modal.unit_price)||0,tax_code:modal.tax_code||"S19",external_ref:modal.external_ref||""};
+      if(modal.id)await api.patchBusinessItem(modal.id,payload);
+      else await api.createBusinessItem(payload);
+      notify("Artikel gespeichert ✓","success");setModal(null);load();
+    }catch(e){notify(e.message,"error");}
+    setBusy(false);
+  };
+  const remove=async(id)=>{
+    try{await api.deleteBusinessItem(id);notify("Artikel deaktiviert","success");load();}
+    catch(e){notify(e.message,"error");}
+  };
+
+  return(<div className="fi">
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
+      <div>
+        <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Artikel & Leistungen</h1>
+        <p style={{fontSize:12.5,color:T.textMuted,marginTop:2}}>Stammdaten für Angebote, Aufträge und Rechnungen — mit Preis und Steuerkennzeichen.</p>
+      </div>
+      <button className="btn btn-primary btn-sm" style={{fontWeight:700}} onClick={()=>setModal({unit:"C62",tax_code:"S19",unit_price:0})}>+ Neuer Artikel</button>
+    </div>
+    <div className="card">
+      <div style={{overflowX:"auto"}}>
+      <table className="table">
+        <thead><tr>{["Artikel-Nr.","Name","Einheit","Einzelpreis","Steuer","ERP-Ref.",""].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <tbody>
+          {loading?[1,2].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
+          :items.map(it=>(
+            <tr key={it.id} className="tr-hover" style={{cursor:"pointer"}} onClick={()=>setModal({...it})}>
+              <td style={{fontFamily:F.mono,fontSize:12,color:T.textMuted}}>{it.item_number||"—"}</td>
+              <td style={{fontWeight:600,color:T.textPrimary}}>{it.name}</td>
+              <td style={{fontSize:12.5}}>{it.unit==="HUR"?"Stunde":it.unit==="C62"?"Stück":it.unit}</td>
+              <td style={{fontWeight:600}}>{fmtEUR(it.unit_price)}</td>
+              <td><span style={{fontFamily:F.mono,fontSize:11,background:T.bgMuted,borderRadius:4,padding:"2px 6px",color:T.textSecondary}}>{it.tax_code}</span></td>
+              <td style={{fontSize:12,color:T.textMuted,fontFamily:F.mono}}>{it.external_ref||"—"}</td>
+              <td onClick={e=>e.stopPropagation()}><button className="btn btn-danger btn-sm" onClick={()=>remove(it.id)}>Deaktivieren</button></td>
+            </tr>
+          ))}
+          {!loading&&items.length===0&&(
+            <tr><td colSpan={7} style={{textAlign:"center",padding:36,color:T.textMuted,fontSize:13.5}}>
+              Noch keine Artikel — lege wiederverwendbare Leistungen mit Preis und Steuerkennzeichen an.
+            </td></tr>
+          )}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(null)}>
+      <div className="modal sci" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+          <div style={{fontSize:16,fontWeight:700,color:T.textPrimary}}>{modal.id?"Artikel bearbeiten":"Neuer Artikel"}</div>
+          <button onClick={()=>setModal(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.textMuted}}>×</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:11}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 130px",gap:10}}>
+            <div><label className="label">Name *</label><input className="input" value={modal.name||""} onChange={e=>setModal(p=>({...p,name:e.target.value}))} placeholder="Beratung Senior" autoFocus/></div>
+            <div><label className="label">Artikel-Nr.</label><input className="input" value={modal.item_number||""} onChange={e=>setModal(p=>({...p,item_number:e.target.value}))} placeholder="A-100"/></div>
+          </div>
+          <div><label className="label">Beschreibung</label><input className="input" value={modal.description||""} onChange={e=>setModal(p=>({...p,description:e.target.value}))}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <div><label className="label">Einzelpreis €</label><input className="input" type="number" min="0" step="0.01" value={modal.unit_price} onChange={e=>setModal(p=>({...p,unit_price:e.target.value}))}/></div>
+            <div><label className="label">Einheit</label>
+              <select className="select" value={modal.unit||"C62"} onChange={e=>setModal(p=>({...p,unit:e.target.value}))}>
+                <option value="C62">Stück</option><option value="HUR">Stunde</option><option value="DAY">Tag</option><option value="KGM">kg</option><option value="MTR">Meter</option>
+              </select>
+            </div>
+            <div><label className="label">Steuerkennzeichen</label>
+              <select className="select" value={modal.tax_code||"S19"} onChange={e=>setModal(p=>({...p,tax_code:e.target.value}))}>
+                {taxCodes.map(t=><option key={t.code} value={t.code}>{t.code} — {t.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div><label className="label">ERP-Referenz (z.B. SAP-Materialnummer)</label><input className="input" value={modal.external_ref||""} onChange={e=>setModal(p=>({...p,external_ref:e.target.value}))} placeholder="MATNR / DATEV-Konto"/></div>
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18}}>
+          <button className="btn btn-ghost" onClick={()=>setModal(null)}>Abbrechen</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy?<><Spinner color="#fff" size={13}/>&nbsp;Speichert…</>:"Speichern"}</button>
+        </div>
+      </div>
+    </div>}
+  </div>);
+}
+
+// ── KUNDEN (Stammdaten) ───────────────────────────────────────
+function KundenScreen({notify}){
+  const[customers,setCustomers]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[search,setSearch]=useState("");
+  const[modal,setModal]=useState(null);
+  const[busy,setBusy]=useState(false);
+
+  const load=()=>{setLoading(true);api.listCustomers().then(d=>setCustomers(d.customers||[])).catch(()=>setCustomers([])).finally(()=>setLoading(false));};
+  useEffect(()=>{load();},[]);
+
+  const save=async()=>{
+    if(!(modal.name||"").trim()||modal.name.trim().length<2){notify("Name (min. 2 Zeichen) erforderlich","error");return;}
+    setBusy(true);
+    try{
+      const payload={name:modal.name.trim(),vat_id:modal.vat_id||"",address:modal.address||"",zip:modal.zip||"",city:modal.city||"",country:modal.country||"DE",email:modal.email||"",payment_terms_days:parseInt(modal.payment_terms_days)||30,external_ref:modal.external_ref||""};
+      if(modal.id)await api.req("PATCH",`/customers/${modal.id}`,payload);
+      else await api.post("/customers",payload);
+      notify("Kunde gespeichert ✓","success");setModal(null);load();
+    }catch(e){notify(e.message,"error");}
+    setBusy(false);
+  };
+
+  const filtered=customers.filter(c=>!search||(c.name||"").toLowerCase().includes(search.toLowerCase())||(c.vat_id||"").includes(search));
+
+  return(<div className="fi">
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
+      <div>
+        <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Kunden</h1>
+        <p style={{fontSize:12.5,color:T.textMuted,marginTop:2}}>Geschäftspartner-Stammdaten — fließen in Belege und Rechnungen ein und lernen aus jeder Rechnung mit.</p>
+      </div>
+      <button className="btn btn-primary btn-sm" style={{fontWeight:700}} onClick={()=>setModal({country:"DE",payment_terms_days:30})}>+ Neuer Kunde</button>
+    </div>
+    <div style={{marginBottom:12}}>
+      <input className="input" style={{maxWidth:320}} placeholder="Suche: Name, USt-IdNr.…" value={search} onChange={e=>setSearch(e.target.value)}/>
+    </div>
+    <div className="card">
+      <div style={{overflowX:"auto"}}>
+      <table className="table">
+        <thead><tr>{["Name","USt-IdNr.","Ort","Land","Zahlungsziel","Rechnungen","Letzte Rechnung"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <tbody>
+          {loading?[1,2].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
+          :filtered.map(c=>(
+            <tr key={c.id} className="tr-hover" style={{cursor:"pointer"}} onClick={()=>setModal({...c})}>
+              <td style={{fontWeight:600,color:T.textPrimary}}>{c.name}</td>
+              <td style={{fontFamily:F.mono,fontSize:12}}>{c.vat_id||"—"}</td>
+              <td style={{fontSize:12.5}}>{c.city||"—"}</td>
+              <td style={{fontSize:12.5}}>{c.country||"DE"}</td>
+              <td style={{fontSize:12.5}}>{c.payment_terms_days?`${c.payment_terms_days} Tage`:"—"}</td>
+              <td style={{fontWeight:600}}>{c.invoice_count||0}</td>
+              <td style={{fontSize:12,color:T.textMuted}}>{c.last_invoice_at?new Date(c.last_invoice_at).toLocaleDateString("de-DE"):"—"}</td>
+            </tr>
+          ))}
+          {!loading&&filtered.length===0&&(
+            <tr><td colSpan={7} style={{textAlign:"center",padding:36,color:T.textMuted,fontSize:13.5}}>
+              Noch keine Kunden — sie entstehen automatisch aus Rechnungen oder werden hier manuell angelegt.
+            </td></tr>
+          )}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(null)}>
+      <div className="modal sci" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+          <div style={{fontSize:16,fontWeight:700,color:T.textPrimary}}>{modal.id?"Kunde bearbeiten":"Neuer Kunde"}</div>
+          <button onClick={()=>setModal(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.textMuted}}>×</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:11}}>
+          <div><label className="label">Firma *</label><input className="input" value={modal.name||""} onChange={e=>setModal(p=>({...p,name:e.target.value}))} autoFocus/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><label className="label">USt-IdNr.</label><input className="input" value={modal.vat_id||""} onChange={e=>setModal(p=>({...p,vat_id:e.target.value}))} placeholder="DE123456789"/></div>
+            <div><label className="label">E-Mail</label><input className="input" type="email" value={modal.email||""} onChange={e=>setModal(p=>({...p,email:e.target.value}))}/></div>
+          </div>
+          <div><label className="label">Straße</label><input className="input" value={modal.address||""} onChange={e=>setModal(p=>({...p,address:e.target.value}))}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"100px 1fr 90px",gap:10}}>
+            <div><label className="label">PLZ</label><input className="input" value={modal.zip||""} onChange={e=>setModal(p=>({...p,zip:e.target.value}))}/></div>
+            <div><label className="label">Stadt</label><input className="input" value={modal.city||""} onChange={e=>setModal(p=>({...p,city:e.target.value}))}/></div>
+            <div><label className="label">Land</label><input className="input" value={modal.country||"DE"} onChange={e=>setModal(p=>({...p,country:e.target.value.toUpperCase().slice(0,2)}))}/></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><label className="label">Zahlungsziel (Tage)</label><input className="input" type="number" min="0" max="365" value={modal.payment_terms_days??30} onChange={e=>setModal(p=>({...p,payment_terms_days:e.target.value}))}/></div>
+            <div><label className="label">ERP-Referenz (SAP KUNNR / Debitor)</label><input className="input" value={modal.external_ref||""} onChange={e=>setModal(p=>({...p,external_ref:e.target.value}))}/></div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18}}>
+          <button className="btn btn-ghost" onClick={()=>setModal(null)}>Abbrechen</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy?<><Spinner color="#fff" size={13}/>&nbsp;Speichert…</>:"Speichern"}</button>
+        </div>
+      </div>
+    </div>}
+  </div>);
+}
 
 function ArchiveScreen({notify}){
   const[docs,setDocs]=useState([]);
@@ -4210,6 +4841,9 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
       {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)}/>}
           {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify} org={org}/>}
+          {nav==="belege"&&<BusinessScreen notify={notify} onOpenInvoice={()=>onNav("invoices")}/>}
+          {nav==="artikel"&&<ItemsScreen notify={notify}/>}
+          {nav==="kunden"&&<KundenScreen notify={notify}/>}
           {nav==="steuerberater"&&(
             hasKanzlei
               ? <PortalErrorBoundary><SteuerberaterPortal user={user} org={org} notify={notify} onBack={()=>setNav('dashboard')}/></PortalErrorBoundary>
