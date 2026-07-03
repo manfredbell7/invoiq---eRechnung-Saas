@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, Component } from "react";
-import OnboardingWizard from "./OnboardingWizard.jsx"; class PortalErrorBoundary extends Component{constructor(p){super(p);this.state={err:false};}static getDerivedStateFromError(){return{err:true};}componentDidCatch(e,i){console.error('Portal crash:',e,i);}render(){if(this.state.err)return(<div style={{padding:40,textAlign:'center',color:'#697386'}}><div style={{fontSize:40}}>⚠️</div><h3 style={{color:'#0A2540',marginTop:8}}>Kanzlei-Portal nicht verfügbar</h3><p>Ein Fehler ist aufgetreten. Bitte laden Sie die Seite neu.</p><button onClick={()=>this.setState({err:false})} style={{marginTop:16,padding:'10px 20px',background:'#635BFF',color:'#fff',border:'none',borderRadius:8,cursor:'pointer'}}>Erneut versuchen</button></div>);return this.props.children;}}
+import OnboardingWizard from "./OnboardingWizard.jsx";
+import { T, F, CSS } from "./theme.js"; class PortalErrorBoundary extends Component{constructor(p){super(p);this.state={err:false};}static getDerivedStateFromError(){return{err:true};}componentDidCatch(e,i){console.error('Portal crash:',e,i);}render(){if(this.state.err)return(<div style={{padding:40,textAlign:'center',color:'#697386'}}><div style={{fontSize:40}}>⚠️</div><h3 style={{color:'#0A2540',marginTop:8}}>Kanzlei-Portal nicht verfügbar</h3><p>Ein Fehler ist aufgetreten. Bitte laden Sie die Seite neu.</p><button onClick={()=>this.setState({err:false})} style={{marginTop:16,padding:'10px 20px',background:'#635BFF',color:'#fff',border:'none',borderRadius:8,cursor:'pointer'}}>Erneut versuchen</button></div>);return this.props.children;}}
 
 /* ═══════════════════════════════════════════════════════════════
    invoiq — Complete App · Design System v2
@@ -8,47 +9,8 @@ import OnboardingWizard from "./OnboardingWizard.jsx"; class PortalErrorBoundary
    Fonts: Instrument Serif + Inter
    ═══════════════════════════════════════════════════════════════ */
 
-const T = {
-  // invoiq v3 — richer, more vivid SaaS palette (deep indigo brand, vivid violet accent)
-  brand:     "#101B3D",   // deeper, richer navy-indigo
-  brandMid:  "#1E2A57",
-  brandLite: "#3D4A7A",
-  accent:    "#6D5BFF",   // vivid violet-blue
-  accentHover:"#5A45F0",
-  accentLight:"#EFEBFF",
-  accentPale: "#DCD4FF",
 
-  bg:        "#FFFFFF",
-  bgSubtle:  "#F7F8FF",   // soft violet-tinted off-white (was flat gray)
-  bgGradient:"linear-gradient(180deg,#F7F8FF 0%,#F1F3FC 100%)", // for full-page backgrounds only
-  bgMuted:   "#ECEEFA",
-  bgBorder:  "#DBDDF0",
 
-  textPrimary:  "#101B3D",
-  textSecondary:"#3D4A7A",
-  textMuted:    "#6B7399",
-  textPlaceholder:"#9FA6C4",
-
-  // Semantic — more saturated, more "alive"
-  green:    "#0F9D58",  greenBg:"#E9FBF1",  greenBdr:"#B7EBCD",
-  red:      "#E0392B",  redBg:  "#FEEDEC",  redBdr:  "#F8C4C0",
-  amber:    "#D97706",  amberBg:"#FFF6E5",  amberBdr:"#FBDFA0",
-  blue:     "#2D6BFF",  blueBg: "#EAF1FF",  blueBdr: "#BFD4FF",
-  purple:   "#6D5BFF",  purpleBg:"#EFEBFF", purpleBdr:"#DCD4FF",
-  gray:     "#6B7399",  grayBg: "#F7F8FF",  grayBdr: "#DBDDF0",
-
-  // Deeper, more present shadows for visible elevation/depth
-  shadow1: "0 1px 2px rgba(16,27,61,.06), 0 2px 6px rgba(35,30,110,.10)",
-  shadow2: "0 3px 6px rgba(16,27,61,.07), 0 6px 16px rgba(35,30,110,.14)",
-  shadow3: "0 6px 12px rgba(16,27,61,.08), 0 12px 32px rgba(35,30,110,.16)",
-  shadowXl:"0 10px 22px rgba(16,27,61,.10), 0 28px 64px rgba(35,30,110,.20)",
-};
-// Stripe uses -apple-system / Inter — NO decorative display fonts in UI
-const F={
-  display:"'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-  ui:     "'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-  mono:   "'JetBrains Mono',ui-monospace,SFMono-Regular,monospace",
-};
 
 const API_BASE=(import.meta?.env?.VITE_API_URL)||"https://api.invoiq.io/v1";
 const api={
@@ -128,345 +90,9 @@ const fmtEUR=n=>new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"})
 const fmtNum=n=>new Intl.NumberFormat("de-DE").format(n||0);
 const fmtAgo=d=>{const s=Date.now()-new Date(d);if(s<3600000)return`vor ${Math.floor(s/60000)} Min.`;if(s<86400000)return`vor ${Math.floor(s/3600000)} Std.`;return"gestern";};
 
-const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-body{font-family:${F.ui};background:${T.bgGradient};color:${T.textPrimary};font-size:14px;line-height:1.5;letter-spacing:-.01em;}
-::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:${T.bgBorder};border-radius:2px;}
 
-/* Animations */
-@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-@keyframes scaleIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-
-.fi{animation:fadeIn .25s ease both}
-.fu{animation:fadeUp .4s cubic-bezier(.16,1,.3,1) both}
-.fu2{animation:fadeUp .4s .06s cubic-bezier(.16,1,.3,1) both}
-.fu3{animation:fadeUp .4s .12s cubic-bezier(.16,1,.3,1) both}
-.fu4{animation:fadeUp .4s .18s cubic-bezier(.16,1,.3,1) both}
-.fu5{animation:fadeUp .4s .24s cubic-bezier(.16,1,.3,1) both}
-.sci{animation:scaleIn .2s cubic-bezier(.16,1,.3,1) both}
-
-/* Skeleton */
-.skeleton{
-  background:linear-gradient(90deg,${T.bgMuted} 25%,${T.bgSubtle} 50%,${T.bgMuted} 75%);
-  background-size:400px 100%;
-  animation:shimmer 1.2s ease-in-out infinite;
-  border-radius:4px;
-}
-
-/* ── Buttons — Stripe-precise ── */
-.btn{
-  font-family:${F.ui};font-size:13.5px;font-weight:500;
-  cursor:pointer;border-radius:6px;border:none;
-  display:inline-flex;align-items:center;gap:6px;
-  transition:all .14s ease;white-space:nowrap;
-  letter-spacing:-.01em;text-decoration:none;
-}
-.btn:active{transform:scale(.985)!important;filter:brightness(.96);}
-.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important;}
-
-/* Primary — Stripe's indigo */
-.btn-primary{
-  background:${T.accent};color:#fff;
-  padding:8px 16px;
-  box-shadow:0 0 0 1px rgba(99,91,255,.2),0 1px 3px rgba(99,91,255,.25),inset 0 1px 0 rgba(255,255,255,.1);
-}
-.btn-primary:hover{background:${T.accentHover};box-shadow:0 0 0 1px rgba(79,70,229,.3),0 2px 6px rgba(79,70,229,.3),inset 0 1px 0 rgba(255,255,255,.1);}
-
-/* Dark — Stripe's brand button */
-.btn-dark{
-  background:${T.brand};color:#fff;padding:8px 16px;
-  box-shadow:0 0 0 1px rgba(10,37,64,.2),0 1px 3px rgba(10,37,64,.3),inset 0 1px 0 rgba(255,255,255,.06);
-}
-.btn-dark:hover{background:${T.brandMid};}
-
-/* Ghost — subtle border */
-.btn-ghost{
-  background:${T.bg};color:${T.textSecondary};
-  border:1px solid ${T.bgBorder};padding:7px 14px;
-  box-shadow:0 1px 2px rgba(0,0,0,.05);
-}
-.btn-ghost:hover{background:${T.bgSubtle};border-color:${T.textPlaceholder};color:${T.textPrimary};}
-
-.btn-outline{background:transparent;color:${T.accent};border:1px solid ${T.accentPale};padding:6px 13px;font-size:13px;}
-.btn-outline:hover{background:${T.accentLight};}
-.btn-danger{background:${T.bg};color:${T.red};border:1px solid ${T.redBdr};padding:6px 13px;font-size:12.5px;}
-.btn-success{background:${T.bg};color:${T.green};border:1px solid ${T.greenBdr};padding:6px 13px;font-size:12.5px;}
-.btn-lg{padding:10px 22px;font-size:15px;font-weight:600;border-radius:8px;}
-.btn-sm{padding:5px 10px;font-size:12px;border-radius:5px;}
-.btn-xl{padding:13px 32px;font-size:16px;font-weight:600;border-radius:8px;}
-
-/* ── Inputs — Stripe-exact ── */
-.input{
-  width:100%;background:${T.bg};
-  border:1px solid ${T.bgBorder};border-radius:6px;
-  padding:8px 12px;font-family:${F.ui};font-size:14px;
-  color:${T.textPrimary};outline:none;
-  box-shadow:0 1px 1px rgba(0,0,0,.04),0 2px 4px rgba(10,37,64,.06);
-  transition:border-color .14s,box-shadow .14s;
-}
-.input:focus{
-  border-color:${T.accent};
-  box-shadow:0 0 0 2px rgba(99,91,255,.15),0 1px 1px rgba(0,0,0,.04);
-}
-.input::placeholder{color:${T.textPlaceholder};}
-.select{
-  width:100%;background:${T.bg};border:1px solid ${T.bgBorder};border-radius:6px;
-  padding:8px 12px;font-family:${F.ui};font-size:14px;color:${T.textPrimary};
-  outline:none;cursor:pointer;
-  box-shadow:0 1px 1px rgba(0,0,0,.04);
-  transition:border-color .14s;
-}
-.select:focus{border-color:${T.accent};}
-.label{
-  display:block;font-size:12px;font-weight:500;
-  color:${T.textSecondary};margin-bottom:5px;
-}
-
-/* ── Cards — Stripe's layered approach ── */
-.card{
-  background:${T.bg};border:1px solid rgba(221,225,231,.6);
-  border-radius:14px;
-  box-shadow:0 16px 32px -20px rgba(10,37,64,.07);
-  transition:box-shadow .3s cubic-bezier(.16,1,.3,1),transform .3s cubic-bezier(.16,1,.3,1),border-color .2s;
-}
-.card-hover:hover,.card.tr-target:hover{
-  border-color:rgba(99,91,255,.25);
-  box-shadow:0 20px 40px -18px rgba(10,37,64,.13);
-  transform:translateY(-2px);
-}
-
-/* ── Table ── */
-.table{width:100%;border-collapse:collapse;}
-.table th{
-  text-align:left;padding:9px 14px;
-  font-size:11px;color:${T.textMuted};font-weight:600;
-  letter-spacing:.6px;text-transform:uppercase;
-  border-bottom:1px solid ${T.bgBorder};
-  background:${T.bgSubtle};
-}
-.table th:first-child{border-radius:8px 0 0 0;}
-.table th:last-child{border-radius:0 8px 0 0;}
-.table td{
-  padding:11px 14px;font-size:13.5px;
-  border-bottom:1px solid ${T.bgSubtle};
-  vertical-align:middle;
-  font-variant-numeric:tabular-nums;
-}
-.tr-hover{transition:background .15s;}
-.tr-hover:hover{background:${T.accentLight};cursor:pointer;}
-
-/* ── Badges — Stripe minimal ── */
-.badge{
-  display:inline-flex;align-items:center;gap:3px;
-  border-radius:4px;padding:2px 7px;
-  font-size:11px;font-weight:600;letter-spacing:.2px;
-}
-.badge-green {background:${T.greenBg};color:${T.green}; border:1px solid ${T.greenBdr};}
-.badge-red   {background:${T.redBg};  color:${T.red};   border:1px solid ${T.redBdr};}
-.badge-amber {background:${T.amberBg};color:${T.amber}; border:1px solid ${T.amberBdr};}
-.badge-blue  {background:${T.blueBg}; color:${T.blue};  border:1px solid ${T.blueBdr};}
-.badge-purple{background:${T.accentLight};color:${T.accent};border:1px solid ${T.accentPale};}
-.badge-gray  {background:${T.bgMuted};color:${T.textSecondary};border:1px solid ${T.bgBorder};}
-
-/* ── Navigation ── */
-.nav-item{
-  display:flex;align-items:center;gap:9px;
-  padding:7px 11px;background:transparent;
-  color:${T.textMuted};border:none;border-radius:8px;
-  cursor:pointer;font-size:13px;font-weight:500;
-  text-align:left;width:100%;font-family:${F.ui};
-  transition:all .18s cubic-bezier(.16,1,.3,1);
-  position:relative;
-}
-.nav-item:hover{color:${T.textPrimary};background:${T.bgMuted};transform:translateX(2px);}
-.nav-item.active{color:${T.accent};background:${T.accentLight};font-weight:600;}
-.nav-item.active::before{
-  content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);
-  width:3px;height:16px;border-radius:0 3px 3px 0;background:${T.accent};
-}
-.nav-item:active{transform:scale(.98);}
-.nav-section{
-  font-size:10px;font-weight:600;color:${T.textPlaceholder};
-  letter-spacing:.8px;text-transform:uppercase;
-  padding:12px 10px 4px;
-}
-
-/* ── Layout ── */
-.sidebar{
-  width:218px;
-  background:linear-gradient(180deg,${T.bg} 0%,${T.bgSubtle} 100%);
-  border-right:1px solid ${T.bgBorder};
-  display:flex;flex-direction:column;flex-shrink:0;
-  position:sticky;top:0;height:100vh;overflow-y:auto;
-}
-.topbar{
-  height:50px;border-bottom:1px solid ${T.bgBorder};
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 24px;background:${T.bg};flex-shrink:0;
-}
-
-/* ── Misc ── */
-.divider{height:1px;background:${T.bgBorder};}
-.progress{height:3px;background:${T.bgMuted};border-radius:3px;overflow:hidden;}
-.progress-fill{height:100%;background:linear-gradient(90deg,${T.accent},#8B7FFF);border-radius:3px;transition:width .5s cubic-bezier(.16,1,.3,1);}
-.stat-num{
-  font-family:${F.mono};font-size:27px;font-weight:700;
-  color:${T.textPrimary};line-height:1;letter-spacing:-.04em;
-  font-variant-numeric:tabular-nums;
-}
-.tab{
-  padding:8px 14px;font-size:13px;font-weight:500;
-  color:${T.textMuted};border:none;background:transparent;
-  cursor:pointer;border-bottom:2px solid transparent;
-  font-family:${F.ui};transition:all .12s;
-  letter-spacing:-.01em;
-}
-.tab.active{color:${T.textPrimary};border-bottom-color:${T.accent};font-weight:600;}
-.tab:hover{color:${T.textSecondary};}
-.avatar{
-  width:26px;height:26px;border-radius:50%;
-  background:${T.accentLight};display:flex;
-  align-items:center;justify-content:center;
-  font-size:11px;font-weight:700;color:${T.accent};flex-shrink:0;
-}
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(10,37,64,.4);
-  z-index:1000;display:flex;align-items:center;justify-content:center;
-  padding:24px;backdrop-filter:blur(4px);
-}
-.modal{
-  background:${T.bg};border-radius:8px;padding:24px;
-  max-width:480px;width:100%;
-  box-shadow:0 4px 8px rgba(0,0,0,.04),0 20px 48px rgba(10,37,64,.16);
-}
-
-/* ── Landing-specific ── */
-.hero-pill{
-  display:inline-flex;align-items:center;gap:6px;
-  background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:20px;padding:4px 12px;
-  font-size:12px;color:${T.textSecondary};font-weight:500;
-  box-shadow:0 1px 2px rgba(0,0,0,.05);
-}
-.feature-card{
-  background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:8px;padding:22px;
-  transition:all .15s;
-  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 6px rgba(10,37,64,.05);
-}
-.feature-card:hover{
-  border-color:${T.textPlaceholder};
-  box-shadow:0 2px 4px rgba(0,0,0,.04),0 6px 16px rgba(10,37,64,.08);
-  transform:translateY(-2px);
-}
-.pricing-card{
-  background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:8px;padding:28px;
-  transition:all .15s;
-  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 6px rgba(10,37,64,.05);
-}
-.pricing-card:hover{
-  box-shadow:0 4px 8px rgba(0,0,0,.04),0 12px 32px rgba(10,37,64,.1);
-  transform:translateY(-2px);
-}
-.pricing-card.featured{background:${T.brand};border-color:${T.brand};}
-/* Integration logo pills — futuristic */
-.integration-logo{
-  display:inline-flex;align-items:center;gap:9px;
-  padding:11px 20px;
-  background:rgba(10,37,64,.04);
-  border:1px solid rgba(99,91,255,.18);
-  border-radius:10px;
-  font-size:13px;font-weight:600;letter-spacing:-.01em;
-  color:${T.textSecondary};
-  white-space:nowrap;cursor:default;
-  transition:border-color .2s,color .2s,background .2s,box-shadow .2s,transform .2s;
-  user-select:none;flex-shrink:0;
-  position:relative;
-  overflow:hidden;
-}
-.integration-logo::before{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(99,91,255,.07) 0%,transparent 60%);
-  pointer-events:none;
-}
-.integration-logo:hover{
-  border-color:rgba(99,91,255,.55);
-  color:${T.textPrimary};
-  background:rgba(99,91,255,.07);
-  box-shadow:0 0 0 1px rgba(99,91,255,.15),0 4px 20px rgba(99,91,255,.15);
-  transform:translateY(-2px);
-}
-@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-@keyframes shimmerX{0%{background-position:-200% 0}100%{background-position:200% 0}}
-@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
-@keyframes drawIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-.bento-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;}
-.bento-grid .bento-wide{grid-column:span 2;}
-@media(max-width:768px){.bento-grid{grid-template-columns:1fr;}.bento-grid .bento-wide{grid-column:span 1;}}
-.zg-grid{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:16px;}
-@media(max-width:768px){.zg-grid{grid-template-columns:1fr;}}
-.btn:active{transform:translateY(1px) scale(.985);}
-.bento-card{background:#fff;border:1px solid rgba(221,225,231,.55);border-radius:18px;padding:26px;position:relative;overflow:hidden;transition:box-shadow .3s cubic-bezier(.16,1,.3,1),transform .3s cubic-bezier(.16,1,.3,1);box-shadow:0 18px 38px -18px rgba(10,37,64,.06);}
-.bento-card:hover{transform:translateY(-3px);box-shadow:0 24px 48px -16px rgba(10,37,64,.12);}
-.live-dot{width:7px;height:7px;border-radius:50%;display:inline-block;animation:pulseDot 2.4s ease-in-out infinite;}
-.shimmer-bar{background:linear-gradient(90deg,rgba(99,91,255,.07) 25%,rgba(99,91,255,.16) 50%,rgba(99,91,255,.07) 75%);background-size:200% 100%;animation:shimmerX 2.6s linear infinite;}
-.marquee-track{
-  display:flex;gap:10px;
-  animation:marquee 32s linear infinite;
-  width:max-content;
-}
-.marquee-track:hover{animation-play-state:paused;}
-.marquee-wrap{
-  overflow:hidden;
-  mask-image:linear-gradient(to right,transparent 0%,black 10%,black 90%,transparent 100%);
-  -webkit-mask-image:linear-gradient(to right,transparent 0%,black 10%,black 90%,transparent 100%);
-}
-.connector-card{
-  background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:8px;padding:16px;transition:all .14s;cursor:pointer;
-  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 4px rgba(10,37,64,.05);
-}
-.connector-card:hover{border-color:${T.accent};box-shadow:0 2px 4px rgba(0,0,0,.04),0 4px 12px rgba(10,37,64,.08);transform:translateY(-1px);}
-.connector-card.connected{border-color:${T.greenBdr};background:${T.greenBg};}
-
-/* Scroll reveal */
-.reveal{opacity:0;transform:translateY(20px);transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1);}
-.reveal.visible{opacity:1;transform:none;}
-
-/* Mobile-Navigation: Sidebar als Overlay-Drawer statt ersatzlos versteckt */
-.mobile-menu-btn{display:none;}
-.mobile-nav-overlay{display:none;}
-@media(max-width:768px){
-  .sidebar{display:none;}
-  .sidebar.mobile-open{
-    display:flex;position:fixed;top:0;left:0;bottom:0;z-index:1300;
-    width:min(280px,82vw);height:100vh;
-    box-shadow:0 0 0 100vmax rgba(10,37,64,.35),8px 0 32px rgba(10,37,64,.25);
-    animation:drawerIn .22s cubic-bezier(.16,1,.3,1);
-  }
-  @keyframes drawerIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
-  .mobile-menu-btn{
-    display:flex;align-items:center;justify-content:center;
-    width:34px;height:34px;border-radius:8px;flex-shrink:0;
-    background:${T.bgSubtle};border:1px solid ${T.bgBorder};cursor:pointer;
-  }
-  .mobile-nav-overlay{display:block;position:fixed;inset:0;z-index:1299;}
-  .topbar{padding:0 12px;gap:8px;}
-}
-`;
-
-function Wordmark({size=22,inverted=false}){
+function Wordmark({size=22,inverted=false,iconOnly=false}){
   const c=inverted?"#fff":T.textPrimary,a=inverted?"#93C5FD":T.accent;
   return(<div style={{display:"flex",alignItems:"center",gap:8,userSelect:"none",flexShrink:0}}>
     <div style={{width:size,height:size,background:inverted?"rgba(255,255,255,.15)":T.brand,borderRadius:Math.round(size*.26),display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -477,7 +103,7 @@ function Wordmark({size=22,inverted=false}){
         <rect x="15.8" y="7" width="2.5" height="10" rx="1.25" fill={inverted?T.brand:"#fff"}/>
       </svg>
     </div>
-    <span style={{fontFamily:F.ui,fontSize:size*.9,fontWeight:400,color:c,letterSpacing:"-.02em"}}>inv<span style={{color:a}}>o</span>iq</span>
+    {!iconOnly&&<span style={{fontFamily:F.ui,fontSize:size*.9,fontWeight:400,color:c,letterSpacing:"-.02em"}}>inv<span style={{color:a}}>o</span>iq</span>}
   </div>);
 }
 
@@ -497,6 +123,34 @@ function Toast({msg,type,onClose}){
   return(<div onClick={onClose} style={{position:"fixed",bottom:24,right:24,zIndex:9999,background:T.bg,border:`1px solid ${s[2]}`,borderRadius:10,padding:"12px 18px",fontSize:13.5,fontWeight:500,color:s[0],maxWidth:380,boxShadow:T.shadowXl,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontFamily:F.ui}}>
     <div style={{width:20,height:20,borderRadius:"50%",background:s[1],border:`1px solid ${s[2]}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{s[3]}</div>{msg}
   </div>);
+}
+
+// ── Zentrale Zustands-Komponenten ─────────────────────────────
+// Alert: fachliche Hinweise/Fehler (severity: error | warning | info | success)
+function Alert({severity="info",children,style}){
+  const s={
+    error:  [T.red,  T.redBg,  T.redBdr,  "✗"],
+    warning:[T.amber,T.amberBg,T.amberBdr,"⚠"],
+    success:[T.green,T.greenBg,T.greenBdr,"✓"],
+    info:   [T.accent,T.accentLight,T.accentPale,"i"],
+  }[severity]||[T.accent,T.accentLight,T.accentPale,"i"];
+  return(
+    <div role="alert" style={{padding:"10px 13px",borderRadius:8,fontSize:12.5,display:"flex",gap:9,alignItems:"flex-start",background:s[1],border:`1px solid ${s[2]}`,color:s[0],lineHeight:1.55,...style}}>
+      <span style={{flexShrink:0,fontWeight:700}}>{s[3]}</span><div style={{flex:1}}>{children}</div>
+    </div>
+  );
+}
+
+// EmptyState: Leerer Zustand mit Icon, Erklärung und Primäraktion
+function EmptyState({icon="📄",title,text,cta,onCta}){
+  return(
+    <div style={{textAlign:"center",padding:"52px 24px",color:T.textMuted}}>
+      <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 16px"}}>{icon}</div>
+      <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>{title}</div>
+      {text&&<div style={{fontSize:13.5,marginBottom:cta?18:0,maxWidth:420,margin:cta?"0 auto 18px":"0 auto"}}>{text}</div>}
+      {cta&&<button className="btn btn-primary" onClick={onCta}>{cta}</button>}
+    </div>
+  );
 }
 
 function MiniChart({data,color=T.accent,height=40}){
@@ -559,7 +213,7 @@ function Landing({onEnter,onLegal=()=>{}}){
   const heroTabs=[
     {label:'Overview',content:(
       <div style={{padding:16}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:12}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:8,marginBottom:12}}>
           {[['41','Versendet','▲ +8%',T.green],['28','Empfangen','Diese Woche',T.accent],['1','Fehler','Prüfen',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
             <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'9px 10px',border:`1px solid ${T.bgBorder}`}}>
               <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{l}</div>
@@ -798,7 +452,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                 </div>
                 <div style={{flex:1,overflow:'hidden'}}>
                   {heroTab===0&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:7,marginBottom:10}}>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:7,marginBottom:10}}>
                       {[['41','Versendet','▲ +8%',T.green],['28','Empfangen','Diese Woche',T.accent],['1','Fehler','Prüfen',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
                         <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'8px 10px',border:`1px solid ${T.bgBorder}`}}>
                           <div style={{fontSize:9.5,color:T.textMuted,marginBottom:3}}>{l}</div>
@@ -936,7 +590,7 @@ function Landing({onEnter,onLegal=()=>{}}){
               </div>
             </div>
           </div>
-          {heroTab===6&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>{org?.plan==='enterprise'||org?.plan==='kanzlei'?<div><div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:12}}>Kanzlei-Portal</div><div style={{fontSize:10.5,color:T.textMuted,marginBottom:16}}>Mandanten-Dokumente verwalten und XRechnungen erstellen.</div><div style={{background:T.bgSubtle,borderRadius:8,padding:12}}><div style={{fontSize:10.5,color:T.textMuted}}>Mandantenverwaltung in Entwicklung.</div></div></div>:<div style={{textAlign:'center',padding:'40px 20px'}}><div style={{fontSize:40,marginBottom:12}}>🏛️</div><div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:8}}>Kanzlei-Portal</div><div style={{fontSize:10.5,color:T.textMuted,marginBottom:20}}>Diese Funktion ist nur im Enterprise-Abo verfügbar.</div><button className="btn btn-primary" style={{fontSize:10.5,padding:'6px 16px'}} onClick={()=>api.createCheckout('enterprise','monthly').then(r=>{if(r?.url)window.location.href=r.url})}>Jetzt upgraden</button></div>}</div>}{/* Floating notification */}
+          {heroTab===6&&<div style={{padding:14,animation:'fadeIn .3s ease',textAlign:'center'}}><div style={{fontSize:40,marginBottom:12}}>🏛️</div><div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:8}}>Kanzlei-Portal</div><div style={{fontSize:10.5,color:T.textMuted}}>Alle Mandanten zentral verwalten — enthalten ab dem Business-Plan.</div></div>}{/* Floating notification */}
           <div style={{position:'absolute',bottom:-18,right:-14,background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:9,padding:'10px 14px',boxShadow:T.shadow3,display:'flex',alignItems:'center',gap:10,zIndex:2}}>
             <div style={{width:28,height:28,borderRadius:6,background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1203,7 +857,7 @@ function Landing({onEnter,onLegal=()=>{}}){
         </div>
 
         {/* Plan cards */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:20}}>
           {[
             {
               name:'FREE',price:0,yearly:0,docs:'10 Rechnungen/Monat',
@@ -1447,12 +1101,30 @@ function ResetPassword({onDone,notify}){
 }
 
 // ── APP SHELL ─────────────────────────────────────────────────
-function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
+// Icon-Set der Navigation — schlanke 15px-Stroke-Icons, erben currentColor
+const NAV_ICONS={
+  dashboard:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  invoices:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-10a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M10 2.5v3h3M5 9h6M5 11.5h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  inbound:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 9.5l2-6h8l2 6v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M2 9.5h3.5a2.5 2.5 0 005 0H14" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  scanner:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M5.5 3.5L6.5 2h3l1 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1V4.5a1 1 0 011-1h2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  archive:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2.5" width="12" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.4"/><path d="M3 6v6.5a1 1 0 001 1h8a1 1 0 001-1V6M6.5 9h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  belege:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="3.5" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.4"/><circle cx="12.5" cy="3.5" r="1.8" stroke="currentColor" strokeWidth="1.4"/><circle cx="12.5" cy="12.5" r="1.8" stroke="currentColor" strokeWidth="1.4"/><path d="M5.2 7.2l5.5-2.9M5.2 8.8l5.5 2.9" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  artikel:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5.5 3v6.4l-5.5 3-5.5-3V4.8l5.5-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M2.7 4.9L8 7.8l5.3-2.9M8 7.8v6.2" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>,
+  kunden:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="5.8" cy="5.4" r="2.4" stroke="currentColor" strokeWidth="1.4"/><path d="M1.8 13.4c.5-2.3 2.1-3.6 4-3.6s3.5 1.3 4 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="11.6" cy="6.2" r="1.9" stroke="currentColor" strokeWidth="1.4"/><path d="M11.2 10.4c1.7.1 2.8 1.2 3.2 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  settings:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.4"/><path d="M8 1.8v1.8M8 12.4v1.8M1.8 8h1.8M12.4 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  steuerberater:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="5" width="12" height="8.5" rx="1.2" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 5V3.5a1 1 0 011-1h3a1 1 0 011 1V5M2 8.5h12" stroke="currentColor" strokeWidth="1.4"/></svg>,
+};
+
+function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
   // Kanzlei-Portal ab Business-Plan (siehe Pricing: Business/Pro/Enterprise enthalten es)
-  const plan = (org?.plan||'starter').toLowerCase();
+  const plan = (org?.plan||'free').toLowerCase();
   const hasKanzlei = plan === 'business' || plan === 'enterprise' || plan === 'pro';
   const [mobileNav,setMobileNav]=useState(false);
+  const [collapsed,setCollapsed]=useState(()=>typeof localStorage!=="undefined"&&localStorage.getItem("invoiq_sidebar_collapsed")==="1");
+  const [userMenu,setUserMenu]=useState(false);
+  const [searchQ,setSearchQ]=useState("");
   const go=(key)=>{setNav(key);setMobileNav(false);};
+  const toggleCollapse=()=>{setCollapsed(c=>{const n=!c;if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_sidebar_collapsed",n?"1":"0");return n;});};
 
   const sections=[
     {title:"Rechnungen",items:[
@@ -1473,55 +1145,54 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
   // Admin-Panel rollenbasiert (Backend prüft zusätzlich serverseitig)
   const isAdmin=["owner","admin","super_admin"].includes(user?.role);
 
-  const NavDot=({active})=>(<span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:active?T.accent:"transparent",border:`1px solid ${active?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>);
+  const NavBtn=({k,label})=>(
+    <button className={`nav-item ${nav===k?"active":""}`} onClick={()=>go(k)} title={collapsed?label:undefined}>
+      {NAV_ICONS[k]||NAV_ICONS.dashboard}<span className="nav-label">{label}</span>
+      {k==="steuerberater"&&!hasKanzlei&&<span className="nav-label" style={{marginLeft:'auto',fontSize:9,background:'#7c3aed',color:'#fff',borderRadius:3,padding:'1px 5px',fontWeight:700}}>PRO</span>}
+    </button>
+  );
 
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
     {mobileNav&&<div className="mobile-nav-overlay" onClick={()=>setMobileNav(false)}/>}
-    <aside className={`sidebar ${mobileNav?"mobile-open":""}`}>
-      <div style={{padding:"14px 14px 10px",borderBottom:`1px solid ${T.bgBorder}`}}>
-        <Wordmark size={20}/>
-        {org&&<div style={{fontSize:11,color:T.textMuted,marginTop:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}}>{org.name}</div>}
+    <aside className={`sidebar ${mobileNav?"mobile-open":""} ${collapsed&&!mobileNav?"collapsed":""}`}>
+      <div style={{padding:collapsed?"14px 0 10px":"14px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.08)",display:"flex",flexDirection:"column",alignItems:collapsed?"center":"flex-start"}}>
+        <Wordmark size={20} inverted iconOnly={collapsed&&!mobileNav}/>
+        {org&&<div className="sb-hide" style={{fontSize:11,color:"rgba(255,255,255,.45)",marginTop:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500,maxWidth:"100%"}}>{org.name}</div>}
       </div>
       <nav style={{flex:1,padding:"6px 8px 0"}}>
         {sections.map(sec=>(<div key={sec.title}>
           <div className="nav-section">{sec.title}</div>
-          {sec.items.map(({key,label})=><button key={key} className={`nav-item ${nav===key?"active":""}`} onClick={()=>go(key)}>
-            <NavDot active={nav===key}/>{label}
-          </button>)}
+          {sec.items.map(({key,label})=><NavBtn key={key} k={key} label={label}/>)}
         </div>))}
-
         <div className="nav-section" style={{marginTop:6}}>Konto</div>
-        <button className={`nav-item ${nav==="settings"?"active":""}`} onClick={()=>go("settings")}>
-          <NavDot active={nav==="settings"}/>Einstellungen
-        </button>
-        {/* Kanzlei-Portal — immer sichtbar, Starter bekommt Upgrade-Hinweis */}
-        <button className={`nav-item ${nav==="steuerberater"?"active":""}`} onClick={()=>go("steuerberater")}
-          style={{position:'relative'}}>
-          <NavDot active={nav==="steuerberater"}/>
-          Kanzlei-Portal
-          {!hasKanzlei&&<span style={{marginLeft:'auto',fontSize:9,background:'#7c3aed',color:'#fff',borderRadius:3,padding:'1px 5px',fontWeight:700}}>PRO</span>}
-        </button>
-
+        <NavBtn k="settings" label="Einstellungen"/>
+        <NavBtn k="steuerberater" label="Kanzlei-Portal"/>
         {isAdmin&&<><div className="nav-section" style={{marginTop:6}}>Admin</div>
-          <button className="nav-item" onClick={onAdmin} style={{color:T.red,fontSize:12}}><span style={{fontSize:8,width:8,height:8,borderRadius:"50%",background:T.red,display:"inline-block",flexShrink:0}}/>Admin Panel</button>
+          <button className="nav-item" onClick={onAdmin} style={{color:"#FCA5A5"}} title={collapsed?"Admin Panel":undefined}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5.5 2.4v3.6c0 3.4-2.3 5.7-5.5 6.6-3.2-.9-5.5-3.2-5.5-6.6V4.2L8 1.8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+            <span className="nav-label">Admin Panel</span>
+          </button>
         </>}
       </nav>
-      <div style={{padding:"10px 8px 14px",borderTop:`1px solid ${T.bgBorder}`}}>
-        {org&&<div style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:"9px 11px",marginBottom:8}}>
+      <div style={{padding:collapsed?"10px 8px 14px":"10px 10px 14px",borderTop:"1px solid rgba(255,255,255,.08)"}}>
+        {org&&<div className="sb-hide" style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"9px 11px",marginBottom:8}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-            <span style={{fontSize:12,fontWeight:600,color:T.textPrimary,textTransform:"capitalize"}}>{org.plan||"Starter"}</span>
-            <span style={{fontSize:11,color:T.textMuted}}>{org.plan_doc_used||0}/{org.plan_doc_limit||100}</span>
+            <span style={{fontSize:12,fontWeight:600,color:"#fff",textTransform:"capitalize"}}>{org.plan||"Free"}</span>
+            <span style={{fontSize:11,color:"rgba(255,255,255,.5)"}} className="num">{org.plan_doc_used||0}/{org.plan_doc_limit||10}</span>
           </div>
-          <div className="progress"><div className="progress-fill" style={{width:`${pct}%`}}/></div>
+          <div className="progress" style={{background:"rgba(255,255,255,.12)"}}><div className="progress-fill" style={{width:`${pct}%`}}/></div>
         </div>}
-        <div style={{display:"flex",alignItems:"center",gap:9,padding:"6px 4px",marginBottom:6}}>
-          <div className="avatar">{(user?.full_name||"M")[0]}</div>
+        <div className="sb-hide" style={{display:"flex",alignItems:"center",gap:9,padding:"4px 2px",marginBottom:8}}>
+          <div className="avatar" style={{background:"rgba(109,91,255,.35)",color:"#fff"}}>{(user?.full_name||"U")[0]}</div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:12.5,fontWeight:600,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.full_name||"User"}</div>
-            <div style={{fontSize:11,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
+            <div style={{fontSize:12.5,fontWeight:600,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.full_name||"—"}</div>
+            <div style={{fontSize:10.5,color:"rgba(255,255,255,.45)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
           </div>
         </div>
-        <button className="btn btn-ghost btn-sm" style={{width:"100%",justifyContent:"center",fontSize:12}} onClick={onLogout}>Abmelden</button>
+        <button onClick={toggleCollapse} className="nav-item" style={{justifyContent:collapsed?"center":"flex-start"}} title={collapsed?"Navigation ausklappen":"Navigation einklappen"}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{transform:collapsed?"rotate(180deg)":"none",transition:"transform .2s"}}><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span className="nav-label">Einklappen</span>
+        </button>
       </div>
     </aside>
     <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
@@ -1529,16 +1200,38 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
         <button className="mobile-menu-btn" onClick={()=>setMobileNav(true)} aria-label="Menü öffnen">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke={T.textSecondary} strokeWidth="1.6" strokeLinecap="round"/></svg>
         </button>
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
-        <div style={{flex:1,maxWidth:300,margin:"0 20px"}}>
+        <div style={{fontSize:14,fontWeight:700,color:T.textPrimary,letterSpacing:"-.01em",whiteSpace:"nowrap"}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
+        <div style={{flex:1,maxWidth:340}}>
           <div style={{position:"relative"}}>
-            <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:T.textMuted,fontSize:12}}>🔍</span>
-            <input style={{width:"100%",background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:7,padding:"6px 12px 6px 28px",fontSize:13,color:T.textPrimary,outline:"none",fontFamily:F.ui}} placeholder="Suchen..."/>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}><circle cx="7" cy="7" r="4.5" stroke={T.textMuted} strokeWidth="1.5"/><path d="M10.5 10.5L14 14" stroke={T.textMuted} strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <input value={searchQ} onChange={e=>setSearchQ(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&searchQ.trim()){onSearch&&onSearch(searchQ.trim());setSearchQ("");}}}
+              style={{width:"100%",background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:"7px 12px 7px 30px",fontSize:13,color:T.textPrimary,outline:"none",fontFamily:F.ui}}
+              placeholder="Rechnungen durchsuchen… (Enter)"/>
           </div>
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <button style={{width:28,height:28,borderRadius:7,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:T.textMuted}}>🔔</button>
-          <div className="avatar" style={{cursor:"pointer"}}>{(user?.full_name||"M")[0]}</div>
+        <div style={{display:"flex",gap:10,alignItems:"center",position:"relative"}}>
+          {org&&<button className="sb-hide" onClick={()=>go("settings")} style={{display:"flex",alignItems:"center",gap:6,background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:16,padding:"4px 11px",fontSize:11.5,fontWeight:700,color:T.accent,cursor:"pointer",fontFamily:F.ui,textTransform:"capitalize",whiteSpace:"nowrap"}}>
+            {org.plan||"Free"}<span style={{fontWeight:500,color:T.textMuted}} className="num">{org.plan_doc_used||0}/{org.plan_doc_limit||10}</span>
+          </button>}
+          <div className="avatar" style={{cursor:"pointer",width:30,height:30,fontSize:12}} onClick={()=>setUserMenu(m=>!m)}>{(user?.full_name||"U")[0]}</div>
+          {userMenu&&<>
+            <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setUserMenu(false)}/>
+            <div className="card sci" style={{position:"absolute",top:40,right:0,zIndex:999,width:240,padding:0,boxShadow:T.shadowXl}}>
+              <div style={{padding:"13px 15px",borderBottom:`1px solid ${T.bgBorder}`}}>
+                <div style={{fontSize:13.5,fontWeight:700,color:T.textPrimary}}>{user?.full_name||"—"}</div>
+                <div style={{fontSize:11.5,color:T.textMuted,marginTop:1}}>{user?.email||""}</div>
+                {org&&<div style={{fontSize:11.5,color:T.textSecondary,marginTop:6,display:"flex",justifyContent:"space-between"}}><span>{org.name}</span><span style={{textTransform:"capitalize",fontWeight:600,color:T.accent}}>{org.plan}</span></div>}
+              </div>
+              <div style={{padding:6}}>
+                <button className="menu-item" onClick={()=>{setUserMenu(false);go("settings");}}>{NAV_ICONS.settings}<span>Einstellungen</span></button>
+                <button className="menu-item" style={{color:T.red}} onClick={onLogout}>
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10.5 11l3-3-3-3M13.5 8H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span>Abmelden</span>
+                </button>
+              </div>
+            </div>
+          </>}
         </div>
       </div>
       <main style={{flex:1,overflowY:"auto",padding:"24px 28px"}}>{children}</main>
@@ -1551,6 +1244,7 @@ function Dashboard({user,org,notify,onNav}){
   const[stats,setStats]       = useState(null);
   const[cashflow,setCashflow] = useState(null);
   const[invoices,setInvoices] = useState([]);
+  const[bizDocs,setBizDocs]   = useState([]);
   const[loading,setLoading]   = useState(true);
 
   useEffect(()=>{
@@ -1558,10 +1252,12 @@ function Dashboard({user,org,notify,onNav}){
       api.getStats(),
       api.listInvoices('?limit=5'),
       api.getCashflowStats(),
-    ]).then(([s,i,cf])=>{
+      api.listBusinessDocs('?limit=100').catch(()=>({documents:[]})),
+    ]).then(([s,i,cf,bd])=>{
       setStats(s);
       setInvoices(i.invoices||[]);
       setCashflow(cf);
+      setBizDocs(bd.documents||[]);
     }).catch(()=>{
       // Fallback: leere Zustände — keine Fake-Daten
       setStats({outbound_total:0,inbound_total:0,errors_total:0,compliance_score:100,week_data:[0,0,0,0,0,0,0]});
@@ -1622,7 +1318,7 @@ function Dashboard({user,org,notify,onNav}){
     )}
 
     {/* KPIs — klickbar */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:16}}>
       {loading?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:96}}><div className="skeleton" style={{height:'100%'}}/></div>)
       :[
         {label:'Versandt',   value:stats?.outbound_total||0, delta:'Ausgangsrechnungen', color:T.textPrimary, chart:weekData,                          nav:'invoices'},
@@ -1649,7 +1345,7 @@ function Dashboard({user,org,notify,onNav}){
     </div>
 
     {/* Cashflow-Cockpit — klickbar */}
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(230px,100%),1fr))',gap:10,marginBottom:16}}>
       {/* Offene Forderungen → Ausgang */}
       <div className="card" style={{padding:18,borderLeft:`3px solid ${T.green}`,cursor:'pointer',transition:'box-shadow .15s'}}
         onClick={()=>onNav('invoices')}
@@ -1689,8 +1385,46 @@ function Dashboard({user,org,notify,onNav}){
       </div>
     </div>
 
+    {/* Belegfluss — offene Vorgänge im Vertrieb */}
+    {bizDocs.length>0&&(()=>{
+      const openOf=(t)=>bizDocs.filter(d=>d.doc_type===t&&!["storniert","fakturiert","abgelehnt","abgelaufen"].includes(d.status));
+      const stages=[["request","Anfragen"],["quote","Angebote"],["order","Aufträge"],["delivery","Lieferungen"]];
+      return(
+        <div className="card" style={{padding:18,marginBottom:16,cursor:"pointer",transition:"box-shadow .15s"}}
+          onClick={()=>onNav("belege")}
+          onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.accent}`}
+          onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div>
+              <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Belegfluss — offene Vorgänge</div>
+              <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Anfrage → Angebot → Auftrag → Lieferung → Rechnung</div>
+            </div>
+            <span style={{fontSize:11,color:T.accent,fontWeight:600}}>→ Belege & Aufträge</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:0,overflowX:"auto"}}>
+            {stages.map(([t,label],i)=>{
+              const open=openOf(t);
+              const sum=open.reduce((s,d)=>s+(parseFloat(d.amount_gross)||0),0);
+              return(
+                <div key={t} style={{display:"flex",alignItems:"center",flexShrink:0}}>
+                  <div style={{background:open.length?T.accentLight:T.bgSubtle,border:`1px solid ${open.length?T.accentPale:T.bgBorder}`,borderRadius:8,padding:"9px 14px",minWidth:112}}>
+                    <div style={{fontSize:10,fontWeight:700,color:T.textMuted,letterSpacing:.4,textTransform:"uppercase",marginBottom:4}}>{label}</div>
+                    <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+                      <span className="num" style={{fontSize:19,fontWeight:800,color:open.length?T.accent:T.textPlaceholder}}>{open.length}</span>
+                      {open.length>0&&<span style={{fontSize:10.5,color:T.textMuted}}>{fmtEUR(sum)}</span>}
+                    </div>
+                  </div>
+                  {i<stages.length-1&&<span style={{padding:"0 8px",color:T.textPlaceholder,fontSize:14}}>→</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    })()}
+
     {/* Cashflow-Prognose 30 Tage + Aktivität */}
-    <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:12,marginBottom:16}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(320px,100%),2fr))',gap:12,marginBottom:16}}>
       <div className="card" style={{padding:18}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
           <div>
@@ -1748,7 +1482,7 @@ function Dashboard({user,org,notify,onNav}){
 }
 
 // ── DOCUMENTS ─────────────────────────────────────────────────
-function Invoices({notify,initialView=null,onNavDone=null}){
+function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onClearSearch=null}){
   const [emailModal,setEmailModal] = useState(false);
   const [senderCopy,setSenderCopy] = useState(true);
   const [emailTo,setEmailTo]       = useState('');
@@ -1781,6 +1515,7 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   };
 
   const[view,setView]=useState(initialView||"list");const[filter,setFilter]=useState("all");
+  const[sort,setSort]=useState({key:"created_at",dir:"desc"});
   useEffect(()=>{if(initialView){setView(initialView);onNavDone&&onNavDone();}},[]);
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   const[detail,setDetail]=useState(null);          // ausgewählte Rechnung (Detail-Modal)
@@ -1842,7 +1577,22 @@ function Invoices({notify,initialView=null,onNavDone=null}){
     }catch(e){notify(e.message,"error");}
     setSaving(false);
   };
-  const filtered=filter==="all"?invoices:invoices.filter(i=>i.status===filter);
+  const searched=searchQuery
+    ?invoices.filter(i=>(i.invoice_number||"").toLowerCase().includes(searchQuery.toLowerCase())||(i.buyer_name||"").toLowerCase().includes(searchQuery.toLowerCase()))
+    :invoices;
+  const filteredRaw=filter==="all"?searched:searched.filter(i=>i.status===filter);
+  const sortVal=(i)=>sort.key==="amount_gross"?parseFloat(i.amount_gross)||0:sort.key==="invoice_number"?(i.invoice_number||""):(i.created_at||"");
+  const filtered=[...filteredRaw].sort((a,b)=>{
+    const va=sortVal(a),vb=sortVal(b);
+    const c=typeof va==="number"?va-vb:String(va).localeCompare(String(vb));
+    return sort.dir==="asc"?c:-c;
+  });
+  const toggleSort=(key)=>setSort(s=>s.key===key?{key,dir:s.dir==="asc"?"desc":"asc"}:{key,dir:"desc"});
+  const SortTh=({k,children})=>(
+    <th onClick={()=>toggleSort(k)} style={{cursor:"pointer",userSelect:"none"}}>
+      {children} <span style={{opacity:sort.key===k?1:.3,fontSize:9}}>{sort.key===k&&sort.dir==="asc"?"▲":"▼"}</span>
+    </th>
+  );
 
   if(view==="create") return(<div className="fi">
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>
@@ -1911,30 +1661,40 @@ function Invoices({notify,initialView=null,onNavDone=null}){
       <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Ausgang</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} Rechnungen gesamt</p></div>
       <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>api.datevExport().then(()=>notify("DATEV-Export heruntergeladen ✓","success")).catch(e=>notify(e.message,"error"))}>↓ DATEV-Export</button><button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontSize:13.5,fontWeight:700}} onClick={()=>setView("create")}>+ Neue Rechnung</button></div>
     </div>
-    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
-      {["all","delivered","validated","sent","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
-        {{all:"Alle",delivered:"Zugestellt",validated:"Validiert",sent:"Gesendet",error:"Fehler",archived:"Archiviert"}[s]}
+    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14,overflowX:"auto"}}>
+      {["all","draft","delivered","validated","sent","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
+        {{all:"Alle",draft:"Entwürfe",delivered:"Zugestellt",validated:"Validiert",sent:"Gesendet",error:"Fehler",archived:"Archiviert"}[s]}
         {s!=="all"&&<span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:"1px 5px",borderRadius:7,color:T.textMuted}}>{invoices.filter(i=>i.status===s).length}</span>}
       </button>)}
     </div>
+    {searchQuery&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+      <span style={{fontSize:12.5,color:T.textSecondary}}>Suche:</span>
+      <span style={{display:"inline-flex",alignItems:"center",gap:6,background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:14,padding:"3px 11px",fontSize:12.5,fontWeight:600,color:T.accent}}>
+        „{searchQuery}“
+        <button onClick={onClearSearch} style={{background:"none",border:"none",cursor:"pointer",color:T.accent,fontSize:14,lineHeight:1,padding:0}}>×</button>
+      </span>
+      <span style={{fontSize:12,color:T.textMuted}}>{filtered.length} Treffer</span>
+    </div>}
     <div className="card">
+      <div style={{overflowX:"auto"}}>
       <table className="table">
-        <thead><tr>{["Nummer","Empfänger","Betrag","Format","Status","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <thead><tr><SortTh k="invoice_number">Nummer</SortTh><th>Empfänger</th><SortTh k="amount_gross">Betrag</SortTh><th>Format</th><th>Status</th><SortTh k="created_at">Datum</SortTh><th>Aktionen</th></tr></thead>
         <tbody>
-          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14}}/></td></tr>)
+          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
           :filtered.map(inv=><tr key={inv.id} className="tr-hover" onClick={()=>openDetail(inv)} style={{cursor:"pointer"}}>
             <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12.5,color:T.textPrimary}}>{inv.invoice_number}</td>
             <td>{inv.buyer_name||"—"}</td>
             <td style={{fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
             <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
             <td><StatusBadge status={inv.status}/></td>
+            <td style={{fontSize:12,color:T.textMuted,whiteSpace:"nowrap"}} className="num">{inv.created_at?new Date(inv.created_at).toLocaleDateString("de-DE"):"—"}</td>
             <td onClick={e=>e.stopPropagation()}><div style={{display:"flex",gap:5}}>
               {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>{setCurrentInvId(inv.id);setEmailTo(inv.buyer_email||'');setEmailModal(true);}}>✉ Senden</button>}
               {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
               <button className="btn btn-ghost btn-sm" onClick={()=>api.openPDF(inv.id).catch(e=>notify(e.message,"error"))}>PDF</button>
             </div></td>
           </tr>)}
-          {!loading&&filtered.length===0&&invoices.length===0&&<tr><td colSpan={6} style={{padding:0}}>
+          {!loading&&filtered.length===0&&invoices.length===0&&<tr><td colSpan={7} style={{padding:0}}>
             <div style={{textAlign:'center',padding:'60px 24px',color:T.textMuted}}>
               <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,margin:'0 auto 16px'}}>📄</div>
               <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>Noch keine Rechnung erstellt</div>
@@ -1942,9 +1702,10 @@ function Invoices({notify,initialView=null,onNavDone=null}){
               <button className="btn btn-primary" onClick={()=>setView('create')}>Erste Rechnung erstellen →</button>
             </div>
           </td></tr>}
-          {!loading&&filtered.length===0&&invoices.length>0&&<tr><td colSpan={6} style={{textAlign:"center",color:T.textMuted,padding:28,fontSize:13}}>Keine Dokumente in diesem Filter</td></tr>}
+          {!loading&&filtered.length===0&&invoices.length>0&&<tr><td colSpan={7} style={{textAlign:"center",color:T.textMuted,padding:28,fontSize:13}}>Keine Dokumente in diesem Filter</td></tr>}
         </tbody>
       </table>
+      </div>
     </div>
     {xml&&<div className="modal-overlay" onClick={()=>setXml(null)}>
       <div className="modal fi" onClick={e=>e.stopPropagation()}>
@@ -2590,7 +2351,7 @@ function InboundScreen({notify, org}){
       })}
 
       {/* KPIs */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:8,marginBottom:16}}>
         {stats.map((s,i)=>(
           <div key={i} className="card" style={{padding:14}}>
             <div style={{fontSize:10,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:6}}>{s.label}</div>
@@ -2996,12 +2757,7 @@ function BusinessScreen({notify,onOpenInvoice}){
 
   const WarningList=()=>warnings.length===0?null:(
     <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
-      {warnings.map((w,i)=>(
-        <div key={i} style={{padding:"9px 13px",borderRadius:7,fontSize:12.5,display:"flex",gap:8,alignItems:"flex-start",
-          background:w.severity==="error"?T.redBg:T.amberBg,border:`1px solid ${w.severity==="error"?T.redBdr:T.amberBdr}`,color:w.severity==="error"?T.red:T.amber}}>
-          <span style={{flexShrink:0}}>{w.severity==="error"?"✗":"⚠"}</span>{w.msg}
-        </div>
-      ))}
+      {warnings.map((w,i)=><Alert key={i} severity={w.severity==="error"?"error":"warning"}>{w.msg}</Alert>)}
     </div>
   );
 
@@ -3496,7 +3252,7 @@ function ArchiveScreen({notify}){
       </div>
 
       {/* Stats */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:18}}>
         {[
           {label:'Archivierte Dokumente',value:fmtNum(totalArchived),sub:'Gesamt'},
           {label:'Speicher genutzt',value:`${totalSize} MB`,sub:'AWS Frankfurt'},
@@ -4004,7 +3760,7 @@ function AdminOverview({notify,isSuper}){
       <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super-Admin":(orgs[0]?.name||"")}</p></div>
       {isSuper&&<button className="btn btn-ghost btn-sm" onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo (nur Dev)"}</button>}
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(170px,100%),1fr))",gap:10,marginBottom:16}}>
       {loadingA?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:90}}><div className="skeleton" style={{height:"100%"}}/></div>)
       :(isSuper
         ?[["MRR",fmtEUR(mrr),"Monatlich wiederkehrend"],["Aktive Kunden",orgs.filter(o=>o.status==="active").length,`${orgs.length} gesamt`],["Dokumente",fmtNum(totalDocs),"Diesen Monat"],["Offene Fehler",openErrors,openErrors>0?"⚠ Prüfen":"✓ Alles OK"]]
@@ -4234,7 +3990,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
         </div>
 
         {/* KPIs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(170px,100%),1fr))', gap: 10, marginBottom: 16 }}>
           {[
             { label: 'Dokumente Mai', value: m.docs_this_month, sub: `von ${m.docs_limit}` },
             { label: 'Compliance', value: `${m.compliance}%`, sub: 'EN 16931', color: m.compliance >= 98 ? T.green : T.amber },
@@ -4389,7 +4145,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
       </div>
 
       {/* Platform KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(170px,100%),1fr))', gap: 10, marginBottom: 18 }}>
         {[
           { label: 'Mandanten gesamt', value: mandanten.length, sub: `${mandanten.filter(m => m.status === 'active').length} aktiv`, color: T.textPrimary },
           { label: 'Dokumente Mai', value: fmtNum(totalDocs), sub: 'Alle Mandanten', color: T.textPrimary },
@@ -4785,6 +4541,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
   const[adminNav,setAdminNav]=useState("overview");
   const[loading,setLoading]=useState(false);
   const[toast,setToast]=useState(null);
+  const[globalSearch,setGlobalSearch]=useState(null); // Topbar-Suche → Ausgang
   const[user,setUser]=useState(null);
   const[org,setOrg]=useState(null);
   const notify=(msg,type="info")=>setToast({msg,type});
@@ -4836,9 +4593,9 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
     {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading} notify={notify}/>}
     {screen==="reset"&&<ResetPassword notify={notify} onDone={()=>{window.history.replaceState(null,'','/');setMode('login');setScreen('auth');}}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup abgeschlossen — willkommen bei invoiq! 🎉","success");}}/>}
-    {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
+    {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onSearch={(q)=>{setGlobalSearch(q);setNav("invoices");window.scrollTo(0,0);}} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
       {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={onNav}/>}
-      {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)}/>}
+      {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)} searchQuery={globalSearch} onClearSearch={()=>setGlobalSearch(null)}/>}
           {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify} org={org}/>}
           {nav==="belege"&&<BusinessScreen notify={notify} onOpenInvoice={()=>onNav("invoices")}/>}
