@@ -13,38 +13,65 @@ import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from 
 // darf der Prozess nicht starten.
 const requiredEnv = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'AWS_S3_BUCKET'];
 const missingEnv = requiredEnv.filter(k => !process.env[k]);
-if (missingEnv.length) {
+const hasS3 = missingEnv.length === 0;
+
+if (!hasS3 && process.env.NODE_ENV === 'production') {
   console.error(`[archiveService] FATAL: Fehlende AWS-S3-Umgebungsvariablen: ${missingEnv.join(', ')}. GoBD-Archivierung erfordert echtes S3 — siehe .env.example.`);
   process.exit(1);
 }
 
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
+let s3;
+if (hasS3) {
+  const s3Client = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
+  });
 
-// Dünner Adapter, damit der Rest der Datei mit den bisherigen
-// putObject/getObject/headObject-Aufrufen weiterarbeiten kann.
-const s3 = {
-  async putObject({ Bucket, Key, Body, Metadata, ServerSideEncryption }) {
-    const res = await s3Client.send(new PutObjectCommand({
-      Bucket, Key, Body, Metadata, ServerSideEncryption,
-    }));
-    return { ETag: res.ETag };
-  },
-  async getObject({ Bucket, Key }) {
-    const res = await s3Client.send(new GetObjectCommand({ Bucket, Key }));
-    const body = await res.Body.transformToString('utf-8');
-    return { Body: body, Metadata: res.Metadata };
-  },
-  async headObject({ Bucket, Key }) {
-    const res = await s3Client.send(new HeadObjectCommand({ Bucket, Key }));
-    return { ContentLength: res.ContentLength, Metadata: res.Metadata };
-  },
-};
+  // Dünner Adapter, damit der Rest der Datei mit den bisherigen
+  // putObject/getObject/headObject-Aufrufen weiterarbeiten kann.
+  s3 = {
+    async putObject({ Bucket, Key, Body, Metadata, ServerSideEncryption }) {
+      const res = await s3Client.send(new PutObjectCommand({
+        Bucket, Key, Body, Metadata, ServerSideEncryption,
+      }));
+      return { ETag: res.ETag };
+    },
+    async getObject({ Bucket, Key }) {
+      const res = await s3Client.send(new GetObjectCommand({ Bucket, Key }));
+      const body = await res.Body.transformToString('utf-8');
+      return { Body: body, Metadata: res.Metadata };
+    },
+    async headObject({ Bucket, Key }) {
+      const res = await s3Client.send(new HeadObjectCommand({ Bucket, Key }));
+      return { ContentLength: res.ContentLength, Metadata: res.Metadata };
+    },
+  };
+} else {
+  // NUR dev/test: In-Memory-Store, damit die App lokal ohne AWS-Zugang
+  // startbar und testbar bleibt. In production ist dieser Pfad durch den
+  // process.exit oben ausgeschlossen — GoBD verlangt echtes S3.
+  console.warn('[archiveService] WARNUNG: AWS S3 nicht konfiguriert — In-Memory-Archiv (NUR dev/test, überlebt keinen Neustart).');
+  const memStore = new Map();
+  s3 = {
+    async putObject({ Bucket, Key, Body, Metadata }) {
+      memStore.set(`${Bucket}/${Key}`, { Body, Metadata });
+      return { ETag: 'dev' };
+    },
+    async getObject({ Bucket, Key }) {
+      const obj = memStore.get(`${Bucket}/${Key}`);
+      if (!obj) throw new Error(`NoSuchKey: ${Key}`);
+      return obj;
+    },
+    async headObject({ Bucket, Key }) {
+      const obj = memStore.get(`${Bucket}/${Key}`);
+      if (!obj) throw new Error(`NoSuchKey: ${Key}`);
+      return { ContentLength: obj.Body.length, Metadata: obj.Metadata };
+    },
+  };
+}
 
 // ── ARCHIVE SERVICE ───────────────────────────────────────────
 export const archiveService = {

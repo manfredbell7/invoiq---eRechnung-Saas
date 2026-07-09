@@ -4,7 +4,8 @@
 import { authMiddleware } from '../../middleware/auth.js';
 import { supabase } from '../../config/database.js';
 
-const PLAN_MRR = { free: 0, starter: 49, business: 149, enterprise: 349, pro: 149 };
+// Einheitliche Preisliste — muss zu routes/payments (GET /payments/plans) passen
+const PLAN_MRR = { free: 0, starter: 29, business: 99, enterprise: 299 };
 
 export async function adminRoutes(fastify) {
 
@@ -80,7 +81,11 @@ export async function adminRoutes(fastify) {
   });
 
   // -- SEED DEMO DATA: 20 realistische Demo-Rechnungen seeden
-  fastify.post('/seed-demo',{preHandler:adminGuard},async(req)=>{
+  // Nur super_admin und NICHT in production — Demo-Daten dürfen nie in
+  // echte Kundenkonten gelangen (GoBD: Rechnungen sind Buchführungsbelege).
+  fastify.post('/seed-demo',{preHandler:adminGuard},async(req,reply)=>{
+    if(req.user?.role!=='super_admin')return reply.code(403).send({error:'Nur super_admin'});
+    if(process.env.NODE_ENV==='production')return reply.code(403).send({error:'Seed-Demo ist in production deaktiviert'});
     const orgId=req.org.id;
     const buyers=['Mustermann GmbH','ACME AG','Tech Solutions GmbH','Bauer & Partner KG','Schmidt Consulting','Weber Industries','Krause Digital','Fischer & Co','Lehmann Solutions','Becker Enterprises'];
     const items=[];

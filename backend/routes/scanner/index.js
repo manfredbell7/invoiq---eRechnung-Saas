@@ -6,20 +6,16 @@
 import { authMiddleware } from '../../middleware/auth.js';
 import { db } from '../../config/db.js';
 import { supabase } from '../../config/database.js';
+import { verifyMailgunSignature } from '../../lib/mailgunAuth.js';
 
 export async function scannerRoutes(fastify) {
 
   // POST /api/v1/scanner/extract
   // Multipart: field "file" (PDF or image)
+  // Echte Auth (JWT oder API-Key) — der frühere Prefix-Check ("Bearer ...")
+  // erlaubte unauthentifizierte Nutzung des kostenpflichtigen KI-Dienstes.
   fastify.post('/scanner/extract', {
-    config: { rawBody: true },
-    preHandler: async (req, reply) => {
-      // Auth check
-      const auth = req.headers['authorization'];
-      if (!auth?.startsWith('Bearer ')) {
-        return reply.code(401).send({ error: 'Unauthorized' });
-      }
-    },
+    preHandler: authMiddleware,
   }, async (req, reply) => {
     let fileBuffer, mimeType, fileName;
 
@@ -48,30 +44,9 @@ export async function scannerRoutes(fastify) {
 
     const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
     if (!ANTHROPIC_KEY) {
-      // Demo mode — return realistic mock data
-      return reply.send({
-        success: true,
-        demo: true,
-        data: {
-          invoice_number:  'RE-2025-00847',
-          invoice_date:    '2025-05-15',
-          due_date:        '2025-06-14',
-          seller_name:     'Mustermann Lieferant GmbH',
-          seller_vat_id:   'DE987654321',
-          seller_address:  'Lieferantenstraße 42',
-          seller_city:     'Hamburg',
-          buyer_name:      'Ihr Unternehmen GmbH',
-          buyer_address:   'Musterstraße 1',
-          buyer_city:      'Berlin',
-          buyer_vat_id:    'DE123456789',
-          line_items: [
-            { description: 'Beratungsleistung Mai 2025', quantity: 8, unit_price: 150.00, vat_rate: 19 },
-            { description: 'Reisekosten', quantity: 1, unit_price: 280.00, vat_rate: 19 },
-          ],
-          currency:    'EUR',
-          confidence:  0.91,
-          notes:       'Demo-Modus: Kein API-Key gesetzt. Testdaten werden angezeigt.',
-        },
+      // Keine Fake-Daten im Produktivpfad — ehrlicher Fehler statt Demo-Mock.
+      return reply.code(503).send({
+        error: 'KI-Erkennung ist derzeit nicht verfügbar. Bitte erfassen Sie die Rechnung manuell oder versuchen Sie es später erneut.',
       });
     }
 
@@ -168,6 +143,15 @@ Regeln:
   fastify.post('/scanner/from-email', async (req, reply) => {
     try {
       const body        = req.body || {};
+
+      // Mailgun-Signatur prüfen — sonst kann jeder beliebige Entwürfe in
+      // fremde Konten einschleusen (Absender-E-Mail ist frei fälschbar).
+      const sigCheck = verifyMailgunSignature(body);
+      if (!sigCheck.ok) {
+        fastify.log.warn({ reason: sigCheck.reason }, 'scanner/from-email: Signatur abgelehnt');
+        return reply.code(403).send({ error: 'Ungültige Webhook-Signatur' });
+      }
+
       const sender      = (body.sender || body.from || '').replace(/.*<(.+)>/, '$1').trim();
       const attachments = parseInt(body['attachment-count'] || '0');
       if(attachments === 0) return reply.send({ status: 'ignored', reason: 'no attachments' });

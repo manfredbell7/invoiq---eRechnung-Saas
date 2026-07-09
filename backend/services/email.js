@@ -18,6 +18,9 @@ const FROM_NAME = 'invoiq E-Rechnung';
  * @param {Buffer} params.pdfBuffer - Optional PDF attachment
  */
 export async function sendInvoiceEmail({ to, invoice, xmlBuffer, pdfBuffer }) {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY fehlt).');
+  }
   try {
     const attachments = [
       {
@@ -96,6 +99,34 @@ export async function sendPaymentFailedEmail({ to, invoice, errorReason }) {
     console.error('[Email Service] Failed to send payment failed email:', error);
     throw error;
   }
+}
+
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail({ to, resetUrl, fullName }) {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY fehlt).');
+  }
+  const { data, error } = await resend.emails.send({
+    from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    to,
+    subject: 'invoiq — Passwort zurücksetzen',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+        <h2 style="color:#101B3D;">Passwort zurücksetzen</h2>
+        <p>Hallo${fullName ? ` ${fullName}` : ''},</p>
+        <p>für Ihr invoiq-Konto wurde ein Passwort-Reset angefordert. Klicken Sie auf den Button, um ein neues Passwort zu vergeben:</p>
+        <p style="margin: 28px 0;">
+          <a href="${resetUrl}" style="background:#6D5BFF;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">Neues Passwort vergeben</a>
+        </p>
+        <p style="font-size:13px;color:#6b7280;">Der Link ist <strong>1 Stunde</strong> gültig. Falls Sie den Reset nicht angefordert haben, ignorieren Sie diese E-Mail — Ihr Passwort bleibt unverändert.</p>
+        <p style="font-size:12px;color:#9ca3af;word-break:break-all;">Falls der Button nicht funktioniert: ${resetUrl}</p>
+      </div>
+    `,
+  });
+  if (error) throw error;
+  return { success: true, emailId: data.id };
 }
 
 /**

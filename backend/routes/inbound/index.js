@@ -11,6 +11,7 @@ import { supabase } from '../../config/database.js';
 import { db } from '../../config/db.js';
 import { parseInboundXML, validateEN16931, hashXML } from '../../services/xmlEngine.js';
 import { renderInvoicePDF } from '../../services/pdfRenderer.js';
+import { verifyMailgunSignature } from '../../lib/mailgunAuth.js';
 
 export async function inboundRoutes(fastify) {
 
@@ -32,6 +33,14 @@ export async function inboundRoutes(fastify) {
         }
       } else {
         Object.assign(parts, req.body || {});
+      }
+
+      // Mailgun-Signatur prüfen — verhindert, dass Dritte Rechnungen in
+      // fremde Organisationen einschleusen (Slug ist erratbar, From fälschbar).
+      const sigCheck = verifyMailgunSignature(parts);
+      if (!sigCheck.ok) {
+        fastify.log.warn({ reason: sigCheck.reason }, 'inbound/email: Signatur abgelehnt');
+        return reply.code(403).send({ error: 'Ungültige Webhook-Signatur' });
       }
 
       const recipient = parts.recipient || parts.To || '';
@@ -347,7 +356,10 @@ export async function inboundRoutes(fastify) {
   // ── DATEV EXPORT (Kanzlei) ────────────────────────────────────
   fastify.get('/datev-export', { preHandler: authMiddleware }, async (req, reply) => {
     const { from, to, org_id } = req.query;
-    const targetOrgId = org_id || req.org.id;
+    // Tenant-Isolation: org_id-Override nur für super_admin (Kanzlei-Fälle
+    // brauchen später ein explizites Mandats-Modell) — sonst könnte jeder
+    // authentifizierte Nutzer fremde Organisationen exportieren.
+    const targetOrgId = (org_id && req.user?.role === 'super_admin') ? org_id : req.org.id;
     let q = supabase.from('inbound_invoices').select('*')
       .eq('org_id', targetOrgId).order('created_at', { ascending: true });
     if (from) q = q.gte('created_at', from);
@@ -378,16 +390,9 @@ function safeInbound(row) {
 }
 
 async function extractFromPDF(buffer) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<ubl:Invoice xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-  xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-  <cbc:ID>DEMO-${Date.now()}</cbc:ID>
-  <cbc:IssueDate>${new Date().toISOString().split('T')[0]}</cbc:IssueDate>
-  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
-  <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
-</ubl:Invoice>`;
-  }
+  // Ohne KI-Key keine Extraktion — das PDF wird trotzdem als Eingang mit
+  // Status "pruefung" gespeichert (ehrlicher Zustand statt Fake-XML).
+  if (!process.env.ANTHROPIC_API_KEY) return null;
   const base64 = buffer.toString('base64');
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {

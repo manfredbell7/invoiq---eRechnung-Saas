@@ -19,7 +19,10 @@ export function registerSecurityHooks(fastify) {
   // mehreren Server-Instanzen konsistent durchgesetzt wird.
   fastify.addHook('preHandler', async (request, reply) => {
     if (request.url.includes('/auth/login') && request.method === 'POST') {
-      const ip = (request.headers['x-forwarded-for'] || request.ip || 'unknown').split(',')[0].trim();
+      // request.ip ist dank trustProxy bereits die echte Client-IP.
+      // x-forwarded-for direkt zu lesen wäre durch den Client spoofbar
+      // und würde den Brute-Force-Schutz aushebeln.
+      const ip = request.ip || 'unknown';
       const windowMs = 15 * 60 * 1000; // 15 Minuten
       const { count, resetAt } = await incrementCounter(`login:${ip}`, windowMs);
       if (count > 10) {

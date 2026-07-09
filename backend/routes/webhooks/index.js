@@ -56,10 +56,21 @@ export async function connectRoutes(fastify) {
 
   fastify.get('/available', async () => ({ connectors: SUPPORTED }));
 
-  fastify.get('/', { preHandler: [authMiddleware] }, async (req) => {
-    const conns = [...(fastify.db?.erpConnections?.values() || [])]
-      .filter(c => c.org_id === req.org.id);
-    return { connections: conns };
+  // Persistenz in erp_connections (siehe schema.sql / Migration 005) —
+  // die frühere Version las aus einem nie existierenden fastify.db und
+  // speicherte POSTs gar nicht.
+  fastify.get('/', { preHandler: [authMiddleware] }, async (req, reply) => {
+    const { supabase } = await import('../../config/database.js');
+    const { data, error } = await supabase
+      .from('erp_connections')
+      .select('id, type, name, active, last_sync_at, created_at')
+      .eq('org_id', req.org.id)
+      .order('created_at', { ascending: false });
+    if (error) {
+      req.log.error(error, 'erp_connections query failed');
+      return reply.code(500).send({ error: 'Verbindungen konnten nicht geladen werden' });
+    }
+    return { connections: data ?? [] };
   });
 
   fastify.post('/', { preHandler: [authMiddleware] }, async (req, reply) => {
@@ -68,30 +79,54 @@ export async function connectRoutes(fastify) {
     if (!connector) return reply.code(400).send({ error: `Unbekannter Konnektor-Typ: ${type}` });
     if (!connector.available) return reply.code(400).send({ error: `${connector.name} noch nicht verfügbar` });
 
-    // In production: encrypt config before storing
-    const conn = {
-      id: Math.random().toString(36).substr(2),
+    const { supabase } = await import('../../config/database.js');
+    const { data, error } = await supabase.from('erp_connections').insert({
       org_id: req.org.id,
       type,
       name: name || connector.name,
       config: config || {},
       active: true,
-      created_at: new Date().toISOString(),
-    };
+    }).select('id, type, name, active, created_at').single();
+    if (error) {
+      req.log.error(error, 'erp_connections insert failed');
+      return reply.code(500).send({ error: 'Verbindung konnte nicht gespeichert werden' });
+    }
 
-    return reply.code(201).send({
-      connection: { ...conn, config: '***encrypted***' },
-      message: `${connector.name} Verbindung erstellt. Testen Sie die Verbindung unter /connect/${conn.id}/test`
-    });
+    await db.createAuditLog({ org_id: req.org.id, user_id: req.user?.id, action: 'erp_connection_created', details: { type } });
+    return reply.code(201).send({ connection: data });
   });
 
-  fastify.post('/:id/test', { preHandler: [authMiddleware] }, async (req) => {
-    // Mock connection test
+  fastify.delete('/:id', { preHandler: [authMiddleware] }, async (req, reply) => {
+    const { supabase } = await import('../../config/database.js');
+    const { data, error } = await supabase.from('erp_connections')
+      .delete().eq('id', req.params.id).eq('org_id', req.org.id).select('id');
+    if (error) return reply.code(500).send({ error: error.message });
+    if (!(data ?? []).length) return reply.code(404).send({ error: 'Verbindung nicht gefunden' });
+    return { message: 'Verbindung gelöscht' };
+  });
+
+  // Konfigurationsprüfung — ehrlich benannt: prüft Pflichtfelder der
+  // gespeicherten Verbindung. Ein echter Verbindungstest zum Zielsystem
+  // folgt mit den jeweiligen Konnektor-Implementierungen.
+  fastify.post('/:id/test', { preHandler: [authMiddleware] }, async (req, reply) => {
+    const { supabase } = await import('../../config/database.js');
+    const { data: conn } = await supabase.from('erp_connections')
+      .select('*').eq('id', req.params.id).eq('org_id', req.org.id).single();
+    if (!conn) return reply.code(404).send({ error: 'Verbindung nicht gefunden' });
+
+    const cfg = conn.config || {};
+    const missing = [];
+    if (['rest', 'sap_s4', 'dynamics'].includes(conn.type) && !cfg.endpoint_url) missing.push('endpoint_url');
+    if (['rest', 'datev', 'dynamics', 'sap_s4'].includes(conn.type) && !cfg.api_key && !cfg.client_id) missing.push('api_key/client_id');
+    if (conn.type === 'sftp' && !cfg.host) missing.push('host');
+
     return {
-      connection_id: req.params.id,
-      status: 'connected',
-      latency_ms: Math.floor(Math.random() * 80) + 20,
-      message: 'Verbindung erfolgreich',
+      connection_id: conn.id,
+      status: missing.length ? 'config_incomplete' : 'config_ok',
+      missing_fields: missing,
+      message: missing.length
+        ? `Konfiguration unvollständig: ${missing.join(', ')}`
+        : 'Konfiguration vollständig. Live-Verbindungstest folgt mit Konnektor-Rollout.',
       tested_at: new Date().toISOString(),
     };
   });

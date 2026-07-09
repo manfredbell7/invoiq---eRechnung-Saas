@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, Component } from "react";
-import OnboardingWizard from "./OnboardingWizard.jsx"; class PortalErrorBoundary extends Component{constructor(p){super(p);this.state={err:false};}static getDerivedStateFromError(){return{err:true};}componentDidCatch(e,i){console.error('Portal crash:',e,i);}render(){if(this.state.err)return(<div style={{padding:40,textAlign:'center',color:'#697386'}}><div style={{fontSize:40}}>⚠️</div><h3 style={{color:'#0A2540',marginTop:8}}>Kanzlei-Portal nicht verfügbar</h3><p>Ein Fehler ist aufgetreten. Bitte laden Sie die Seite neu.</p><button onClick={()=>this.setState({err:false})} style={{marginTop:16,padding:'10px 20px',background:'#635BFF',color:'#fff',border:'none',borderRadius:8,cursor:'pointer'}}>Erneut versuchen</button></div>);return this.props.children;}}
+import OnboardingWizard from "./OnboardingWizard.jsx";
+import { T, F, CSS } from "./theme.js"; class PortalErrorBoundary extends Component{constructor(p){super(p);this.state={err:false};}static getDerivedStateFromError(){return{err:true};}componentDidCatch(e,i){console.error('Portal crash:',e,i);}render(){if(this.state.err)return(<div style={{padding:40,textAlign:'center',color:'#697386'}}><div style={{fontSize:40}}>⚠️</div><h3 style={{color:'#0A2540',marginTop:8}}>Kanzlei-Portal nicht verfügbar</h3><p>Ein Fehler ist aufgetreten. Bitte laden Sie die Seite neu.</p><button onClick={()=>this.setState({err:false})} style={{marginTop:16,padding:'10px 20px',background:'#635BFF',color:'#fff',border:'none',borderRadius:8,cursor:'pointer'}}>Erneut versuchen</button></div>);return this.props.children;}}
 
 /* ═══════════════════════════════════════════════════════════════
    invoiq — Complete App · Design System v2
@@ -8,47 +9,8 @@ import OnboardingWizard from "./OnboardingWizard.jsx"; class PortalErrorBoundary
    Fonts: Instrument Serif + Inter
    ═══════════════════════════════════════════════════════════════ */
 
-const T = {
-  // invoiq v3 — richer, more vivid SaaS palette (deep indigo brand, vivid violet accent)
-  brand:     "#101B3D",   // deeper, richer navy-indigo
-  brandMid:  "#1E2A57",
-  brandLite: "#3D4A7A",
-  accent:    "#6D5BFF",   // vivid violet-blue
-  accentHover:"#5A45F0",
-  accentLight:"#EFEBFF",
-  accentPale: "#DCD4FF",
 
-  bg:        "#FFFFFF",
-  bgSubtle:  "#F7F8FF",   // soft violet-tinted off-white (was flat gray)
-  bgGradient:"linear-gradient(180deg,#F7F8FF 0%,#F1F3FC 100%)", // for full-page backgrounds only
-  bgMuted:   "#ECEEFA",
-  bgBorder:  "#DBDDF0",
 
-  textPrimary:  "#101B3D",
-  textSecondary:"#3D4A7A",
-  textMuted:    "#6B7399",
-  textPlaceholder:"#9FA6C4",
-
-  // Semantic — more saturated, more "alive"
-  green:    "#0F9D58",  greenBg:"#E9FBF1",  greenBdr:"#B7EBCD",
-  red:      "#E0392B",  redBg:  "#FEEDEC",  redBdr:  "#F8C4C0",
-  amber:    "#D97706",  amberBg:"#FFF6E5",  amberBdr:"#FBDFA0",
-  blue:     "#2D6BFF",  blueBg: "#EAF1FF",  blueBdr: "#BFD4FF",
-  purple:   "#6D5BFF",  purpleBg:"#EFEBFF", purpleBdr:"#DCD4FF",
-  gray:     "#6B7399",  grayBg: "#F7F8FF",  grayBdr: "#DBDDF0",
-
-  // Deeper, more present shadows for visible elevation/depth
-  shadow1: "0 1px 2px rgba(16,27,61,.06), 0 2px 6px rgba(35,30,110,.10)",
-  shadow2: "0 3px 6px rgba(16,27,61,.07), 0 6px 16px rgba(35,30,110,.14)",
-  shadow3: "0 6px 12px rgba(16,27,61,.08), 0 12px 32px rgba(35,30,110,.16)",
-  shadowXl:"0 10px 22px rgba(16,27,61,.10), 0 28px 64px rgba(35,30,110,.20)",
-};
-// Stripe uses -apple-system / Inter — NO decorative display fonts in UI
-const F={
-  display:"'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-  ui:     "'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-  mono:   "'JetBrains Mono',ui-monospace,SFMono-Regular,monospace",
-};
 
 const API_BASE=(import.meta?.env?.VITE_API_URL)||"https://api.invoiq.io/v1";
 const api={
@@ -73,15 +35,26 @@ const api={
   // Peppol
   sendViaPeppol:(id,peppol_id)=>api.post(`/invoices/${id}/send-peppol`,{peppol_id}),
   lookupPeppol:(peppol_id)=>api.get(`/invoices/peppol/lookup?peppol_id=${encodeURIComponent(peppol_id)}`),
+  // Authentifizierter Datei-Download (Backend akzeptiert nur den
+  // Authorization-Header — window.open mit ?token= lief immer auf 401).
+  async downloadFile(path,filename){
+    const res=await fetch(`${API_BASE}${path}`,{headers:{Authorization:`Bearer ${api._token}`}});
+    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||`Download fehlgeschlagen (${res.status})`);}
+    const blob=await res.blob();
+    const cd=res.headers.get('content-disposition')||'';
+    const name=filename||(cd.match(/filename="?([^";]+)"?/)?.[1])||'download';
+    const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click();
+    setTimeout(()=>URL.revokeObjectURL(u),5000);
+  },
   // DATEV Export
-  datevExport:()=>{ window.open(`${API_BASE}/invoices/datev-export?token=${api._token}`,'_blank'); },
-  datevExportInbound:(orgId,from,to)=>{ window.open(`${API_BASE}/inbound/datev-export?org_id=${orgId}&from=${from||''}&to=${to||''}`,'_blank'); },
+  datevExport:()=>api.downloadFile('/invoices/datev-export'),
+  datevExportInbound:(orgId,from,to)=>api.downloadFile(`/inbound/datev-export?from=${from||''}&to=${to||''}`),
   // Inbound
   listInbound:(params='')=>api.get(`/inbound${params}`),
-  getInboundPdf:(id)=>`${API_BASE}/inbound/${id}/pdf`,
+  openInboundPDF:(id)=>fetch(`${API_BASE}/inbound/${id}/pdf`,{headers:{Authorization:`Bearer ${api._token}`}}).then(r=>{if(!r.ok)throw new Error(`PDF konnte nicht geladen werden (${r.status})`);return r.blob();}).then(b=>{const u=URL.createObjectURL(b);window.open(u,'_blank');}),
   markInboundPaid:(id)=>api.post(`/inbound/${id}/mark-paid`,{}),
   forwardInbound:(id,email)=>api.post(`/inbound/${id}/forward`,{recipient_email:email}),
-  getSepaDownloadUrl:(id,discount=false)=>`${API_BASE}/inbound/${id}/sepa-pain001?discount=${discount}&token=${api._token}`,
+  downloadSepa:(id,discount=false)=>api.downloadFile(`/inbound/${id}/sepa-pain001?discount=${discount}`),
   checkDiscount:(id)=>api.get(`/inbound/${id}/discount-check`),
   getInboundDetail:(id)=>api.get(`/inbound/${id}/detail`),
   patchInbound:(id,fields)=>api.patch(`/inbound/${id}`,fields),
@@ -90,354 +63,36 @@ const api={
   // Einstellungen
   saveSettings:(b)=>api.post('/auth/settings',b),
   getOrgSettings:()=>api.get('/auth/settings'),
+  // Kundenstammdaten
+  listCustomers:(search='')=>api.get(`/customers${search?`?search=${encodeURIComponent(search)}`:''}`),
+  // Belegfluss (SAP-nah): Anfrage/Angebot/Auftrag/Lieferung
+  listBusinessDocs:(q='')=>api.get(`/business/documents${q}`),
+  getBusinessDoc:(id)=>api.get(`/business/documents/${id}`),
+  createBusinessDoc:(b)=>api.post('/business/documents',b),
+  setBusinessDocStatus:(id,status)=>api.req('PATCH',`/business/documents/${id}/status`,{status}),
+  convertBusinessDoc:(id,target_type)=>api.post(`/business/documents/${id}/convert`,{target_type}),
+  // Artikel/Leistungen
+  listBusinessItems:(search='')=>api.get(`/business/items${search?`?search=${encodeURIComponent(search)}`:''}`),
+  createBusinessItem:(b)=>api.post('/business/items',b),
+  patchBusinessItem:(id,b)=>api.req('PATCH',`/business/items/${id}`,b),
+  deleteBusinessItem:(id)=>api.req('DELETE',`/business/items/${id}`),
+  getTaxCodes:()=>api.get('/business/tax-codes'),
   // Cashflow & Stats
   getCashflowStats:()=>api.get('/invoices/cashflow-stats'),
   getInboundStats:()=>api.get('/inbound/stats'),
   // Payments
   createCheckout:(plan,billing='monthly')=>api.post('/payments/checkout',{plan,billing}),
-  openBillingPortal:(customer_id)=>api.post('/payments/portal',{customer_id}),
+  openBillingPortal:()=>api.post('/payments/portal',{}),
   getPlans:()=>api.get('/payments/plans'),
 };
 
-const mandanten=[
-  {id:"o1",name:"Müller & Partner GmbH",plan:"business",status:"active",docs_used:284,docs_limit:1000,mrr:199,vat_id:"DE123456789",users:3,errors:2},
-  {id:"o2",name:"TechVision AG",plan:"pro",status:"active",docs_used:1840,docs_limit:10000,mrr:599,vat_id:"DE987654321",users:8,errors:0},
-  {id:"o3",name:"Stadtwerke Süd GmbH",plan:"starter",status:"active",docs_used:67,docs_limit:100,mrr:49,vat_id:"DE456789123",users:1,errors:1},
-  {id:"o4",name:"Bauer Logistik KG",plan:"business",status:"trial",docs_used:12,docs_limit:1000,mrr:0,vat_id:"DE321654987",users:2,errors:0},
-];
-const MOCK_INV=[
-  {id:"i1",org:"Müller & Partner GmbH",number:"INV-2025-284",amount:4284,format:"xrechnung",status:"delivered",date:"2025-05-25"},
-  {id:"i2",org:"TechVision AG",number:"INV-2025-1840",amount:22900,format:"zugferd",status:"delivered",date:"2025-05-25"},
-  {id:"i3",org:"Stadtwerke Süd GmbH",number:"INV-2025-067",amount:780,format:"peppol",status:"error",date:"2025-05-24"},
-  {id:"i4",org:"Bauer Logistik KG",number:"INV-2025-012",amount:1250,format:"xrechnung",status:"validated",date:"2025-05-24"},
-];
 const fmtEUR=n=>new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(n||0);
 const fmtNum=n=>new Intl.NumberFormat("de-DE").format(n||0);
 const fmtAgo=d=>{const s=Date.now()-new Date(d);if(s<3600000)return`vor ${Math.floor(s/60000)} Min.`;if(s<86400000)return`vor ${Math.floor(s/3600000)} Std.`;return"gestern";};
 
-const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-body{font-family:${F.ui};background:${T.bgGradient};color:${T.textPrimary};font-size:14px;line-height:1.5;letter-spacing:-.01em;}
-::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:${T.bgBorder};border-radius:2px;}
 
-/* Animations */
-@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-@keyframes scaleIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-
-.fi{animation:fadeIn .25s ease both}
-.fu{animation:fadeUp .4s cubic-bezier(.16,1,.3,1) both}
-.fu2{animation:fadeUp .4s .06s cubic-bezier(.16,1,.3,1) both}
-.fu3{animation:fadeUp .4s .12s cubic-bezier(.16,1,.3,1) both}
-.fu4{animation:fadeUp .4s .18s cubic-bezier(.16,1,.3,1) both}
-.fu5{animation:fadeUp .4s .24s cubic-bezier(.16,1,.3,1) both}
-.sci{animation:scaleIn .2s cubic-bezier(.16,1,.3,1) both}
-
-/* Skeleton */
-.skeleton{
-  background:linear-gradient(90deg,${T.bgMuted} 25%,${T.bgSubtle} 50%,${T.bgMuted} 75%);
-  background-size:400px 100%;
-  animation:shimmer 1.2s ease-in-out infinite;
-  border-radius:4px;
-}
-
-/* ── Buttons — Stripe-precise ── */
-.btn{
-  font-family:${F.ui};font-size:13.5px;font-weight:500;
-  cursor:pointer;border-radius:6px;border:none;
-  display:inline-flex;align-items:center;gap:6px;
-  transition:all .14s ease;white-space:nowrap;
-  letter-spacing:-.01em;text-decoration:none;
-}
-.btn:active{transform:scale(.985)!important;filter:brightness(.96);}
-.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important;}
-
-/* Primary — Stripe's indigo */
-.btn-primary{
-  background:${T.accent};color:#fff;
-  padding:8px 16px;
-  box-shadow:0 0 0 1px rgba(99,91,255,.2),0 1px 3px rgba(99,91,255,.25),inset 0 1px 0 rgba(255,255,255,.1);
-}
-.btn-primary:hover{background:${T.accentHover};box-shadow:0 0 0 1px rgba(79,70,229,.3),0 2px 6px rgba(79,70,229,.3),inset 0 1px 0 rgba(255,255,255,.1);}
-
-/* Dark — Stripe's brand button */
-.btn-dark{
-  background:${T.brand};color:#fff;padding:8px 16px;
-  box-shadow:0 0 0 1px rgba(10,37,64,.2),0 1px 3px rgba(10,37,64,.3),inset 0 1px 0 rgba(255,255,255,.06);
-}
-.btn-dark:hover{background:${T.brandMid};}
-
-/* Ghost — subtle border */
-.btn-ghost{
-  background:${T.bg};color:${T.textSecondary};
-  border:1px solid ${T.bgBorder};padding:7px 14px;
-  box-shadow:0 1px 2px rgba(0,0,0,.05);
-}
-.btn-ghost:hover{background:${T.bgSubtle};border-color:${T.textPlaceholder};color:${T.textPrimary};}
-
-.btn-outline{background:transparent;color:${T.accent};border:1px solid ${T.accentPale};padding:6px 13px;font-size:13px;}
-.btn-outline:hover{background:${T.accentLight};}
-.btn-danger{background:${T.bg};color:${T.red};border:1px solid ${T.redBdr};padding:6px 13px;font-size:12.5px;}
-.btn-success{background:${T.bg};color:${T.green};border:1px solid ${T.greenBdr};padding:6px 13px;font-size:12.5px;}
-.btn-lg{padding:10px 22px;font-size:15px;font-weight:600;border-radius:8px;}
-.btn-sm{padding:5px 10px;font-size:12px;border-radius:5px;}
-.btn-xl{padding:13px 32px;font-size:16px;font-weight:600;border-radius:8px;}
-
-/* ── Inputs — Stripe-exact ── */
-.input{
-  width:100%;background:${T.bg};
-  border:1px solid ${T.bgBorder};border-radius:6px;
-  padding:8px 12px;font-family:${F.ui};font-size:14px;
-  color:${T.textPrimary};outline:none;
-  box-shadow:0 1px 1px rgba(0,0,0,.04),0 2px 4px rgba(10,37,64,.06);
-  transition:border-color .14s,box-shadow .14s;
-}
-.input:focus{
-  border-color:${T.accent};
-  box-shadow:0 0 0 2px rgba(99,91,255,.15),0 1px 1px rgba(0,0,0,.04);
-}
-.input::placeholder{color:${T.textPlaceholder};}
-.select{
-  width:100%;background:${T.bg};border:1px solid ${T.bgBorder};border-radius:6px;
-  padding:8px 12px;font-family:${F.ui};font-size:14px;color:${T.textPrimary};
-  outline:none;cursor:pointer;
-  box-shadow:0 1px 1px rgba(0,0,0,.04);
-  transition:border-color .14s;
-}
-.select:focus{border-color:${T.accent};}
-.label{
-  display:block;font-size:12px;font-weight:500;
-  color:${T.textSecondary};margin-bottom:5px;
-}
-
-/* ── Cards — Stripe's layered approach ── */
-.card{
-  background:${T.bg};border:1px solid rgba(221,225,231,.6);
-  border-radius:14px;
-  box-shadow:0 16px 32px -20px rgba(10,37,64,.07);
-  transition:box-shadow .3s cubic-bezier(.16,1,.3,1),transform .3s cubic-bezier(.16,1,.3,1),border-color .2s;
-}
-.card-hover:hover,.card.tr-target:hover{
-  border-color:rgba(99,91,255,.25);
-  box-shadow:0 20px 40px -18px rgba(10,37,64,.13);
-  transform:translateY(-2px);
-}
-
-/* ── Table ── */
-.table{width:100%;border-collapse:collapse;}
-.table th{
-  text-align:left;padding:9px 14px;
-  font-size:11px;color:${T.textMuted};font-weight:600;
-  letter-spacing:.6px;text-transform:uppercase;
-  border-bottom:1px solid ${T.bgBorder};
-  background:${T.bgSubtle};
-}
-.table th:first-child{border-radius:8px 0 0 0;}
-.table th:last-child{border-radius:0 8px 0 0;}
-.table td{
-  padding:11px 14px;font-size:13.5px;
-  border-bottom:1px solid ${T.bgSubtle};
-  vertical-align:middle;
-  font-variant-numeric:tabular-nums;
-}
-.tr-hover{transition:background .15s;}
-.tr-hover:hover{background:${T.accentLight};cursor:pointer;}
-
-/* ── Badges — Stripe minimal ── */
-.badge{
-  display:inline-flex;align-items:center;gap:3px;
-  border-radius:4px;padding:2px 7px;
-  font-size:11px;font-weight:600;letter-spacing:.2px;
-}
-.badge-green {background:${T.greenBg};color:${T.green}; border:1px solid ${T.greenBdr};}
-.badge-red   {background:${T.redBg};  color:${T.red};   border:1px solid ${T.redBdr};}
-.badge-amber {background:${T.amberBg};color:${T.amber}; border:1px solid ${T.amberBdr};}
-.badge-blue  {background:${T.blueBg}; color:${T.blue};  border:1px solid ${T.blueBdr};}
-.badge-purple{background:${T.accentLight};color:${T.accent};border:1px solid ${T.accentPale};}
-.badge-gray  {background:${T.bgMuted};color:${T.textSecondary};border:1px solid ${T.bgBorder};}
-
-/* ── Navigation ── */
-.nav-item{
-  display:flex;align-items:center;gap:9px;
-  padding:7px 11px;background:transparent;
-  color:${T.textMuted};border:none;border-radius:8px;
-  cursor:pointer;font-size:13px;font-weight:500;
-  text-align:left;width:100%;font-family:${F.ui};
-  transition:all .18s cubic-bezier(.16,1,.3,1);
-  position:relative;
-}
-.nav-item:hover{color:${T.textPrimary};background:${T.bgMuted};transform:translateX(2px);}
-.nav-item.active{color:${T.accent};background:${T.accentLight};font-weight:600;}
-.nav-item.active::before{
-  content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);
-  width:3px;height:16px;border-radius:0 3px 3px 0;background:${T.accent};
-}
-.nav-item:active{transform:scale(.98);}
-.nav-section{
-  font-size:10px;font-weight:600;color:${T.textPlaceholder};
-  letter-spacing:.8px;text-transform:uppercase;
-  padding:12px 10px 4px;
-}
-
-/* ── Layout ── */
-.sidebar{
-  width:218px;
-  background:linear-gradient(180deg,${T.bg} 0%,${T.bgSubtle} 100%);
-  border-right:1px solid ${T.bgBorder};
-  display:flex;flex-direction:column;flex-shrink:0;
-  position:sticky;top:0;height:100vh;overflow-y:auto;
-}
-.topbar{
-  height:50px;border-bottom:1px solid ${T.bgBorder};
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 24px;background:${T.bg};flex-shrink:0;
-}
-
-/* ── Misc ── */
-.divider{height:1px;background:${T.bgBorder};}
-.progress{height:3px;background:${T.bgMuted};border-radius:3px;overflow:hidden;}
-.progress-fill{height:100%;background:linear-gradient(90deg,${T.accent},#8B7FFF);border-radius:3px;transition:width .5s cubic-bezier(.16,1,.3,1);}
-.stat-num{
-  font-family:${F.mono};font-size:27px;font-weight:700;
-  color:${T.textPrimary};line-height:1;letter-spacing:-.04em;
-  font-variant-numeric:tabular-nums;
-}
-.tab{
-  padding:8px 14px;font-size:13px;font-weight:500;
-  color:${T.textMuted};border:none;background:transparent;
-  cursor:pointer;border-bottom:2px solid transparent;
-  font-family:${F.ui};transition:all .12s;
-  letter-spacing:-.01em;
-}
-.tab.active{color:${T.textPrimary};border-bottom-color:${T.accent};font-weight:600;}
-.tab:hover{color:${T.textSecondary};}
-.avatar{
-  width:26px;height:26px;border-radius:50%;
-  background:${T.accentLight};display:flex;
-  align-items:center;justify-content:center;
-  font-size:11px;font-weight:700;color:${T.accent};flex-shrink:0;
-}
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(10,37,64,.4);
-  z-index:1000;display:flex;align-items:center;justify-content:center;
-  padding:24px;backdrop-filter:blur(4px);
-}
-.modal{
-  background:${T.bg};border-radius:8px;padding:24px;
-  max-width:480px;width:100%;
-  box-shadow:0 4px 8px rgba(0,0,0,.04),0 20px 48px rgba(10,37,64,.16);
-}
-
-/* ── Landing-specific ── */
-.hero-pill{
-  display:inline-flex;align-items:center;gap:6px;
-  background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:20px;padding:4px 12px;
-  font-size:12px;color:${T.textSecondary};font-weight:500;
-  box-shadow:0 1px 2px rgba(0,0,0,.05);
-}
-.feature-card{
-  background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:8px;padding:22px;
-  transition:all .15s;
-  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 6px rgba(10,37,64,.05);
-}
-.feature-card:hover{
-  border-color:${T.textPlaceholder};
-  box-shadow:0 2px 4px rgba(0,0,0,.04),0 6px 16px rgba(10,37,64,.08);
-  transform:translateY(-2px);
-}
-.pricing-card{
-  background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:8px;padding:28px;
-  transition:all .15s;
-  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 6px rgba(10,37,64,.05);
-}
-.pricing-card:hover{
-  box-shadow:0 4px 8px rgba(0,0,0,.04),0 12px 32px rgba(10,37,64,.1);
-  transform:translateY(-2px);
-}
-.pricing-card.featured{background:${T.brand};border-color:${T.brand};}
-/* Integration logo pills — futuristic */
-.integration-logo{
-  display:inline-flex;align-items:center;gap:9px;
-  padding:11px 20px;
-  background:rgba(10,37,64,.04);
-  border:1px solid rgba(99,91,255,.18);
-  border-radius:10px;
-  font-size:13px;font-weight:600;letter-spacing:-.01em;
-  color:${T.textSecondary};
-  white-space:nowrap;cursor:default;
-  transition:border-color .2s,color .2s,background .2s,box-shadow .2s,transform .2s;
-  user-select:none;flex-shrink:0;
-  position:relative;
-  overflow:hidden;
-}
-.integration-logo::before{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(99,91,255,.07) 0%,transparent 60%);
-  pointer-events:none;
-}
-.integration-logo:hover{
-  border-color:rgba(99,91,255,.55);
-  color:${T.textPrimary};
-  background:rgba(99,91,255,.07);
-  box-shadow:0 0 0 1px rgba(99,91,255,.15),0 4px 20px rgba(99,91,255,.15);
-  transform:translateY(-2px);
-}
-@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-@keyframes shimmerX{0%{background-position:-200% 0}100%{background-position:200% 0}}
-@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
-@keyframes drawIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-.bento-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;}
-.bento-grid .bento-wide{grid-column:span 2;}
-@media(max-width:768px){.bento-grid{grid-template-columns:1fr;}.bento-grid .bento-wide{grid-column:span 1;}}
-.zg-grid{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:16px;}
-@media(max-width:768px){.zg-grid{grid-template-columns:1fr;}}
-.btn:active{transform:translateY(1px) scale(.985);}
-.bento-card{background:#fff;border:1px solid rgba(221,225,231,.55);border-radius:18px;padding:26px;position:relative;overflow:hidden;transition:box-shadow .3s cubic-bezier(.16,1,.3,1),transform .3s cubic-bezier(.16,1,.3,1);box-shadow:0 18px 38px -18px rgba(10,37,64,.06);}
-.bento-card:hover{transform:translateY(-3px);box-shadow:0 24px 48px -16px rgba(10,37,64,.12);}
-.live-dot{width:7px;height:7px;border-radius:50%;display:inline-block;animation:pulseDot 2.4s ease-in-out infinite;}
-.shimmer-bar{background:linear-gradient(90deg,rgba(99,91,255,.07) 25%,rgba(99,91,255,.16) 50%,rgba(99,91,255,.07) 75%);background-size:200% 100%;animation:shimmerX 2.6s linear infinite;}
-.marquee-track{
-  display:flex;gap:10px;
-  animation:marquee 32s linear infinite;
-  width:max-content;
-}
-.marquee-track:hover{animation-play-state:paused;}
-.marquee-wrap{
-  overflow:hidden;
-  mask-image:linear-gradient(to right,transparent 0%,black 10%,black 90%,transparent 100%);
-  -webkit-mask-image:linear-gradient(to right,transparent 0%,black 10%,black 90%,transparent 100%);
-}
-.connector-card{
-  background:${T.bg};border:1px solid ${T.bgBorder};
-  border-radius:8px;padding:16px;transition:all .14s;cursor:pointer;
-  box-shadow:0 1px 1px rgba(0,0,0,.03),0 2px 4px rgba(10,37,64,.05);
-}
-.connector-card:hover{border-color:${T.accent};box-shadow:0 2px 4px rgba(0,0,0,.04),0 4px 12px rgba(10,37,64,.08);transform:translateY(-1px);}
-.connector-card.connected{border-color:${T.greenBdr};background:${T.greenBg};}
-
-/* Scroll reveal */
-.reveal{opacity:0;transform:translateY(20px);transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1);}
-.reveal.visible{opacity:1;transform:none;}
-
-@media(max-width:768px){
-  .sidebar{display:none;}
-  .topbar{padding:0 16px;}
-}
-`;
-
-function Wordmark({size=22,inverted=false}){
+function Wordmark({size=22,inverted=false,iconOnly=false}){
   const c=inverted?"#fff":T.textPrimary,a=inverted?"#93C5FD":T.accent;
   return(<div style={{display:"flex",alignItems:"center",gap:8,userSelect:"none",flexShrink:0}}>
     <div style={{width:size,height:size,background:inverted?"rgba(255,255,255,.15)":T.brand,borderRadius:Math.round(size*.26),display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -448,12 +103,14 @@ function Wordmark({size=22,inverted=false}){
         <rect x="15.8" y="7" width="2.5" height="10" rx="1.25" fill={inverted?T.brand:"#fff"}/>
       </svg>
     </div>
-    <span style={{fontFamily:F.ui,fontSize:size*.9,fontWeight:400,color:c,letterSpacing:"-.02em"}}>inv<span style={{color:a}}>o</span>iq</span>
+    {!iconOnly&&<span style={{fontFamily:F.ui,fontSize:size*.9,fontWeight:400,color:c,letterSpacing:"-.02em"}}>inv<span style={{color:a}}>o</span>iq</span>}
   </div>);
 }
 
 function StatusBadge({status}){
-  const m={delivered:["badge-green","Delivered"],validated:["badge-blue","Validated"],sent:["badge-blue","Sent"],error:["badge-red","Error"],pending:["badge-amber","Pending"],archived:["badge-gray","Archived"],draft:["badge-gray","Draft"],active:["badge-green","Active"],trial:["badge-purple","Trial"],suspended:["badge-red","Suspended"],starter:["badge-gray","Starter"],business:["badge-blue","Business"],pro:["badge-amber","Pro"],super_admin:["badge-red","Super Admin"],owner:["badge-gray","Owner"],admin:["badge-blue","Admin"],member:["badge-gray","Member"]};
+  const m={delivered:["badge-green","Zugestellt"],validated:["badge-blue","Validiert"],sent:["badge-blue","Gesendet"],error:["badge-red","Fehler"],pending:["badge-amber","Ausstehend"],archived:["badge-gray","Archiviert"],draft:["badge-gray","Entwurf"],active:["badge-green","Aktiv"],trial:["badge-purple","Trial"],suspended:["badge-red","Gesperrt"],free:["badge-gray","Free"],starter:["badge-gray","Starter"],business:["badge-blue","Business"],enterprise:["badge-purple","Enterprise"],pro:["badge-amber","Pro"],super_admin:["badge-red","Super Admin"],owner:["badge-gray","Owner"],admin:["badge-blue","Admin"],member:["badge-gray","Member"],
+  // Belegfluss-Status (SAP-nah)
+  offen:["badge-amber","Offen"],beantwortet:["badge-blue","Beantwortet"],entwurf:["badge-gray","Entwurf"],gesendet:["badge-blue","Gesendet"],angenommen:["badge-green","Angenommen"],abgelehnt:["badge-red","Abgelehnt"],abgelaufen:["badge-gray","Abgelaufen"],bestaetigt:["badge-blue","Bestätigt"],geliefert:["badge-purple","Geliefert"],fakturiert:["badge-green","Fakturiert"],storniert:["badge-red","Storniert"]};
   const[cls,lbl]=m[status]||["badge-gray",status];
   return <span className={`badge ${cls}`}>{lbl}</span>;
 }
@@ -466,6 +123,34 @@ function Toast({msg,type,onClose}){
   return(<div onClick={onClose} style={{position:"fixed",bottom:24,right:24,zIndex:9999,background:T.bg,border:`1px solid ${s[2]}`,borderRadius:10,padding:"12px 18px",fontSize:13.5,fontWeight:500,color:s[0],maxWidth:380,boxShadow:T.shadowXl,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontFamily:F.ui}}>
     <div style={{width:20,height:20,borderRadius:"50%",background:s[1],border:`1px solid ${s[2]}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{s[3]}</div>{msg}
   </div>);
+}
+
+// ── Zentrale Zustands-Komponenten ─────────────────────────────
+// Alert: fachliche Hinweise/Fehler (severity: error | warning | info | success)
+function Alert({severity="info",children,style}){
+  const s={
+    error:  [T.red,  T.redBg,  T.redBdr,  "✗"],
+    warning:[T.amber,T.amberBg,T.amberBdr,"⚠"],
+    success:[T.green,T.greenBg,T.greenBdr,"✓"],
+    info:   [T.accent,T.accentLight,T.accentPale,"i"],
+  }[severity]||[T.accent,T.accentLight,T.accentPale,"i"];
+  return(
+    <div role="alert" style={{padding:"10px 13px",borderRadius:8,fontSize:12.5,display:"flex",gap:9,alignItems:"flex-start",background:s[1],border:`1px solid ${s[2]}`,color:s[0],lineHeight:1.55,...style}}>
+      <span style={{flexShrink:0,fontWeight:700}}>{s[3]}</span><div style={{flex:1}}>{children}</div>
+    </div>
+  );
+}
+
+// EmptyState: Leerer Zustand mit Icon, Erklärung und Primäraktion
+function EmptyState({icon="📄",title,text,cta,onCta}){
+  return(
+    <div style={{textAlign:"center",padding:"52px 24px",color:T.textMuted}}>
+      <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 16px"}}>{icon}</div>
+      <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>{title}</div>
+      {text&&<div style={{fontSize:13.5,marginBottom:cta?18:0,maxWidth:420,margin:cta?"0 auto 18px":"0 auto"}}>{text}</div>}
+      {cta&&<button className="btn btn-primary" onClick={onCta}>{cta}</button>}
+    </div>
+  );
 }
 
 function MiniChart({data,color=T.accent,height=40}){
@@ -528,7 +213,7 @@ function Landing({onEnter,onLegal=()=>{}}){
   const heroTabs=[
     {label:'Overview',content:(
       <div style={{padding:16}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:12}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:8,marginBottom:12}}>
           {[['41','Versendet','▲ +8%',T.green],['28','Empfangen','Diese Woche',T.accent],['1','Fehler','Prüfen',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
             <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'9px 10px',border:`1px solid ${T.bgBorder}`}}>
               <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{l}</div>
@@ -664,24 +349,24 @@ function Landing({onEnter,onLegal=()=>{}}){
       cta:'Kostenlos starten',ctaStyle:'outline',
     },
     {
-      name:'Starter',price:49,yearlyPrice:39,docs:'100 Dok./Monat',
+      name:'Starter',price:29,yearlyPrice:25,docs:'100 Dok./Monat',
       sub:'Pro Monat, jederzeit kündbar',
       badge:null,
-      features:['XRechnung + ZUGFeRD','Inbound-Empfang + Parsing','E-Mail-Versand','GoBD-Archiv','1 ERP-Konnektor','1 Nutzer'],
+      features:['XRechnung + ZUGFeRD','Inbound-Empfang + Parsing','E-Mail-Versand','GoBD-Archiv','API Basic'],
       cta:'14 Tage gratis testen',ctaStyle:'outline',
     },
     {
-      name:'Business',price:199,yearlyPrice:159,docs:'1.000 Dok./Monat',
+      name:'Business',price:99,yearlyPrice:85,docs:'500 Dok./Monat',
       sub:'Pro Monat, jederzeit kündbar',
       badge:'EMPFOHLEN',
-      features:['Alles in Starter','Peppol BIS 3.0 Versand','KI-Rechnungserkennung (Scanner)','DATEV-Export inklusive','Kanzlei-Portal Zugang','ViDA-Reporting ready','5 Nutzer'],
+      features:['Alles in Starter','Peppol BIS 3.0 Versand','KI-Rechnungserkennung (Scanner)','DATEV-Export inklusive','Kanzlei-Portal Zugang','ViDA-Reporting ready'],
       cta:'Jetzt starten',ctaStyle:'primary',
     },
     {
-      name:'Pro',price:599,yearlyPrice:479,docs:'10.000 Dok./Monat',
+      name:'Enterprise',price:299,yearlyPrice:250,docs:'Unbegrenzt',
       sub:'Pro Monat, jederzeit kündbar',
       badge:null,
-      features:['Alles in Business','Kanzlei-Portal inklusive','DATEV-Export inklusive','Public REST API + Webhooks','GoBD-Archiv 10 Jahre','Unbegrenzte Rechnungen','15 Nutzer'],
+      features:['Alles in Business','Multi-Mandanten','Public REST API + Webhooks','GoBD-Archiv 10 Jahre','Account Manager','SLA & Telefon-Support'],
       cta:'Demo buchen',ctaStyle:'outline',
     },
   ];
@@ -767,7 +452,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                 </div>
                 <div style={{flex:1,overflow:'hidden'}}>
                   {heroTab===0&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:7,marginBottom:10}}>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:7,marginBottom:10}}>
                       {[['41','Versendet','▲ +8%',T.green],['28','Empfangen','Diese Woche',T.accent],['1','Fehler','Prüfen',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
                         <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'8px 10px',border:`1px solid ${T.bgBorder}`}}>
                           <div style={{fontSize:9.5,color:T.textMuted,marginBottom:3}}>{l}</div>
@@ -905,7 +590,7 @@ function Landing({onEnter,onLegal=()=>{}}){
               </div>
             </div>
           </div>
-          {heroTab===6&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>{org?.plan==='enterprise'||org?.plan==='kanzlei'?<div><div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:12}}>Kanzlei-Portal</div><div style={{fontSize:10.5,color:T.textMuted,marginBottom:16}}>Mandanten-Dokumente verwalten und XRechnungen erstellen.</div><div style={{background:T.bgSubtle,borderRadius:8,padding:12}}><div style={{fontSize:10.5,color:T.textMuted}}>Mandantenverwaltung in Entwicklung.</div></div></div>:<div style={{textAlign:'center',padding:'40px 20px'}}><div style={{fontSize:40,marginBottom:12}}>🏛️</div><div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:8}}>Kanzlei-Portal</div><div style={{fontSize:10.5,color:T.textMuted,marginBottom:20}}>Diese Funktion ist nur im Enterprise-Abo verfügbar.</div><button className="btn btn-primary" style={{fontSize:10.5,padding:'6px 16px'}} onClick={()=>api.createCheckout('enterprise','monthly').then(r=>{if(r?.url)window.location.href=r.url})}>Jetzt upgraden</button></div>}</div>}{/* Floating notification */}
+          {heroTab===6&&<div style={{padding:14,animation:'fadeIn .3s ease',textAlign:'center'}}><div style={{fontSize:40,marginBottom:12}}>🏛️</div><div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:8}}>Kanzlei-Portal</div><div style={{fontSize:10.5,color:T.textMuted}}>Alle Mandanten zentral verwalten — enthalten ab dem Business-Plan.</div></div>}{/* Floating notification */}
           <div style={{position:'absolute',bottom:-18,right:-14,background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:9,padding:'10px 14px',boxShadow:T.shadow3,display:'flex',alignItems:'center',gap:10,zIndex:2}}>
             <div style={{width:28,height:28,borderRadius:6,background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1172,7 +857,7 @@ function Landing({onEnter,onLegal=()=>{}}){
         </div>
 
         {/* Plan cards */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:20}}>
           {[
             {
               name:'FREE',price:0,yearly:0,docs:'10 Rechnungen/Monat',
@@ -1293,13 +978,49 @@ function Landing({onEnter,onLegal=()=>{}}){
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
-function Auth({mode,onSwitch,onSuccess,loading}){
+function Auth({mode,onSwitch,onSuccess,loading,notify}){
   // Registrierung bewusst schlank gehalten: Name, Firma, E-Mail, Passwort, Adresse.
   // IBAN/SEPA und ERP-Anbindung werden NICHT mehr bei der Registrierung verlangt —
   // diese können später im Onboarding-Wizard (überspringbar) oder in den
   // Einstellungen ergänzt werden.
-  const[form,setForm]=useState({email:"demo@invoiq.io",password:"demo123",full_name:"",org_name:"",address:"",zip:"",city:"",country:"DE"});
+  const[form,setForm]=useState({email:"",password:"",full_name:"",org_name:"",address:"",zip:"",city:"",country:"DE"});
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const[forgot,setForgot]=useState(false);
+  const[forgotSent,setForgotSent]=useState(false);
+  const[forgotBusy,setForgotBusy]=useState(false);
+
+  const requestReset=async()=>{
+    if(!form.email){notify?.("Bitte E-Mail-Adresse eingeben","error");return;}
+    setForgotBusy(true);
+    try{await api.post('/auth/forgot-password',{email:form.email});setForgotSent(true);}
+    catch(e){notify?.(e.message||'Anfrage fehlgeschlagen','error');}
+    setForgotBusy(false);
+  };
+
+  if(forgot)return(<div style={{minHeight:"100vh",background:T.bgSubtle,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+    <div style={{width:"100%",maxWidth:400}}>
+      <div style={{textAlign:"center",marginBottom:28}}><Wordmark size={24}/></div>
+      <div className="card sci" style={{padding:30,boxShadow:T.shadow3}}>
+        <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:5,letterSpacing:"-.02em"}}>Passwort vergessen?</h2>
+        {forgotSent?(
+          <>
+            <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.6,marginBottom:20}}>Falls ein Konto mit <strong>{form.email}</strong> existiert, haben wir einen Reset-Link gesendet. Der Link ist 1 Stunde gültig — bitte auch den Spam-Ordner prüfen.</p>
+            <button className="btn btn-ghost" style={{width:"100%",justifyContent:"center"}} onClick={()=>{setForgot(false);setForgotSent(false);}}>← Zurück zur Anmeldung</button>
+          </>
+        ):(
+          <>
+            <p style={{fontSize:13,color:T.textMuted,marginBottom:20}}>Wir senden Ihnen einen Link zum Zurücksetzen.</p>
+            <div style={{display:"flex",flexDirection:"column",gap:13}}>
+              <div><label className="label">E-Mail</label><input className="input" type="email" value={form.email} onChange={e=>upd("email",e.target.value)} onKeyDown={e=>e.key==="Enter"&&requestReset()} autoFocus/></div>
+              <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",padding:"11px"}} onClick={requestReset} disabled={forgotBusy}>{forgotBusy?<><Spinner color="#fff"/>&nbsp;Sendet...</>:"Reset-Link senden →"}</button>
+              <button onClick={()=>setForgot(false)} style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:13,fontFamily:F.ui}}>← Zurück zur Anmeldung</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  </div>);
+
   return(<div style={{minHeight:"100vh",background:T.bgSubtle,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
     <div style={{width:"100%",maxWidth:400}}>
       <div style={{textAlign:"center",marginBottom:28}}><Wordmark size={24}/></div>
@@ -1321,87 +1042,196 @@ function Auth({mode,onSwitch,onSuccess,loading}){
           <div><label className="label">Passwort</label><input className="input" type="password" value={form.password} onChange={e=>upd("password",e.target.value)} onKeyDown={e=>e.key==="Enter"&&onSuccess(form)}/></div>
           <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",marginTop:4,padding:"11px"}} onClick={()=>onSuccess(form)} disabled={loading}>{loading?<><Spinner color="#fff"/>&nbsp;Bitte warten...</>:mode==="login"?"Anmelden →":"Konto erstellen →"}</button>
           <button onClick={onSwitch} style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:13,fontFamily:F.ui}}>{mode==="login"?"Noch kein Konto? Registrieren →":"Bereits registriert? Anmelden →"}</button>
-          {mode==="login"&&<div style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:"9px 13px",fontSize:12,color:T.textMuted,textAlign:"center"}}>Demo: <strong style={{color:T.textPrimary}}>demo@invoiq.io</strong> / <strong style={{color:T.textPrimary}}>demo123</strong></div>}
+          {mode==="login"&&<button onClick={()=>setForgot(true)} style={{background:"none",border:"none",color:T.textMuted,cursor:"pointer",fontSize:12.5,fontFamily:F.ui}}>Passwort vergessen?</button>}
         </div>
       </div>
     </div>
   </div>);
 }
 
-// ── APP SHELL ─────────────────────────────────────────────────
-function AppShell({user,org,nav,setNav,onLogout,onAdmin,children}){
-  // Kanzlei-Portal ab Business-Plan (siehe Pricing: Business/Pro/Enterprise enthalten es)
-  const plan = (org?.plan||'starter').toLowerCase();
-  const hasKanzlei = plan === 'business' || plan === 'enterprise' || plan === 'pro';
+// ── RESET PASSWORD (via /reset-password?token=...) ────────────
+function ResetPassword({onDone,notify}){
+  const token=new URLSearchParams(window.location.search).get('token')||'';
+  const[pw,setPw]=useState('');
+  const[pw2,setPw2]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[done,setDone]=useState(false);
 
-  const items=[
-    {key:"dashboard",   label:"Übersicht"},
-    {key:"invoices",    label:"Ausgang"},
-    {key:"inbound",     label:"Eingang"},
-    {key:"scanner",     label:"Scan & Import"},
-    {key:"archive",     label:"Archiv"},
-    {key:"settings",    label:"Einstellungen"},
-    // Kanzlei-Portal: ans Ende, nach Einstellungen
+  const submit=async()=>{
+    if(pw.length<8){notify('Passwort muss mindestens 8 Zeichen haben','error');return;}
+    if(pw!==pw2){notify('Passwörter stimmen nicht überein','error');return;}
+    setBusy(true);
+    try{
+      await api.post('/auth/reset-password',{token,password:pw});
+      setDone(true);
+    }catch(e){notify(e.message||'Reset fehlgeschlagen','error');}
+    setBusy(false);
+  };
+
+  return(<div style={{minHeight:"100vh",background:T.bgSubtle,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+    <div style={{width:"100%",maxWidth:400}}>
+      <div style={{textAlign:"center",marginBottom:28}}><Wordmark size={24}/></div>
+      <div className="card sci" style={{padding:30,boxShadow:T.shadow3}}>
+        {done?(
+          <>
+            <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:8}}>Passwort geändert ✓</h2>
+            <p style={{fontSize:13.5,color:T.textSecondary,marginBottom:20}}>Sie können sich jetzt mit dem neuen Passwort anmelden.</p>
+            <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",padding:"11px"}} onClick={onDone}>Zur Anmeldung →</button>
+          </>
+        ):!token?(
+          <>
+            <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:8}}>Link ungültig</h2>
+            <p style={{fontSize:13.5,color:T.textSecondary,marginBottom:20}}>Dieser Reset-Link ist unvollständig. Bitte fordern Sie über „Passwort vergessen?" einen neuen an.</p>
+            <button className="btn btn-ghost" style={{width:"100%",justifyContent:"center"}} onClick={onDone}>Zur Anmeldung →</button>
+          </>
+        ):(
+          <>
+            <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:5}}>Neues Passwort vergeben</h2>
+            <p style={{fontSize:13,color:T.textMuted,marginBottom:20}}>Mindestens 8 Zeichen.</p>
+            <div style={{display:"flex",flexDirection:"column",gap:13}}>
+              <div><label className="label">Neues Passwort</label><input className="input" type="password" value={pw} onChange={e=>setPw(e.target.value)} autoFocus/></div>
+              <div><label className="label">Passwort wiederholen</label><input className="input" type="password" value={pw2} onChange={e=>setPw2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+              <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",padding:"11px"}} onClick={submit} disabled={busy}>{busy?<><Spinner color="#fff"/>&nbsp;Speichert...</>:"Passwort ändern →"}</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  </div>);
+}
+
+// ── APP SHELL ─────────────────────────────────────────────────
+// Icon-Set der Navigation — schlanke 15px-Stroke-Icons, erben currentColor
+const NAV_ICONS={
+  dashboard:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  invoices:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-10a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M10 2.5v3h3M5 9h6M5 11.5h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  inbound:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 9.5l2-6h8l2 6v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M2 9.5h3.5a2.5 2.5 0 005 0H14" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  scanner:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M5.5 3.5L6.5 2h3l1 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1V4.5a1 1 0 011-1h2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  archive:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2.5" width="12" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.4"/><path d="M3 6v6.5a1 1 0 001 1h8a1 1 0 001-1V6M6.5 9h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  belege:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="3.5" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.4"/><circle cx="12.5" cy="3.5" r="1.8" stroke="currentColor" strokeWidth="1.4"/><circle cx="12.5" cy="12.5" r="1.8" stroke="currentColor" strokeWidth="1.4"/><path d="M5.2 7.2l5.5-2.9M5.2 8.8l5.5 2.9" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  artikel:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5.5 3v6.4l-5.5 3-5.5-3V4.8l5.5-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M2.7 4.9L8 7.8l5.3-2.9M8 7.8v6.2" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>,
+  kunden:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="5.8" cy="5.4" r="2.4" stroke="currentColor" strokeWidth="1.4"/><path d="M1.8 13.4c.5-2.3 2.1-3.6 4-3.6s3.5 1.3 4 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="11.6" cy="6.2" r="1.9" stroke="currentColor" strokeWidth="1.4"/><path d="M11.2 10.4c1.7.1 2.8 1.2 3.2 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  settings:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.4"/><path d="M8 1.8v1.8M8 12.4v1.8M1.8 8h1.8M12.4 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  steuerberater:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="5" width="12" height="8.5" rx="1.2" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 5V3.5a1 1 0 011-1h3a1 1 0 011 1V5M2 8.5h12" stroke="currentColor" strokeWidth="1.4"/></svg>,
+};
+
+function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
+  // Kanzlei-Portal ab Business-Plan (siehe Pricing: Business/Pro/Enterprise enthalten es)
+  const plan = (org?.plan||'free').toLowerCase();
+  const hasKanzlei = plan === 'business' || plan === 'enterprise' || plan === 'pro';
+  const [mobileNav,setMobileNav]=useState(false);
+  const [collapsed,setCollapsed]=useState(()=>typeof localStorage!=="undefined"&&localStorage.getItem("invoiq_sidebar_collapsed")==="1");
+  const [userMenu,setUserMenu]=useState(false);
+  const [searchQ,setSearchQ]=useState("");
+  const go=(key)=>{setNav(key);setMobileNav(false);};
+  const toggleCollapse=()=>{setCollapsed(c=>{const n=!c;if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_sidebar_collapsed",n?"1":"0");return n;});};
+
+  const sections=[
+    {title:"Rechnungen",items:[
+      {key:"dashboard",   label:"Übersicht"},
+      {key:"invoices",    label:"Ausgang"},
+      {key:"inbound",     label:"Eingang"},
+      {key:"scanner",     label:"Scan & Import"},
+      {key:"archive",     label:"Archiv"},
+    ]},
+    {title:"Vertrieb",items:[
+      {key:"belege",      label:"Belege & Aufträge"},
+      {key:"artikel",     label:"Artikel & Leistungen"},
+      {key:"kunden",      label:"Kunden"},
+    ]},
   ];
 
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
-  const isAdmin=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
+  // Admin-Panel rollenbasiert (Backend prüft zusätzlich serverseitig)
+  const isAdmin=["owner","admin","super_admin"].includes(user?.role);
+
+  const NavBtn=({k,label})=>(
+    <button className={`nav-item ${nav===k?"active":""}`} onClick={()=>go(k)} title={collapsed?label:undefined}>
+      {NAV_ICONS[k]||NAV_ICONS.dashboard}<span className="nav-label">{label}</span>
+      {k==="steuerberater"&&!hasKanzlei&&<span className="nav-label" style={{marginLeft:'auto',fontSize:9,background:'#7c3aed',color:'#fff',borderRadius:3,padding:'1px 5px',fontWeight:700}}>PRO</span>}
+    </button>
+  );
 
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
-    <aside className="sidebar">
-      <div style={{padding:"14px 14px 10px",borderBottom:`1px solid ${T.bgBorder}`}}>
-        <Wordmark size={20}/>
-        {org&&<div style={{fontSize:11,color:T.textMuted,marginTop:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}}>{org.name}</div>}
+    {mobileNav&&<div className="mobile-nav-overlay" onClick={()=>setMobileNav(false)}/>}
+    <aside className={`sidebar ${mobileNav?"mobile-open":""} ${collapsed&&!mobileNav?"collapsed":""}`}>
+      <div style={{padding:collapsed?"14px 0 10px":"14px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.08)",display:"flex",flexDirection:"column",alignItems:collapsed?"center":"flex-start"}}>
+        <Wordmark size={20} inverted iconOnly={collapsed&&!mobileNav}/>
+        {org&&<div className="sb-hide" style={{fontSize:11,color:"rgba(255,255,255,.45)",marginTop:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500,maxWidth:"100%"}}>{org.name}</div>}
       </div>
       <nav style={{flex:1,padding:"6px 8px 0"}}>
-        <div className="nav-section">Workspace</div>
-        {items.map(({key,label})=><button key={key} className={`nav-item ${nav===key?"active":""}`} onClick={()=>setNav(key)}>
-          <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav===key?T.accent:"transparent",border:`1px solid ${nav===key?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
-          {label}
-        </button>)}
-
-        {/* Kanzlei-Portal — immer sichtbar, Starter bekommt Upgrade-Modal */}
-        <button className={`nav-item ${nav==="steuerberater"?"active":""}`} onClick={()=>setNav("steuerberater")}
-          style={{position:'relative'}}>
-          <span style={{fontSize:10,width:8,height:8,borderRadius:"50%",background:nav==="steuerberater"?T.accent:"transparent",border:`1px solid ${nav==="steuerberater"?T.accent:T.bgBorder}`,flexShrink:0,display:"inline-block"}}/>
-          Kanzlei-Portal
-          {!hasKanzlei&&<span style={{marginLeft:'auto',fontSize:9,background:'#7c3aed',color:'#fff',borderRadius:3,padding:'1px 5px',fontWeight:700}}>PRO</span>}
-        </button>
-
+        {sections.map(sec=>(<div key={sec.title}>
+          <div className="nav-section">{sec.title}</div>
+          {sec.items.map(({key,label})=><NavBtn key={key} k={key} label={label}/>)}
+        </div>))}
+        <div className="nav-section" style={{marginTop:6}}>Konto</div>
+        <NavBtn k="settings" label="Einstellungen"/>
+        <NavBtn k="steuerberater" label="Kanzlei-Portal"/>
         {isAdmin&&<><div className="nav-section" style={{marginTop:6}}>Admin</div>
-          <button className="nav-item" onClick={onAdmin} style={{color:T.red,fontSize:12}}><span style={{fontSize:8,width:8,height:8,borderRadius:"50%",background:T.red,display:"inline-block",flexShrink:0}}/>Admin Panel</button>
+          <button className="nav-item" onClick={onAdmin} style={{color:"#FCA5A5"}} title={collapsed?"Admin Panel":undefined}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5.5 2.4v3.6c0 3.4-2.3 5.7-5.5 6.6-3.2-.9-5.5-3.2-5.5-6.6V4.2L8 1.8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+            <span className="nav-label">Admin Panel</span>
+          </button>
         </>}
       </nav>
-      <div style={{padding:"10px 8px 14px",borderTop:`1px solid ${T.bgBorder}`}}>
-        {org&&<div style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:"9px 11px",marginBottom:8}}>
+      <div style={{padding:collapsed?"10px 8px 14px":"10px 10px 14px",borderTop:"1px solid rgba(255,255,255,.08)"}}>
+        {org&&<div className="sb-hide" style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"9px 11px",marginBottom:8}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-            <span style={{fontSize:12,fontWeight:600,color:T.textPrimary,textTransform:"capitalize"}}>{org.plan||"Starter"}</span>
-            <span style={{fontSize:11,color:T.textMuted}}>{org.plan_doc_used||0}/{org.plan_doc_limit||100}</span>
+            <span style={{fontSize:12,fontWeight:600,color:"#fff",textTransform:"capitalize"}}>{org.plan||"Free"}</span>
+            <span style={{fontSize:11,color:"rgba(255,255,255,.5)"}} className="num">{org.plan_doc_used||0}/{org.plan_doc_limit||10}</span>
           </div>
-          <div className="progress"><div className="progress-fill" style={{width:`${pct}%`}}/></div>
+          <div className="progress" style={{background:"rgba(255,255,255,.12)"}}><div className="progress-fill" style={{width:`${pct}%`}}/></div>
         </div>}
-        <div style={{display:"flex",alignItems:"center",gap:9,padding:"6px 4px",marginBottom:6}}>
-          <div className="avatar">{(user?.full_name||"M")[0]}</div>
+        <div className="sb-hide" style={{display:"flex",alignItems:"center",gap:9,padding:"4px 2px",marginBottom:8}}>
+          <div className="avatar" style={{background:"rgba(109,91,255,.35)",color:"#fff"}}>{(user?.full_name||"U")[0]}</div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:12.5,fontWeight:600,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.full_name||"User"}</div>
-            <div style={{fontSize:11,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
+            <div style={{fontSize:12.5,fontWeight:600,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.full_name||"—"}</div>
+            <div style={{fontSize:10.5,color:"rgba(255,255,255,.45)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
           </div>
         </div>
-        <button className="btn btn-ghost btn-sm" style={{width:"100%",justifyContent:"center",fontSize:12}} onClick={onLogout}>Abmelden</button>
+        <button onClick={toggleCollapse} className="nav-item" style={{justifyContent:collapsed?"center":"flex-start"}} title={collapsed?"Navigation ausklappen":"Navigation einklappen"}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{transform:collapsed?"rotate(180deg)":"none",transition:"transform .2s"}}><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span className="nav-label">Einklappen</span>
+        </button>
       </div>
     </aside>
     <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
       <div className="topbar">
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
-        <div style={{flex:1,maxWidth:300,margin:"0 20px"}}>
+        <button className="mobile-menu-btn" onClick={()=>setMobileNav(true)} aria-label="Menü öffnen">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke={T.textSecondary} strokeWidth="1.6" strokeLinecap="round"/></svg>
+        </button>
+        <div style={{fontSize:14,fontWeight:700,color:T.textPrimary,letterSpacing:"-.01em",whiteSpace:"nowrap"}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
+        <div style={{flex:1,maxWidth:340}}>
           <div style={{position:"relative"}}>
-            <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:T.textMuted,fontSize:12}}>🔍</span>
-            <input style={{width:"100%",background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:7,padding:"6px 12px 6px 28px",fontSize:13,color:T.textPrimary,outline:"none",fontFamily:F.ui}} placeholder="Suchen..."/>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}><circle cx="7" cy="7" r="4.5" stroke={T.textMuted} strokeWidth="1.5"/><path d="M10.5 10.5L14 14" stroke={T.textMuted} strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <input value={searchQ} onChange={e=>setSearchQ(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&searchQ.trim()){onSearch&&onSearch(searchQ.trim());setSearchQ("");}}}
+              style={{width:"100%",background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:"7px 12px 7px 30px",fontSize:13,color:T.textPrimary,outline:"none",fontFamily:F.ui}}
+              placeholder="Rechnungen durchsuchen… (Enter)"/>
           </div>
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <button style={{width:28,height:28,borderRadius:7,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:T.textMuted}}>🔔</button>
-          <div className="avatar" style={{cursor:"pointer"}}>{(user?.full_name||"M")[0]}</div>
+        <div style={{display:"flex",gap:10,alignItems:"center",position:"relative"}}>
+          {org&&<button className="sb-hide" onClick={()=>go("settings")} style={{display:"flex",alignItems:"center",gap:6,background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:16,padding:"4px 11px",fontSize:11.5,fontWeight:700,color:T.accent,cursor:"pointer",fontFamily:F.ui,textTransform:"capitalize",whiteSpace:"nowrap"}}>
+            {org.plan||"Free"}<span style={{fontWeight:500,color:T.textMuted}} className="num">{org.plan_doc_used||0}/{org.plan_doc_limit||10}</span>
+          </button>}
+          <div className="avatar" style={{cursor:"pointer",width:30,height:30,fontSize:12}} onClick={()=>setUserMenu(m=>!m)}>{(user?.full_name||"U")[0]}</div>
+          {userMenu&&<>
+            <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setUserMenu(false)}/>
+            <div className="card sci" style={{position:"absolute",top:40,right:0,zIndex:999,width:240,padding:0,boxShadow:T.shadowXl}}>
+              <div style={{padding:"13px 15px",borderBottom:`1px solid ${T.bgBorder}`}}>
+                <div style={{fontSize:13.5,fontWeight:700,color:T.textPrimary}}>{user?.full_name||"—"}</div>
+                <div style={{fontSize:11.5,color:T.textMuted,marginTop:1}}>{user?.email||""}</div>
+                {org&&<div style={{fontSize:11.5,color:T.textSecondary,marginTop:6,display:"flex",justifyContent:"space-between"}}><span>{org.name}</span><span style={{textTransform:"capitalize",fontWeight:600,color:T.accent}}>{org.plan}</span></div>}
+              </div>
+              <div style={{padding:6}}>
+                <button className="menu-item" onClick={()=>{setUserMenu(false);go("settings");}}>{NAV_ICONS.settings}<span>Einstellungen</span></button>
+                <button className="menu-item" style={{color:T.red}} onClick={onLogout}>
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10.5 11l3-3-3-3M13.5 8H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span>Abmelden</span>
+                </button>
+              </div>
+            </div>
+          </>}
         </div>
       </div>
       <main style={{flex:1,overflowY:"auto",padding:"24px 28px"}}>{children}</main>
@@ -1414,6 +1244,7 @@ function Dashboard({user,org,notify,onNav}){
   const[stats,setStats]       = useState(null);
   const[cashflow,setCashflow] = useState(null);
   const[invoices,setInvoices] = useState([]);
+  const[bizDocs,setBizDocs]   = useState([]);
   const[loading,setLoading]   = useState(true);
 
   useEffect(()=>{
@@ -1421,10 +1252,12 @@ function Dashboard({user,org,notify,onNav}){
       api.getStats(),
       api.listInvoices('?limit=5'),
       api.getCashflowStats(),
-    ]).then(([s,i,cf])=>{
+      api.listBusinessDocs('?limit=100').catch(()=>({documents:[]})),
+    ]).then(([s,i,cf,bd])=>{
       setStats(s);
       setInvoices(i.invoices||[]);
       setCashflow(cf);
+      setBizDocs(bd.documents||[]);
     }).catch(()=>{
       // Fallback: leere Zustände — keine Fake-Daten
       setStats({outbound_total:0,inbound_total:0,errors_total:0,compliance_score:100,week_data:[0,0,0,0,0,0,0]});
@@ -1485,7 +1318,7 @@ function Dashboard({user,org,notify,onNav}){
     )}
 
     {/* KPIs — klickbar */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:16}}>
       {loading?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:96}}><div className="skeleton" style={{height:'100%'}}/></div>)
       :[
         {label:'Versandt',   value:stats?.outbound_total||0, delta:'Ausgangsrechnungen', color:T.textPrimary, chart:weekData,                          nav:'invoices'},
@@ -1512,7 +1345,7 @@ function Dashboard({user,org,notify,onNav}){
     </div>
 
     {/* Cashflow-Cockpit — klickbar */}
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(230px,100%),1fr))',gap:10,marginBottom:16}}>
       {/* Offene Forderungen → Ausgang */}
       <div className="card" style={{padding:18,borderLeft:`3px solid ${T.green}`,cursor:'pointer',transition:'box-shadow .15s'}}
         onClick={()=>onNav('invoices')}
@@ -1552,8 +1385,46 @@ function Dashboard({user,org,notify,onNav}){
       </div>
     </div>
 
+    {/* Belegfluss — offene Vorgänge im Vertrieb */}
+    {bizDocs.length>0&&(()=>{
+      const openOf=(t)=>bizDocs.filter(d=>d.doc_type===t&&!["storniert","fakturiert","abgelehnt","abgelaufen"].includes(d.status));
+      const stages=[["request","Anfragen"],["quote","Angebote"],["order","Aufträge"],["delivery","Lieferungen"]];
+      return(
+        <div className="card" style={{padding:18,marginBottom:16,cursor:"pointer",transition:"box-shadow .15s"}}
+          onClick={()=>onNav("belege")}
+          onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.accent}`}
+          onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div>
+              <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Belegfluss — offene Vorgänge</div>
+              <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Anfrage → Angebot → Auftrag → Lieferung → Rechnung</div>
+            </div>
+            <span style={{fontSize:11,color:T.accent,fontWeight:600}}>→ Belege & Aufträge</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:0,overflowX:"auto"}}>
+            {stages.map(([t,label],i)=>{
+              const open=openOf(t);
+              const sum=open.reduce((s,d)=>s+(parseFloat(d.amount_gross)||0),0);
+              return(
+                <div key={t} style={{display:"flex",alignItems:"center",flexShrink:0}}>
+                  <div style={{background:open.length?T.accentLight:T.bgSubtle,border:`1px solid ${open.length?T.accentPale:T.bgBorder}`,borderRadius:8,padding:"9px 14px",minWidth:112}}>
+                    <div style={{fontSize:10,fontWeight:700,color:T.textMuted,letterSpacing:.4,textTransform:"uppercase",marginBottom:4}}>{label}</div>
+                    <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+                      <span className="num" style={{fontSize:19,fontWeight:800,color:open.length?T.accent:T.textPlaceholder}}>{open.length}</span>
+                      {open.length>0&&<span style={{fontSize:10.5,color:T.textMuted}}>{fmtEUR(sum)}</span>}
+                    </div>
+                  </div>
+                  {i<stages.length-1&&<span style={{padding:"0 8px",color:T.textPlaceholder,fontSize:14}}>→</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    })()}
+
     {/* Cashflow-Prognose 30 Tage + Aktivität */}
-    <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:12,marginBottom:16}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(320px,100%),2fr))',gap:12,marginBottom:16}}>
       <div className="card" style={{padding:18}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
           <div>
@@ -1611,7 +1482,7 @@ function Dashboard({user,org,notify,onNav}){
 }
 
 // ── DOCUMENTS ─────────────────────────────────────────────────
-function Invoices({notify,initialView=null,onNavDone=null}){
+function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onClearSearch=null}){
   const [emailModal,setEmailModal] = useState(false);
   const [senderCopy,setSenderCopy] = useState(true);
   const [emailTo,setEmailTo]       = useState('');
@@ -1644,12 +1515,33 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   };
 
   const[view,setView]=useState(initialView||"list");const[filter,setFilter]=useState("all");
+  const[sort,setSort]=useState({key:"created_at",dir:"desc"});
   useEffect(()=>{if(initialView){setView(initialView);onNavDone&&onNavDone();}},[]);
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
+  const[detail,setDetail]=useState(null);          // ausgewählte Rechnung (Detail-Modal)
+  const[auditLogs,setAuditLogs]=useState(null);    // Audit-Trail der Detail-Rechnung
+  const openDetail=async(inv)=>{
+    setDetail(inv);setAuditLogs(null);
+    try{const d=await api.get(`/invoices/${inv.id}/audit`);setAuditLogs(d.logs||[]);}
+    catch(e){setAuditLogs([]);}
+  };
   const[generating,setGenerating]=useState(false);const[xml,setXml]=useState(null);
   const[fieldErrors,setFieldErrors]=useState({});
   const[saving,setSaving]=useState(false);
   const[form,setForm]=useState({invoice_number:`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random()*900)+100)}`,invoice_date:new Date().toISOString().split("T")[0],due_date:new Date(Date.now()+30*86400000).toISOString().split("T")[0],format:"xrechnung",template:"modern",delivery_method:"email",seller_name : "",_orgLoaded:false,seller_vat_id:"",seller_address:"",seller_city:"",buyer_name:"",buyer_address:"",buyer_zip:"",buyer_city:"",buyer_country:"DE",buyer_email:"",line_items:[{description:"",quantity:1,unit_price:0,vat_rate:19}]});
+  // Kundenstammdaten für Schnellauswahl (SAP-ready: Stammdaten → Beleg)
+  const[customers,setCustomers]=useState([]);
+  useEffect(()=>{if(view==="create")api.listCustomers().then(d=>setCustomers(d.customers||[])).catch(()=>setCustomers([]));},[view]);
+  const pickCustomer=(id)=>{
+    const c=customers.find(x=>x.id===id);
+    if(!c)return;
+    setForm(p=>({...p,
+      buyer_name:c.name||"",buyer_address:c.address||"",buyer_zip:c.zip||"",
+      buyer_city:c.city||"",buyer_country:c.country||"DE",buyer_email:c.email||"",
+      due_date:c.payment_terms_days?new Date(Date.now()+c.payment_terms_days*86400000).toISOString().split("T")[0]:p.due_date,
+    }));
+    setFieldErrors({});
+  };
   const load=useCallback(()=>{setLoading(true);api.listInvoices().then(d=>setInvoices(d.invoices||[])).catch(()=>setInvoices([])).finally(()=>setLoading(false));},[]);
   useEffect(()=>load(),[load]);
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1685,7 +1577,22 @@ function Invoices({notify,initialView=null,onNavDone=null}){
     }catch(e){notify(e.message,"error");}
     setSaving(false);
   };
-  const filtered=filter==="all"?invoices:invoices.filter(i=>i.status===filter);
+  const searched=searchQuery
+    ?invoices.filter(i=>(i.invoice_number||"").toLowerCase().includes(searchQuery.toLowerCase())||(i.buyer_name||"").toLowerCase().includes(searchQuery.toLowerCase()))
+    :invoices;
+  const filteredRaw=filter==="all"?searched:searched.filter(i=>i.status===filter);
+  const sortVal=(i)=>sort.key==="amount_gross"?parseFloat(i.amount_gross)||0:sort.key==="invoice_number"?(i.invoice_number||""):(i.created_at||"");
+  const filtered=[...filteredRaw].sort((a,b)=>{
+    const va=sortVal(a),vb=sortVal(b);
+    const c=typeof va==="number"?va-vb:String(va).localeCompare(String(vb));
+    return sort.dir==="asc"?c:-c;
+  });
+  const toggleSort=(key)=>setSort(s=>s.key===key?{key,dir:s.dir==="asc"?"desc":"asc"}:{key,dir:"desc"});
+  const SortTh=({k,children})=>(
+    <th onClick={()=>toggleSort(k)} style={{cursor:"pointer",userSelect:"none"}}>
+      {children} <span style={{opacity:sort.key===k?1:.3,fontSize:9}}>{sort.key===k&&sort.dir==="asc"?"▲":"▼"}</span>
+    </th>
+  );
 
   if(view==="create") return(<div className="fi">
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>
@@ -1704,8 +1611,17 @@ function Invoices({notify,initialView=null,onNavDone=null}){
         </div>
       </div>
       <div className="card" style={{padding:20}}>
-        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Empfänger</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase"}}>Empfänger</div>
+          {customers.length>0&&(
+            <select className="select" style={{width:200,fontSize:12.5,padding:"5px 10px"}} value="" onChange={e=>pickCustomer(e.target.value)}>
+              <option value="">Bestehenden Kunden wählen…</option>
+              {customers.map(c=><option key={c.id} value={c.id}>{c.name}{c.city?` · ${c.city}`:''}</option>)}
+            </select>
+          )}
+        </div>
                 {[["buyer_name","Firma"],["buyer_address","Straße"],["buyer_zip","PLZ"],["buyer_city","Stadt"],["buyer_country","Land"],["buyer_email","Email"]].map(([k,l])=>(<div key={k}><label className="label">{l}</label><input className="input" value={form[k]||''} onChange={e=>{upd(k,e.target.value);if(fieldErrors[k])setFieldErrors(p=>({...p,[k]:false}));}} placeholder={l} style={{borderColor:fieldErrors[k]?T.red:undefined}}/></div>))}
+        <div style={{fontSize:11,color:T.textMuted,marginTop:10}}>Neue Empfänger werden automatisch als Kunde gespeichert und stehen beim nächsten Mal zur Auswahl.</div>
       </div>
     </div>
     <div className="card" style={{padding:20,marginBottom:12}}>
@@ -1743,32 +1659,42 @@ function Invoices({notify,initialView=null,onNavDone=null}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
       <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Ausgang</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} Rechnungen gesamt</p></div>
-      <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Exportieren</button><button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontSize:13.5,fontWeight:700}} onClick={()=>setView("create")}>+ Neue Rechnung</button></div>
+      <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>api.datevExport().then(()=>notify("DATEV-Export heruntergeladen ✓","success")).catch(e=>notify(e.message,"error"))}>↓ DATEV-Export</button><button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontSize:13.5,fontWeight:700}} onClick={()=>setView("create")}>+ Neue Rechnung</button></div>
     </div>
-    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
-      {["all","delivered","validated","sent","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
-        {{all:"Alle",delivered:"Zugestellt",validated:"Validiert",sent:"Gesendet",error:"Fehler",archived:"Archiviert"}[s]}
+    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14,overflowX:"auto"}}>
+      {["all","draft","delivered","validated","sent","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
+        {{all:"Alle",draft:"Entwürfe",delivered:"Zugestellt",validated:"Validiert",sent:"Gesendet",error:"Fehler",archived:"Archiviert"}[s]}
         {s!=="all"&&<span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:"1px 5px",borderRadius:7,color:T.textMuted}}>{invoices.filter(i=>i.status===s).length}</span>}
       </button>)}
     </div>
+    {searchQuery&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+      <span style={{fontSize:12.5,color:T.textSecondary}}>Suche:</span>
+      <span style={{display:"inline-flex",alignItems:"center",gap:6,background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:14,padding:"3px 11px",fontSize:12.5,fontWeight:600,color:T.accent}}>
+        „{searchQuery}“
+        <button onClick={onClearSearch} style={{background:"none",border:"none",cursor:"pointer",color:T.accent,fontSize:14,lineHeight:1,padding:0}}>×</button>
+      </span>
+      <span style={{fontSize:12,color:T.textMuted}}>{filtered.length} Treffer</span>
+    </div>}
     <div className="card">
+      <div style={{overflowX:"auto"}}>
       <table className="table">
-        <thead><tr>{["Nummer","Empfänger","Betrag","Format","Status","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <thead><tr><SortTh k="invoice_number">Nummer</SortTh><th>Empfänger</th><SortTh k="amount_gross">Betrag</SortTh><th>Format</th><th>Status</th><SortTh k="created_at">Datum</SortTh><th>Aktionen</th></tr></thead>
         <tbody>
-          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14}}/></td></tr>)
-          :filtered.map(inv=><tr key={inv.id} className="tr-hover">
+          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
+          :filtered.map(inv=><tr key={inv.id} className="tr-hover" onClick={()=>openDetail(inv)} style={{cursor:"pointer"}}>
             <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12.5,color:T.textPrimary}}>{inv.invoice_number}</td>
             <td>{inv.buyer_name||"—"}</td>
             <td style={{fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
             <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
             <td><StatusBadge status={inv.status}/></td>
-            <td><div style={{display:"flex",gap:5}}>
+            <td style={{fontSize:12,color:T.textMuted,whiteSpace:"nowrap"}} className="num">{inv.created_at?new Date(inv.created_at).toLocaleDateString("de-DE"):"—"}</td>
+            <td onClick={e=>e.stopPropagation()}><div style={{display:"flex",gap:5}}>
               {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>{setCurrentInvId(inv.id);setEmailTo(inv.buyer_email||'');setEmailModal(true);}}>✉ Senden</button>}
               {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
               <button className="btn btn-ghost btn-sm" onClick={()=>api.openPDF(inv.id).catch(e=>notify(e.message,"error"))}>PDF</button>
             </div></td>
           </tr>)}
-          {!loading&&filtered.length===0&&invoices.length===0&&<tr><td colSpan={6} style={{padding:0}}>
+          {!loading&&filtered.length===0&&invoices.length===0&&<tr><td colSpan={7} style={{padding:0}}>
             <div style={{textAlign:'center',padding:'60px 24px',color:T.textMuted}}>
               <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,margin:'0 auto 16px'}}>📄</div>
               <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>Noch keine Rechnung erstellt</div>
@@ -1776,9 +1702,10 @@ function Invoices({notify,initialView=null,onNavDone=null}){
               <button className="btn btn-primary" onClick={()=>setView('create')}>Erste Rechnung erstellen →</button>
             </div>
           </td></tr>}
-          {!loading&&filtered.length===0&&invoices.length>0&&<tr><td colSpan={6} style={{textAlign:"center",color:T.textMuted,padding:28,fontSize:13}}>Keine Dokumente in diesem Filter</td></tr>}
+          {!loading&&filtered.length===0&&invoices.length>0&&<tr><td colSpan={7} style={{textAlign:"center",color:T.textMuted,padding:28,fontSize:13}}>Keine Dokumente in diesem Filter</td></tr>}
         </tbody>
       </table>
+      </div>
     </div>
     {xml&&<div className="modal-overlay" onClick={()=>setXml(null)}>
       <div className="modal fi" onClick={e=>e.stopPropagation()}>
@@ -1787,6 +1714,81 @@ function Invoices({notify,initialView=null,onNavDone=null}){
           <div style={{display:"flex",gap:7}}><button className="btn btn-primary btn-sm" onClick={()=>{const b=new Blob([xml.content],{type:"application/xml"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`${xml.number}.xml`;a.click();}}>↓ Herunterladen</button><button className="btn btn-ghost btn-sm" onClick={()=>setXml(null)}>×</button></div>
         </div>
         <pre style={{background:T.bgSubtle,borderRadius:8,padding:14,fontSize:10.5,color:T.textSecondary,overflow:"auto",maxHeight:420,lineHeight:1.55,fontFamily:F.mono}}>{xml.content}</pre>
+      </div>
+    </div>}
+    {detail&&<div className="modal-overlay" onClick={()=>setDetail(null)}>
+      <div className="modal sci" style={{maxWidth:640,maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        {/* Kopf */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+              <span style={{fontSize:17,fontWeight:700,fontFamily:F.mono,color:T.textPrimary}}>{detail.invoice_number}</span>
+              <StatusBadge status={detail.status}/>
+              {detail.validation_passed===false&&<span className="badge badge-red">Validierung fehlgeschlagen</span>}
+            </div>
+            <div style={{fontSize:12.5,color:T.textMuted}}>{detail.buyer_name||"—"} · {detail.format?.toUpperCase()} · {detail.invoice_date?new Date(detail.invoice_date).toLocaleDateString("de-DE"):"—"}</div>
+          </div>
+          <button onClick={()=>setDetail(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.textMuted}}>×</button>
+        </div>
+
+        {/* Beträge & Eckdaten */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+          {[["Netto",fmtEUR(detail.amount_net)],["MwSt.",fmtEUR(detail.amount_vat)],["Brutto",fmtEUR(detail.amount_gross)]].map(([l,v])=>(
+            <div key={l} style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:7,padding:"9px 12px"}}>
+              <div style={{fontSize:10,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:3}}>{l}</div>
+              <div style={{fontSize:15,fontWeight:700,color:T.textPrimary}}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px",fontSize:12.5,marginBottom:14}}>
+          {[["Fällig",detail.due_date?new Date(detail.due_date).toLocaleDateString("de-DE"):"—"],
+            ["Zustellweg",detail.delivery_method||"—"],
+            ["Empfänger-E-Mail",detail.buyer_email||"—"],
+            ["Archiviert",detail.archived?`✓ ${detail.archived_at?new Date(detail.archived_at).toLocaleDateString("de-DE"):""}`:"Nein"]].map(([l,v])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${T.bgSubtle}`}}>
+              <span style={{color:T.textMuted}}>{l}</span><span style={{fontWeight:500,color:T.textPrimary}}>{v}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Validierungsfehler, falls vorhanden */}
+        {Array.isArray(detail.validation_result?.errors)&&detail.validation_result.errors.length>0&&(
+          <div style={{background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:7,padding:"10px 13px",marginBottom:14}}>
+            <div style={{fontSize:11.5,fontWeight:700,color:T.red,marginBottom:6}}>Validierungsfehler (EN 16931)</div>
+            {detail.validation_result.errors.map((er,i)=>(
+              <div key={i} style={{fontSize:12,color:T.red,marginBottom:3}}><span style={{fontFamily:F.mono,fontSize:10.5}}>{er.code}</span> — {er.msg}</div>
+            ))}
+          </div>
+        )}
+
+        {/* Audit-Verlauf */}
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:8}}>Verlauf (Audit-Trail)</div>
+        {auditLogs===null?<div className="skeleton" style={{height:48,marginBottom:8}}/>
+        :auditLogs.length===0?<div style={{fontSize:12.5,color:T.textMuted,padding:"8px 0"}}>Keine Einträge.</div>
+        :<div style={{marginBottom:6}}>
+          {auditLogs.map((log,i)=>{
+            const labels={created:"Erstellt",validated:"Validiert",sent:"Versendet",sent_email:"Per E-Mail gesendet",sent_peppol:"Per Peppol gesendet",delivered:"Zugestellt",archived:"Archiviert (GoBD)",viewed:"Angesehen",inbound_received:"Empfangen",delivery_failed:"Zustellung fehlgeschlagen",integrity_check:"Integritätsprüfung"};
+            const isErr=(log.action||"").includes("failed")||(log.action||"").includes("error");
+            return(
+              <div key={log.id||i} style={{display:"flex",gap:10,padding:"7px 0",borderBottom:i<auditLogs.length-1?`1px solid ${T.bgSubtle}`:"none",alignItems:"flex-start"}}>
+                <div style={{width:7,height:7,borderRadius:"50%",background:isErr?T.red:T.accent,flexShrink:0,marginTop:5}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12.5,fontWeight:600,color:isErr?T.red:T.textPrimary}}>{labels[log.action]||log.action}</div>
+                  {log.details?.recipient_email&&<div style={{fontSize:11.5,color:T.textMuted}}>an {log.details.recipient_email}</div>}
+                  {log.details?.method&&!log.details?.recipient_email&&<div style={{fontSize:11.5,color:T.textMuted}}>via {log.details.method}</div>}
+                </div>
+                <div style={{fontSize:11,color:T.textMuted,flexShrink:0,fontFamily:F.mono}}>{log.created_at?new Date(log.created_at).toLocaleString("de-DE"):""}</div>
+              </div>
+            );
+          })}
+        </div>}
+
+        {/* Aktionen */}
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:14,paddingTop:14,borderTop:`1px solid ${T.bgBorder}`}}>
+          {detail.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(detail.id).then(c=>setXml({content:c,id:detail.id,number:detail.invoice_number})).catch(e=>notify(e.message,"error"))}>XML ansehen</button>}
+          <button className="btn btn-ghost btn-sm" onClick={()=>api.openPDF(detail.id).catch(e=>notify(e.message,"error"))}>PDF öffnen</button>
+          {detail.status==="validated"&&<button className="btn btn-primary btn-sm" onClick={()=>{setCurrentInvId(detail.id);setEmailTo(detail.buyer_email||'');setDetail(null);setEmailModal(true);}}>✉ Senden</button>}
+        </div>
       </div>
     </div>}
     {emailModal&&<div className="modal-overlay" onClick={()=>setEmailModal(false)}>
@@ -1803,63 +1805,6 @@ function Invoices({notify,initialView=null,onNavDone=null}){
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button className="btn btn-ghost" onClick={()=>setEmailModal(false)}>Abbrechen</button>
           <button className="btn btn-primary" onClick={doSendEmail} disabled={sending}>{sending?<><Spinner size={14} color="#fff"/>&nbsp;Wird gesendet...</>:"Senden →"}</button>
-        </div>
-      </div>
-    </div>}
-  </div>);
-}
-
-// ── CONNECTORS ────────────────────────────────────────────────
-const CONN=[{type:"sap_s4",name:"SAP S/4HANA",icon:"⚙️",cat:"Enterprise",method:"RFC / IDoc / REST"},{type:"sap_ecc",name:"SAP ECC 6.0",icon:"⚙️",cat:"Enterprise",method:"IDoc Classic"},{type:"dynamics",name:"MS Dynamics 365",icon:"🔷",cat:"Enterprise",method:"Dataverse API"},{type:"oracle",name:"Oracle Fusion",icon:"🔴",cat:"Enterprise",method:"Oracle REST"},{type:"datev",name:"DATEV",icon:"📊",cat:"German ERP",method:"Connect Online",cert:true},{type:"lexware",name:"Lexware",icon:"📋",cat:"German ERP",method:"XML / SFTP"},{type:"weclapp",name:"Weclapp",icon:"🌐",cat:"German ERP",method:"REST API"},{type:"sevdesk",name:"sevDesk",icon:"📱",cat:"SME",method:"API v2"},{type:"lexoffice",name:"lexoffice",icon:"📄",cat:"SME",method:"REST API"},{type:"odoo",name:"Odoo",icon:"🟣",cat:"SME",method:"JSON-RPC"},{type:"xero",name:"Xero",icon:"💙",cat:"SME",method:"OAuth 2.0"},{type:"quickbooks",name:"QuickBooks",icon:"🟢",cat:"SME",method:"QBO API v3"},{type:"rest",name:"REST API",icon:"🔌",cat:"Universal",method:"HTTP / JSON"},{type:"sftp",name:"SFTP",icon:"📁",cat:"Universal",method:"SFTP / SSH"},{type:"email",name:"Email Import",icon:"📧",cat:"Universal",method:"IMAP"}];
-
-function ConnectorsView({notify}){
-  const[connected,setConnected]=useState({"rest":true,"sftp":true});
-  const[modal,setModal]=useState(null);const[cat,setCat]=useState("All");
-  const cats=["All","Enterprise","German ERP","SME","Universal"];
-  const filtered=cat==="All"?CONN:CONN.filter(c=>c.cat===cat);
-  return(<div className="fi">
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Connectors</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{CONN.length} systems · {Object.keys(connected).length} connected</p></div>
-      <span className="badge badge-green">✓ {Object.keys(connected).length} Active</span>
-    </div>
-    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:18}}>
-      {cats.map(c=><button key={c} className={`tab ${cat===c?"active":""}`} onClick={()=>setCat(c)}>{c}</button>)}
-    </div>
-    {Object.keys(connected).length>0&&<div style={{marginBottom:18}}>
-      <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:8}}>Connected</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(240px,100%),1fr))",gap:9}}>
-        {CONN.filter(c=>connected[c.type]).map(conn=><div key={conn.type} className="connector-card connected">
-          <div style={{display:"flex",alignItems:"center",gap:11}}><span style={{fontSize:22}}>{conn.icon}</span><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13.5,color:T.textPrimary}}>{conn.name}</div><div style={{fontSize:11,color:T.textMuted}}>{conn.method}</div></div><span className="badge badge-green" style={{fontSize:11}}>Active</span></div>
-          <div style={{marginTop:11,display:"flex",gap:7}}><button className="btn btn-ghost btn-sm" onClick={()=>notify(`${conn.name} test OK ✓`,"success")}>Test</button><button className="btn btn-ghost btn-sm" onClick={()=>setModal(conn)}>Configure</button></div>
-        </div>)}
-      </div>
-    </div>}
-    <div>
-      <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:8}}>Available</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(220px,100%),1fr))",gap:9}}>
-        {filtered.filter(c=>!connected[c.type]).map(conn=><div key={conn.type} className="connector-card card-hover" style={{position:"relative"}} onClick={()=>setModal(conn)}>
-          {conn.cert&&<span className="badge badge-amber" style={{position:"absolute",top:11,right:11,fontSize:10}}>Cert. req.</span>}
-          <div style={{width:32,height:32,borderRadius:6,background:T.bgMuted,border:`1px solid ${T.bgBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:T.textSecondary,marginBottom:9,fontFamily:F.mono}}>{conn.type.substring(0,3).toUpperCase()}</div>
-          <div style={{fontWeight:600,fontSize:13.5,color:T.textPrimary,marginBottom:3}}>{conn.name}</div>
-          <div style={{fontSize:11.5,color:T.textMuted,marginBottom:9}}>{conn.method}</div>
-          <span className="badge badge-gray" style={{fontSize:10.5}}>{conn.cat}</span>
-          <button className="btn btn-primary btn-sm" style={{width:"100%",justifyContent:"center",marginTop:12}}>Verbinden →</button>
-        </div>)}
-      </div>
-    </div>
-    {modal&&<div className="modal-overlay" onClick={()=>setModal(null)}>
-      <div className="modal sci" onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:26}}>{modal.icon}</span><div><div style={{fontFamily:F.ui,fontSize:19,fontWeight:400,color:T.textPrimary}}>{modal.name}</div><div style={{fontSize:12,color:T.textMuted}}>{modal.method}</div></div></div>
-          <button onClick={()=>setModal(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:T.textMuted}}>×</button>
-        </div>
-        {modal.cert&&<div style={{background:T.amberBg,border:`1px solid ${T.amberBdr}`,borderRadius:8,padding:"9px 13px",marginBottom:14,fontSize:13,color:T.amber}}>⚠️ Certification required. Contact <strong>manfred@invoiq.io</strong></div>}
-        <div style={{display:"flex",flexDirection:"column",gap:11,marginBottom:18}}>
-          {[["API Key","Your API Key","password"],["Endpoint URL","https://...","text"],["Organization ID","org_...","text"]].map(([l,p,t])=><div key={l}><label className="label">{l}</label><input className="input" type={t} placeholder={p}/></div>)}
-        </div>
-        <div style={{display:"flex",gap:9,justifyContent:"flex-end"}}>
-          <button className="btn btn-ghost" onClick={()=>setModal(null)}>Cancel</button>
-          <button className="btn btn-primary" onClick={()=>{setConnected(p=>({...p,[modal.type]:true}));notify(`${modal.name} connected ✓`,"success");setModal(null);}}>Speichern & Verbinden</button>
         </div>
       </div>
     </div>}
@@ -1944,11 +1889,9 @@ function DokumentenScanner({ notify }) {
       setXml({content:xmlContent, number:inv.invoice_number});
       notify('XRechnung generiert ✓','success');
     } catch(e) {
-      // Demo fallback
-      const net=(editResult.line_items||[]).reduce((s,i)=>s+(i.quantity||1)*(i.unit_price||0),0);
-      setXml({ number:editResult.invoice_number||'SCAN-001',
-        content:`<?xml version="1.0" encoding="UTF-8"?>\n<ubl:Invoice xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"\n  xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">\n  <cbc:ID>${editResult.invoice_number||'SCAN-001'}</cbc:ID>\n  <cbc:IssueDate>${editResult.invoice_date||''}</cbc:IssueDate>\n  <cbc:PayableAmount currencyID="EUR">${(net*1.19).toFixed(2)}</cbc:PayableAmount>\n</ubl:Invoice>` });
-      notify('XRechnung generiert ✓','success');
+      // Kein Fake-XML bei Fehlern — der Nutzer muss wissen, dass nichts
+      // gespeichert wurde (fehlende Pflichtfelder etc. korrigierbar machen).
+      notify(e.message||'XRechnung konnte nicht erstellt werden — bitte Felder prüfen','error');
     }
     setGenerating(false);
   };
@@ -2365,7 +2308,7 @@ function InboundScreen({notify, org}){
           <p style={{fontSize:13,color:T.textMuted}}>Eingehende Rechnungen per E-Mail — automatisch geparst, mit SEPA-Zahlung per Klick.</p>
         </div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null)}>↓ DATEV-Export</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null).then(()=>notify('DATEV-Export heruntergeladen ✓','success')).catch(e=>notify(e.message,'error'))}>↓ DATEV-Export</button>
           <button className="btn btn-ghost btn-sm" onClick={()=>{
             navigator.clipboard.writeText(`${emailSlug}@rechnungen.invoiq.io`);
             notify(`E-Mail-Adresse kopiert ✓`,'success');
@@ -2408,7 +2351,7 @@ function InboundScreen({notify, org}){
       })}
 
       {/* KPIs */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:8,marginBottom:16}}>
         {stats.map((s,i)=>(
           <div key={i} className="card" style={{padding:14}}>
             <div style={{fontSize:10,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:6}}>{s.label}</div>
@@ -2477,7 +2420,7 @@ function InboundScreen({notify, org}){
                   <td><StatusBadge status={inv.status==='bezahlt'?'delivered':inv.validation_passed?'validated':'error'}/></td>
                   <td>
                     <div style={{display:'flex',gap:5,flexWrap:'wrap'}} onClick={e=>e.stopPropagation()}>
-                      {(inv.has_xml||inv.format==='pdf')&&<button className="btn btn-ghost btn-sm" onClick={()=>setPdfModal(inv)}>📄 PDF</button>}
+                      {(inv.has_xml||inv.format==='pdf')&&<button className="btn btn-ghost btn-sm" onClick={()=>api.openInboundPDF(inv.id).catch(e=>notify(e.message,'error'))}>📄 PDF</button>}
                       {inv.status!=='bezahlt'&&inv.seller_iban&&(
                         <button className="btn btn-sm btn-primary" style={{fontSize:11,padding:'3px 8px'}}
                           onClick={()=>setSepaModal({...inv,_applyDiscount:dk?.active||false})}>
@@ -2630,11 +2573,12 @@ function InboundScreen({notify, org}){
 
           <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn btn-ghost" onClick={()=>setSepaModal(null)}>Abbrechen</button>
-            <button className="btn btn-primary" onClick={()=>{
-              const url = api.getSepaDownloadUrl(sepaModal.id, sepaModal._applyDiscount||false);
-              window.open(url,'_blank');
-              notify('SEPA-Datei wird heruntergeladen ✓','success');
-              setSepaModal(null);
+            <button className="btn btn-primary" onClick={async()=>{
+              try{
+                await api.downloadSepa(sepaModal.id, sepaModal._applyDiscount||false);
+                notify('SEPA-Datei heruntergeladen ✓','success');
+                setSepaModal(null);
+              }catch(e){ notify(e.message,'error'); }
             }}>
               ↓ SEPA-Datei herunterladen
             </button>
@@ -2662,19 +2606,628 @@ function InboundScreen({notify, org}){
 }
 
 
+// ══════════════════════════════════════════════════════════════
+// VERTRIEB — SAP-naher Belegfluss (Anfrage→Angebot→Auftrag→Lieferung→Rechnung)
+// ══════════════════════════════════════════════════════════════
+
+const DOC_LABELS={request:"Anfrage",quote:"Angebot",order:"Auftrag",delivery:"Lieferung",invoice:"Rechnung"};
+const DOC_CHAIN=["request","quote","order","delivery","invoice"];
+const STATUS_LABELS={offen:"Offen",beantwortet:"Beantwortet",entwurf:"Entwurf",gesendet:"Gesendet",angenommen:"Angenommen",abgelehnt:"Abgelehnt",abgelaufen:"Abgelaufen",bestaetigt:"Bestätigt",geliefert:"Geliefert",fakturiert:"Fakturiert",storniert:"Storniert"};
+
+// Client-seitige Steuer-Summierung (spiegelt services/taxEngine.js:
+// Rundung pro Kennzeichen-Gruppe). Verbindlich rechnet immer das Backend.
+function clientComputeTotals(items,taxCodes){
+  const r2=n=>Math.round((n+Number.EPSILON)*100)/100;
+  const rateOf=c=>taxCodes.find(t=>t.code===c)?.rate??19;
+  const groups={};
+  let net=0;
+  for(const it of items){
+    const code=it.tax_code||"S19";
+    const n=r2((parseFloat(it.quantity)||0)*(parseFloat(it.unit_price)||0));
+    groups[code]=r2((groups[code]||0)+n);
+    net=r2(net+n);
+  }
+  let tax=0;
+  const breakdown=Object.entries(groups).map(([code,gNet])=>{
+    const gTax=r2(gNet*(rateOf(code)/100));
+    tax=r2(tax+gTax);
+    return {code,rate:rateOf(code),net:gNet,tax:gTax,label:taxCodes.find(t=>t.code===code)?.label||code};
+  });
+  return {net,tax,gross:r2(net+tax),breakdown};
+}
+
+// Belegfluss-Kette: Anfrage → Angebot → Auftrag → Lieferung → Rechnung
+function FlowChain({flow,currentId,onOpen}){
+  const byType={};
+  (flow?.nodes||[]).forEach(n=>{(byType[n.type]=byType[n.type]||[]).push(n);});
+  return(
+    <div style={{display:"flex",alignItems:"stretch",gap:0,overflowX:"auto",padding:"4px 0"}}>
+      {DOC_CHAIN.map((t,i)=>{
+        const nodes=byType[t]||[];
+        return(
+          <div key={t} style={{display:"flex",alignItems:"center",flexShrink:0}}>
+            <div style={{minWidth:132}}>
+              <div style={{fontSize:10,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:5}}>{DOC_LABELS[t]}</div>
+              {nodes.length===0
+                ?<div style={{border:`1.5px dashed ${T.bgBorder}`,borderRadius:8,padding:"9px 11px",fontSize:11.5,color:T.textPlaceholder,textAlign:"center"}}>—</div>
+                :nodes.map(n=>(
+                  <div key={n.id} onClick={()=>n.id!==currentId&&onOpen&&onOpen(n)}
+                    style={{border:`1.5px solid ${n.id===currentId?T.accent:T.bgBorder}`,background:n.id===currentId?T.accentLight:T.bg,borderRadius:8,padding:"7px 11px",marginBottom:4,cursor:n.id===currentId?"default":"pointer",boxShadow:n.id===currentId?`0 0 0 2px ${T.accentPale}`:"none"}}>
+                    <div style={{fontFamily:F.mono,fontSize:11,fontWeight:700,color:T.textPrimary}}>{n.number}</div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,marginTop:3}}>
+                      <StatusBadge status={n.status}/>
+                      <span style={{fontSize:10.5,color:T.textMuted,fontWeight:600}}>{fmtEUR(n.amount_gross)}</span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+            {i<DOC_CHAIN.length-1&&<div style={{width:26,display:"flex",justifyContent:"center",color:T.textPlaceholder,fontSize:15,paddingTop:14}}>→</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BusinessScreen({notify,onOpenInvoice}){
+  const[tab,setTab]=useState("all");
+  const[docs,setDocs]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[search,setSearch]=useState("");
+  const[view,setView]=useState("list"); // list | create | detail
+  const[detail,setDetail]=useState(null); // {document, flow, next_statuses, convert_targets}
+  const[busy,setBusy]=useState(false);
+  const[taxCodes,setTaxCodes]=useState([]);
+  const[customers,setCustomers]=useState([]);
+  const[bizItems,setBizItems]=useState([]);
+  const[warnings,setWarnings]=useState([]);
+
+  const emptyForm={doc_type:"quote",partner_id:"",partner_name:"",doc_date:new Date().toISOString().slice(0,10),valid_until:"",delivery_date:"",reference:"",notes:"",items:[{description:"",quantity:1,unit_price:0,tax_code:"S19"}]};
+  const[form,setForm]=useState(emptyForm);
+  const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const updItem=(i,k,v)=>{const a=[...form.items];a[i]={...a[i],[k]:["quantity","unit_price"].includes(k)?(parseFloat(v)||0):v};upd("items",a);};
+
+  const load=useCallback(()=>{
+    setLoading(true);
+    api.listBusinessDocs(tab==="all"?"":`?type=${tab}`)
+      .then(d=>setDocs(d.documents||[])).catch(()=>setDocs([])).finally(()=>setLoading(false));
+  },[tab]);
+  useEffect(()=>{load();},[load]);
+  useEffect(()=>{
+    api.getTaxCodes().then(d=>setTaxCodes(d.tax_codes||[])).catch(()=>setTaxCodes([{code:"S19",rate:19,label:"USt 19 %"},{code:"S7",rate:7,label:"USt 7 %"}]));
+    api.listCustomers().then(d=>setCustomers(d.customers||[])).catch(()=>{});
+    api.listBusinessItems().then(d=>setBizItems(d.items||[])).catch(()=>{});
+  },[]);
+
+  const openDetail=async(id)=>{
+    try{const d=await api.getBusinessDoc(id);setDetail(d);setWarnings([]);setView("detail");window.scrollTo(0,0);}
+    catch(e){notify(e.message,"error");}
+  };
+
+  const pickItem=(rowIdx,itemId)=>{
+    const it=bizItems.find(x=>x.id===itemId);
+    if(!it)return;
+    const a=[...form.items];
+    a[rowIdx]={...a[rowIdx],item_id:it.id,description:it.name,unit_price:parseFloat(it.unit_price)||0,unit:it.unit||"C62",tax_code:it.tax_code||"S19"};
+    upd("items",a);
+  };
+
+  const create=async()=>{
+    setBusy(true);setWarnings([]);
+    try{
+      const r=await api.createBusinessDoc(form);
+      setWarnings(r.warnings||[]);
+      notify(`${DOC_LABELS[form.doc_type]} ${r.document.doc_number} angelegt ✓`,"success");
+      setForm(emptyForm);load();openDetail(r.document.id);
+    }catch(e){
+      // 422 mit fachlichen Warnungen strukturiert anzeigen
+      notify(e.message||"Beleg konnte nicht angelegt werden","error");
+    }
+    setBusy(false);
+  };
+
+  const doStatus=async(status)=>{
+    setBusy(true);
+    try{
+      await api.setBusinessDocStatus(detail.document.id,status);
+      notify(`Status: ${STATUS_LABELS[status]||status} ✓`,"success");
+      load();openDetail(detail.document.id);
+    }catch(e){notify(e.message,"error");}
+    setBusy(false);
+  };
+
+  const doConvert=async(target)=>{
+    setBusy(true);setWarnings([]);
+    try{
+      const r=await api.convertBusinessDoc(detail.document.id,target);
+      setWarnings(r.warnings||[]);
+      if(target==="invoice"){
+        notify(`Rechnung ${r.invoice.invoice_number} erzeugt ✓ (EN 16931 validiert)`,"success");
+        load();openDetail(detail.document.id);
+      }else{
+        notify(`${DOC_LABELS[target]} ${r.document.doc_number} angelegt ✓`,"success");
+        load();openDetail(r.document.id);
+      }
+    }catch(e){notify(e.message,"error");}
+    setBusy(false);
+  };
+
+  const totals=clientComputeTotals(form.items,taxCodes);
+  const filtered=docs.filter(d=>!search||(d.doc_number||"").toLowerCase().includes(search.toLowerCase())||(d.partner_name||"").toLowerCase().includes(search.toLowerCase()));
+
+  const WarningList=()=>warnings.length===0?null:(
+    <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
+      {warnings.map((w,i)=><Alert key={i} severity={w.severity==="error"?"error":"warning"}>{w.msg}</Alert>)}
+    </div>
+  );
+
+  // ── CREATE ────────────────────────────────────────────────────
+  if(view==="create")return(<div className="fi" style={{maxWidth:860}}>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+      <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setWarnings([]);}}>← Zurück</button>
+      <div><h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Neuen Beleg anlegen</h1>
+      <p style={{fontSize:12,color:T.textMuted}}>Anfrage, Angebot, Auftrag oder Lieferung — Folgebelege entstehen per „Anlegen mit Bezug".</p></div>
+    </div>
+    <WarningList/>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(300px,100%),1fr))",gap:12,marginBottom:12}}>
+      <div className="card" style={{padding:20}}>
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Belegart & Datum</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
+          <div><label className="label">Belegart</label>
+            <select className="select" value={form.doc_type} onChange={e=>upd("doc_type",e.target.value)}>
+              {["request","quote","order","delivery"].map(t=><option key={t} value={t}>{DOC_LABELS[t]}</option>)}
+            </select>
+          </div>
+          <div><label className="label">Belegdatum</label><input className="input" type="date" value={form.doc_date} onChange={e=>upd("doc_date",e.target.value)}/></div>
+          {form.doc_type==="quote"&&<div><label className="label">Gültig bis (Bindefrist)</label><input className="input" type="date" value={form.valid_until} onChange={e=>upd("valid_until",e.target.value)}/></div>}
+          {["order","delivery"].includes(form.doc_type)&&<div><label className="label">Liefertermin</label><input className="input" type="date" value={form.delivery_date} onChange={e=>upd("delivery_date",e.target.value)}/></div>}
+          <div><label className="label">Referenz (Bestell-Nr. des Kunden)</label><input className="input" value={form.reference} onChange={e=>upd("reference",e.target.value)} placeholder="z.B. PO-4711"/></div>
+        </div>
+      </div>
+      <div className="card" style={{padding:20}}>
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:14}}>Geschäftspartner</div>
+        <div style={{marginBottom:10}}><label className="label">Kunde (aus Stammdaten)</label>
+          <select className="select" value={form.partner_id} onChange={e=>upd("partner_id",e.target.value)}>
+            <option value="">— Kunde wählen —</option>
+            {customers.map(c=><option key={c.id} value={c.id}>{c.name}{c.city?` · ${c.city}`:""}</option>)}
+          </select>
+        </div>
+        {!form.partner_id&&<div><label className="label">…oder Name frei eingeben</label><input className="input" value={form.partner_name} onChange={e=>upd("partner_name",e.target.value)} placeholder="Firma GmbH"/></div>}
+        <div style={{fontSize:11,color:T.textMuted,marginTop:10}}>Belege übernehmen die Partnerdaten als Momentaufnahme — spätere Stammdaten-Änderungen verändern bestehende Belege nicht.</div>
+      </div>
+    </div>
+    <div className="card" style={{padding:20,marginBottom:12}}>
+      <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Positionen</div>
+      {form.items.map((item,idx)=>(
+        <div key={idx} style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:12,marginBottom:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(180px,100%),1fr))",gap:8,marginBottom:8}}>
+            {bizItems.length>0&&<div><label className="label">Artikel/Leistung (Stammdaten)</label>
+              <select className="select" value={item.item_id||""} onChange={e=>pickItem(idx,e.target.value)}>
+                <option value="">— frei erfassen —</option>
+                {bizItems.map(b=><option key={b.id} value={b.id}>{b.name} · {fmtEUR(b.unit_price)}</option>)}
+              </select>
+            </div>}
+            <div style={{gridColumn:bizItems.length>0?"auto":"1 / -1"}}><label className="label">Beschreibung</label>
+              <input className="input" value={item.description} onChange={e=>updItem(idx,"description",e.target.value)} placeholder="Leistungsbeschreibung…"/>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"90px 130px 1fr auto",gap:8,alignItems:"end"}}>
+            <div><label className="label">Menge</label><input className="input" type="number" min="0" step="0.001" value={item.quantity} onChange={e=>updItem(idx,"quantity",e.target.value)}/></div>
+            <div><label className="label">Einzelpreis €</label><input className="input" type="number" min="0" step="0.01" value={item.unit_price} onChange={e=>updItem(idx,"unit_price",e.target.value)}/></div>
+            <div><label className="label">Steuerkennzeichen</label>
+              <select className="select" value={item.tax_code||"S19"} onChange={e=>updItem(idx,"tax_code",e.target.value)}>
+                {taxCodes.map(t=><option key={t.code} value={t.code}>{t.code} — {t.label}</option>)}
+              </select>
+            </div>
+            <button onClick={()=>upd("items",form.items.filter((_,j)=>j!==idx))} style={{background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:7,color:T.red,cursor:"pointer",fontSize:15,width:32,height:34}}>×</button>
+          </div>
+        </div>
+      ))}
+      <button onClick={()=>upd("items",[...form.items,{description:"",quantity:1,unit_price:0,tax_code:"S19"}])} style={{width:"100%",padding:"8px",border:`1.5px dashed ${T.bgBorder}`,background:"transparent",color:T.accent,cursor:"pointer",borderRadius:7,marginTop:4,fontSize:13,fontFamily:F.ui,fontWeight:500}}>+ Position hinzufügen</button>
+
+      {/* Steuer-Breakdown live */}
+      <div style={{display:"flex",justifyContent:"flex-end",marginTop:14}}>
+        <div style={{background:T.bgSubtle,borderRadius:9,padding:"12px 16px",minWidth:280,border:`1px solid ${T.bgBorder}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:32,marginBottom:6,fontSize:13,color:T.textMuted}}><span>Netto</span><span>{fmtEUR(totals.net)}</span></div>
+          {totals.breakdown.map(b=>(
+            <div key={b.code} style={{display:"flex",justifyContent:"space-between",gap:32,marginBottom:4,fontSize:12,color:T.textMuted}}>
+              <span><span style={{fontFamily:F.mono,fontSize:10.5,background:T.bgMuted,borderRadius:3,padding:"1px 5px",marginRight:6}}>{b.code}</span>{b.rate} %</span>
+              <span>{fmtEUR(b.tax)}</span>
+            </div>
+          ))}
+          <div style={{height:1,background:T.bgBorder,margin:"7px 0"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",gap:32,fontSize:17,color:T.textPrimary,fontWeight:700}}><span>Brutto</span><span>{fmtEUR(totals.gross)}</span></div>
+        </div>
+      </div>
+    </div>
+    <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginBottom:16}}>
+      <button className="btn btn-ghost" onClick={()=>{setView("list");setWarnings([]);}}>Abbrechen</button>
+      <button className="btn btn-primary" style={{padding:"10px 24px"}} onClick={create} disabled={busy}>{busy?<><Spinner color="#fff" size={14}/>&nbsp;Legt an…</>:`${DOC_LABELS[form.doc_type]} anlegen →`}</button>
+    </div>
+  </div>);
+
+  // ── DETAIL ────────────────────────────────────────────────────
+  if(view==="detail"&&detail){
+    const d=detail.document;
+    return(<div className="fi">
+      <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setWarnings([]);load();}}>← Alle Belege</button>
+        <div style={{flex:1,minWidth:200}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary,fontFamily:F.mono}}>{d.doc_number}</h1>
+            <span className="badge badge-purple">{DOC_LABELS[d.doc_type]}</span>
+            <StatusBadge status={d.status}/>
+          </div>
+          <p style={{fontSize:12.5,color:T.textMuted,marginTop:3}}>{d.partner_name} · {d.doc_date?new Date(d.doc_date).toLocaleDateString("de-DE"):""}{d.reference?` · Ref: ${d.reference}`:""}</p>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {(detail.next_statuses||[]).map(s=>(
+            <button key={s} className={`btn btn-sm ${s==="storniert"?"btn-danger":"btn-ghost"}`} onClick={()=>doStatus(s)} disabled={busy}>
+              {s==="storniert"?"Stornieren":`→ ${STATUS_LABELS[s]||s}`}
+            </button>
+          ))}
+          {(detail.convert_targets||[]).map(t=>(
+            <button key={t} className="btn btn-primary btn-sm" onClick={()=>doConvert(t)} disabled={busy}>
+              {t==="invoice"?"⚡ Rechnung erzeugen":`+ ${DOC_LABELS[t]} mit Bezug`}
+            </button>
+          ))}
+        </div>
+      </div>
+      <WarningList/>
+
+      {/* Belegfluss */}
+      <div className="card" style={{padding:18,marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Belegfluss</div>
+        <FlowChain flow={detail.flow} currentId={d.id} onOpen={(n)=>{
+          if(n.type==="invoice"){onOpenInvoice&&onOpenInvoice();return;}
+          openDetail(n.id);
+        }}/>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(320px,100%),1fr))",gap:14}}>
+        {/* Positionen */}
+        <div className="card" style={{gridColumn:"1 / -1"}}>
+          <div style={{padding:"13px 18px",borderBottom:`1px solid ${T.bgBorder}`,fontSize:13,fontWeight:700,color:T.textPrimary}}>Positionen</div>
+          <div style={{overflowX:"auto"}}>
+          <table className="table">
+            <thead><tr>{["Pos.","Beschreibung","Menge","Einzelpreis","Steuer","Netto"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+            <tbody>
+              {(d.items||[]).map(it=>(
+                <tr key={it.id||it.position}>
+                  <td style={{color:T.textMuted,fontFamily:F.mono,fontSize:12}}>{it.position}</td>
+                  <td style={{fontWeight:500}}>{it.description}</td>
+                  <td>{parseFloat(it.quantity)}</td>
+                  <td>{fmtEUR(it.unit_price)}</td>
+                  <td><span style={{fontFamily:F.mono,fontSize:11,background:T.bgMuted,borderRadius:4,padding:"2px 6px",color:T.textSecondary}}>{it.tax_code}</span></td>
+                  <td style={{fontWeight:600}}>{fmtEUR(it.net_amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        {/* Steuerübersicht */}
+        <div className="card" style={{padding:18}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Steuerübersicht</div>
+          {(d.tax_breakdown||[]).map(b=>(
+            <div key={b.code} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${T.bgSubtle}`,fontSize:12.5}}>
+              <span><span style={{fontFamily:F.mono,fontSize:10.5,background:T.bgMuted,borderRadius:3,padding:"1px 5px",marginRight:7}}>{b.code}</span>{b.label||`${b.rate} %`}</span>
+              <span style={{fontWeight:600}}>{fmtEUR(b.net)} → {fmtEUR(b.tax)}</span>
+            </div>
+          ))}
+          <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:5,fontSize:13.5}}>
+            <div style={{display:"flex",justifyContent:"space-between",color:T.textMuted}}><span>Netto</span><span>{fmtEUR(d.amount_net)}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",color:T.textMuted}}><span>Steuer</span><span>{fmtEUR(d.amount_tax)}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontWeight:800,fontSize:16,color:T.textPrimary,paddingTop:5,borderTop:`1px solid ${T.bgBorder}`}}><span>Brutto</span><span>{fmtEUR(d.amount_gross)}</span></div>
+          </div>
+          {(d.tax_breakdown||[]).filter(b=>b.note).map(b=>(
+            <div key={b.code+"n"} style={{marginTop:10,fontSize:11.5,color:T.textSecondary,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:"8px 10px"}}>{b.note}</div>
+          ))}
+        </div>
+
+        {/* Partner-Snapshot */}
+        <div className="card" style={{padding:18}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:12}}>Geschäftspartner (Belegstand)</div>
+          {[["Name",d.partner_name],["USt-IdNr.",d.partner_vat_id||"—"],["Adresse",[d.partner_address,`${d.partner_zip||""} ${d.partner_city||""}`.trim(),d.partner_country].filter(Boolean).join(", ")||"—"],["E-Mail",d.partner_email||"—"],["Zahlungsziel",d.payment_terms_days?`${d.payment_terms_days} Tage`:"—"]].map(([l,v])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"6px 0",borderBottom:`1px solid ${T.bgSubtle}`,fontSize:12.5}}>
+              <span style={{color:T.textMuted,flexShrink:0}}>{l}</span><span style={{fontWeight:500,color:T.textPrimary,textAlign:"right"}}>{v}</span>
+            </div>
+          ))}
+          {d.notes&&<div style={{marginTop:10,fontSize:12.5,color:T.textSecondary}}><strong>Notiz:</strong> {d.notes}</div>}
+        </div>
+      </div>
+    </div>);
+  }
+
+  // ── LISTE ─────────────────────────────────────────────────────
+  return(<div className="fi">
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
+      <div>
+        <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Belege & Aufträge</h1>
+        <p style={{fontSize:12.5,color:T.textMuted,marginTop:2}}>Anfrage → Angebot → Auftrag → Lieferung → Rechnung — mit durchgängigem Belegfluss.</p>
+      </div>
+      <button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontWeight:700}} onClick={()=>{setForm(emptyForm);setView("create");setWarnings([]);}}>+ Neuer Beleg</button>
+    </div>
+    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:12,overflowX:"auto"}}>
+      {["all","request","quote","order","delivery"].map(t=>(
+        <button key={t} className={`tab ${tab===t?"active":""}`} onClick={()=>setTab(t)}>
+          {t==="all"?"Alle":DOC_LABELS[t]+"n"}
+          {t!=="all"&&<span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:"1px 5px",borderRadius:7,color:T.textMuted}}>{docs.filter(d=>d.doc_type===t).length}</span>}
+        </button>
+      ))}
+    </div>
+    <div style={{marginBottom:12}}>
+      <input className="input" style={{maxWidth:320}} placeholder="Suche: Nummer, Partner, Referenz…" value={search} onChange={e=>setSearch(e.target.value)}/>
+    </div>
+    <div className="card">
+      <div style={{overflowX:"auto"}}>
+      <table className="table">
+        <thead><tr>{["Beleg","Art","Partner","Datum","Brutto","Status"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <tbody>
+          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14}}/></td></tr>)
+          :filtered.map(d=>(
+            <tr key={d.id} className="tr-hover" style={{cursor:"pointer"}} onClick={()=>openDetail(d.id)}>
+              <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12.5,color:T.textPrimary}}>{d.doc_number}</td>
+              <td><span className="badge badge-purple" style={{fontSize:10.5}}>{DOC_LABELS[d.doc_type]}</span></td>
+              <td>{d.partner_name||"—"}</td>
+              <td style={{fontSize:12.5,color:T.textMuted}}>{d.doc_date?new Date(d.doc_date).toLocaleDateString("de-DE"):"—"}</td>
+              <td style={{fontWeight:600}}>{fmtEUR(d.amount_gross)}</td>
+              <td><StatusBadge status={d.status}/></td>
+            </tr>
+          ))}
+          {!loading&&filtered.length===0&&(
+            <tr><td colSpan={6} style={{padding:0}}>
+              <div style={{textAlign:"center",padding:"56px 24px",color:T.textMuted}}>
+                <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 16px"}}>🔗</div>
+                <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>Noch keine Belege</div>
+                <div style={{fontSize:13.5,marginBottom:18,maxWidth:400,margin:"0 auto 18px"}}>Starte mit einer Anfrage oder direkt einem Angebot — Folgebelege bis zur Rechnung entstehen per Klick, mit vollständigem Belegfluss.</div>
+                <button className="btn btn-primary" onClick={()=>{setForm(emptyForm);setView("create");}}>Ersten Beleg anlegen →</button>
+              </div>
+            </td></tr>
+          )}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>);
+}
+
+// ── ARTIKEL & LEISTUNGEN (Stammdaten) ─────────────────────────
+function ItemsScreen({notify}){
+  const[items,setItems]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[taxCodes,setTaxCodes]=useState([]);
+  const[modal,setModal]=useState(null); // null | {} (neu) | item (edit)
+  const[busy,setBusy]=useState(false);
+
+  const load=()=>{setLoading(true);api.listBusinessItems().then(d=>setItems(d.items||[])).catch(()=>setItems([])).finally(()=>setLoading(false));};
+  useEffect(()=>{load();api.getTaxCodes().then(d=>setTaxCodes(d.tax_codes||[])).catch(()=>setTaxCodes([{code:"S19",rate:19,label:"USt 19 %"}]));},[]);
+
+  const save=async()=>{
+    if(!(modal.name||"").trim()||modal.name.trim().length<2){notify("Name (min. 2 Zeichen) erforderlich","error");return;}
+    setBusy(true);
+    try{
+      const payload={name:modal.name.trim(),item_number:modal.item_number||"",description:modal.description||"",unit:modal.unit||"C62",unit_price:parseFloat(modal.unit_price)||0,tax_code:modal.tax_code||"S19",external_ref:modal.external_ref||""};
+      if(modal.id)await api.patchBusinessItem(modal.id,payload);
+      else await api.createBusinessItem(payload);
+      notify("Artikel gespeichert ✓","success");setModal(null);load();
+    }catch(e){notify(e.message,"error");}
+    setBusy(false);
+  };
+  const remove=async(id)=>{
+    try{await api.deleteBusinessItem(id);notify("Artikel deaktiviert","success");load();}
+    catch(e){notify(e.message,"error");}
+  };
+
+  return(<div className="fi">
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
+      <div>
+        <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Artikel & Leistungen</h1>
+        <p style={{fontSize:12.5,color:T.textMuted,marginTop:2}}>Stammdaten für Angebote, Aufträge und Rechnungen — mit Preis und Steuerkennzeichen.</p>
+      </div>
+      <button className="btn btn-primary btn-sm" style={{fontWeight:700}} onClick={()=>setModal({unit:"C62",tax_code:"S19",unit_price:0})}>+ Neuer Artikel</button>
+    </div>
+    <div className="card">
+      <div style={{overflowX:"auto"}}>
+      <table className="table">
+        <thead><tr>{["Artikel-Nr.","Name","Einheit","Einzelpreis","Steuer","ERP-Ref.",""].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <tbody>
+          {loading?[1,2].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
+          :items.map(it=>(
+            <tr key={it.id} className="tr-hover" style={{cursor:"pointer"}} onClick={()=>setModal({...it})}>
+              <td style={{fontFamily:F.mono,fontSize:12,color:T.textMuted}}>{it.item_number||"—"}</td>
+              <td style={{fontWeight:600,color:T.textPrimary}}>{it.name}</td>
+              <td style={{fontSize:12.5}}>{it.unit==="HUR"?"Stunde":it.unit==="C62"?"Stück":it.unit}</td>
+              <td style={{fontWeight:600}}>{fmtEUR(it.unit_price)}</td>
+              <td><span style={{fontFamily:F.mono,fontSize:11,background:T.bgMuted,borderRadius:4,padding:"2px 6px",color:T.textSecondary}}>{it.tax_code}</span></td>
+              <td style={{fontSize:12,color:T.textMuted,fontFamily:F.mono}}>{it.external_ref||"—"}</td>
+              <td onClick={e=>e.stopPropagation()}><button className="btn btn-danger btn-sm" onClick={()=>remove(it.id)}>Deaktivieren</button></td>
+            </tr>
+          ))}
+          {!loading&&items.length===0&&(
+            <tr><td colSpan={7} style={{textAlign:"center",padding:36,color:T.textMuted,fontSize:13.5}}>
+              Noch keine Artikel — lege wiederverwendbare Leistungen mit Preis und Steuerkennzeichen an.
+            </td></tr>
+          )}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(null)}>
+      <div className="modal sci" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+          <div style={{fontSize:16,fontWeight:700,color:T.textPrimary}}>{modal.id?"Artikel bearbeiten":"Neuer Artikel"}</div>
+          <button onClick={()=>setModal(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.textMuted}}>×</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:11}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 130px",gap:10}}>
+            <div><label className="label">Name *</label><input className="input" value={modal.name||""} onChange={e=>setModal(p=>({...p,name:e.target.value}))} placeholder="Beratung Senior" autoFocus/></div>
+            <div><label className="label">Artikel-Nr.</label><input className="input" value={modal.item_number||""} onChange={e=>setModal(p=>({...p,item_number:e.target.value}))} placeholder="A-100"/></div>
+          </div>
+          <div><label className="label">Beschreibung</label><input className="input" value={modal.description||""} onChange={e=>setModal(p=>({...p,description:e.target.value}))}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <div><label className="label">Einzelpreis €</label><input className="input" type="number" min="0" step="0.01" value={modal.unit_price} onChange={e=>setModal(p=>({...p,unit_price:e.target.value}))}/></div>
+            <div><label className="label">Einheit</label>
+              <select className="select" value={modal.unit||"C62"} onChange={e=>setModal(p=>({...p,unit:e.target.value}))}>
+                <option value="C62">Stück</option><option value="HUR">Stunde</option><option value="DAY">Tag</option><option value="KGM">kg</option><option value="MTR">Meter</option>
+              </select>
+            </div>
+            <div><label className="label">Steuerkennzeichen</label>
+              <select className="select" value={modal.tax_code||"S19"} onChange={e=>setModal(p=>({...p,tax_code:e.target.value}))}>
+                {taxCodes.map(t=><option key={t.code} value={t.code}>{t.code} — {t.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div><label className="label">ERP-Referenz (z.B. SAP-Materialnummer)</label><input className="input" value={modal.external_ref||""} onChange={e=>setModal(p=>({...p,external_ref:e.target.value}))} placeholder="MATNR / DATEV-Konto"/></div>
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18}}>
+          <button className="btn btn-ghost" onClick={()=>setModal(null)}>Abbrechen</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy?<><Spinner color="#fff" size={13}/>&nbsp;Speichert…</>:"Speichern"}</button>
+        </div>
+      </div>
+    </div>}
+  </div>);
+}
+
+// ── KUNDEN (Stammdaten) ───────────────────────────────────────
+function KundenScreen({notify}){
+  const[customers,setCustomers]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[search,setSearch]=useState("");
+  const[modal,setModal]=useState(null);
+  const[busy,setBusy]=useState(false);
+
+  const load=()=>{setLoading(true);api.listCustomers().then(d=>setCustomers(d.customers||[])).catch(()=>setCustomers([])).finally(()=>setLoading(false));};
+  useEffect(()=>{load();},[]);
+
+  const save=async()=>{
+    if(!(modal.name||"").trim()||modal.name.trim().length<2){notify("Name (min. 2 Zeichen) erforderlich","error");return;}
+    setBusy(true);
+    try{
+      const payload={name:modal.name.trim(),vat_id:modal.vat_id||"",address:modal.address||"",zip:modal.zip||"",city:modal.city||"",country:modal.country||"DE",email:modal.email||"",payment_terms_days:parseInt(modal.payment_terms_days)||30,external_ref:modal.external_ref||""};
+      if(modal.id)await api.req("PATCH",`/customers/${modal.id}`,payload);
+      else await api.post("/customers",payload);
+      notify("Kunde gespeichert ✓","success");setModal(null);load();
+    }catch(e){notify(e.message,"error");}
+    setBusy(false);
+  };
+
+  const filtered=customers.filter(c=>!search||(c.name||"").toLowerCase().includes(search.toLowerCase())||(c.vat_id||"").includes(search));
+
+  return(<div className="fi">
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
+      <div>
+        <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Kunden</h1>
+        <p style={{fontSize:12.5,color:T.textMuted,marginTop:2}}>Geschäftspartner-Stammdaten — fließen in Belege und Rechnungen ein und lernen aus jeder Rechnung mit.</p>
+      </div>
+      <button className="btn btn-primary btn-sm" style={{fontWeight:700}} onClick={()=>setModal({country:"DE",payment_terms_days:30})}>+ Neuer Kunde</button>
+    </div>
+    <div style={{marginBottom:12}}>
+      <input className="input" style={{maxWidth:320}} placeholder="Suche: Name, USt-IdNr.…" value={search} onChange={e=>setSearch(e.target.value)}/>
+    </div>
+    <div className="card">
+      <div style={{overflowX:"auto"}}>
+      <table className="table">
+        <thead><tr>{["Name","USt-IdNr.","Ort","Land","Zahlungsziel","Rechnungen","Letzte Rechnung"].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <tbody>
+          {loading?[1,2].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
+          :filtered.map(c=>(
+            <tr key={c.id} className="tr-hover" style={{cursor:"pointer"}} onClick={()=>setModal({...c})}>
+              <td style={{fontWeight:600,color:T.textPrimary}}>{c.name}</td>
+              <td style={{fontFamily:F.mono,fontSize:12}}>{c.vat_id||"—"}</td>
+              <td style={{fontSize:12.5}}>{c.city||"—"}</td>
+              <td style={{fontSize:12.5}}>{c.country||"DE"}</td>
+              <td style={{fontSize:12.5}}>{c.payment_terms_days?`${c.payment_terms_days} Tage`:"—"}</td>
+              <td style={{fontWeight:600}}>{c.invoice_count||0}</td>
+              <td style={{fontSize:12,color:T.textMuted}}>{c.last_invoice_at?new Date(c.last_invoice_at).toLocaleDateString("de-DE"):"—"}</td>
+            </tr>
+          ))}
+          {!loading&&filtered.length===0&&(
+            <tr><td colSpan={7} style={{textAlign:"center",padding:36,color:T.textMuted,fontSize:13.5}}>
+              Noch keine Kunden — sie entstehen automatisch aus Rechnungen oder werden hier manuell angelegt.
+            </td></tr>
+          )}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(null)}>
+      <div className="modal sci" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+          <div style={{fontSize:16,fontWeight:700,color:T.textPrimary}}>{modal.id?"Kunde bearbeiten":"Neuer Kunde"}</div>
+          <button onClick={()=>setModal(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.textMuted}}>×</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:11}}>
+          <div><label className="label">Firma *</label><input className="input" value={modal.name||""} onChange={e=>setModal(p=>({...p,name:e.target.value}))} autoFocus/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><label className="label">USt-IdNr.</label><input className="input" value={modal.vat_id||""} onChange={e=>setModal(p=>({...p,vat_id:e.target.value}))} placeholder="DE123456789"/></div>
+            <div><label className="label">E-Mail</label><input className="input" type="email" value={modal.email||""} onChange={e=>setModal(p=>({...p,email:e.target.value}))}/></div>
+          </div>
+          <div><label className="label">Straße</label><input className="input" value={modal.address||""} onChange={e=>setModal(p=>({...p,address:e.target.value}))}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"100px 1fr 90px",gap:10}}>
+            <div><label className="label">PLZ</label><input className="input" value={modal.zip||""} onChange={e=>setModal(p=>({...p,zip:e.target.value}))}/></div>
+            <div><label className="label">Stadt</label><input className="input" value={modal.city||""} onChange={e=>setModal(p=>({...p,city:e.target.value}))}/></div>
+            <div><label className="label">Land</label><input className="input" value={modal.country||"DE"} onChange={e=>setModal(p=>({...p,country:e.target.value.toUpperCase().slice(0,2)}))}/></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><label className="label">Zahlungsziel (Tage)</label><input className="input" type="number" min="0" max="365" value={modal.payment_terms_days??30} onChange={e=>setModal(p=>({...p,payment_terms_days:e.target.value}))}/></div>
+            <div><label className="label">ERP-Referenz (SAP KUNNR / Debitor)</label><input className="input" value={modal.external_ref||""} onChange={e=>setModal(p=>({...p,external_ref:e.target.value}))}/></div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18}}>
+          <button className="btn btn-ghost" onClick={()=>setModal(null)}>Abbrechen</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy?<><Spinner color="#fff" size={13}/>&nbsp;Speichert…</>:"Speichern"}</button>
+        </div>
+      </div>
+    </div>}
+  </div>);
+}
+
 function ArchiveScreen({notify}){
   const[docs,setDocs]=useState([]);
   const[loading,setLoading]=useState(true);
   const[search,setSearch]=useState('');
   const[filter,setFilter]=useState('all');
   const[selected,setSelected]=useState(null);
+  const[verifying,setVerifying]=useState(false);
 
   useEffect(()=>{
-    api.listInvoices('?archived=true&limit=30')
+    api.listInvoices('?archived=true&limit=100')
       .then(d=>setDocs(d.invoices||[]))
       .catch(()=>setDocs([]))
       .finally(()=>setLoading(false));
   },[]);
+
+  const runIntegrityCheck=async()=>{
+    setVerifying(true);
+    try{
+      const r=await api.get('/archive/verify/integrity');
+      if(r.failed>0)notify(`⚠ ${r.failed} von ${r.total} Dokumenten fehlerhaft — bitte Support kontaktieren`,'error');
+      else notify(`Integrität geprüft: ${r.total} Dokumente, alle unverändert ✓`,'success');
+    }catch(e){notify(e.message,'error');}
+    setVerifying(false);
+  };
+
+  const downloadXml=async(doc)=>{
+    try{
+      const c=await api.getXML(doc.id);
+      const b=new Blob([c],{type:'application/xml'});const u=URL.createObjectURL(b);
+      const a=document.createElement('a');a.href=u;a.download=`${doc.invoice_number}.xml`;a.click();
+      setTimeout(()=>URL.revokeObjectURL(u),5000);
+    }catch(e){notify(e.message,'error');}
+  };
+
+  const downloadAuditLog=async()=>{
+    try{
+      const r=await api.get('/archive/audit/logs');
+      const b=new Blob([JSON.stringify(r.logs,null,2)],{type:'application/json'});
+      const u=URL.createObjectURL(b);const a=document.createElement('a');
+      a.href=u;a.download=`audit-log-${new Date().toISOString().slice(0,10)}.json`;a.click();
+      setTimeout(()=>URL.revokeObjectURL(u),5000);
+      notify('Audit-Protokoll heruntergeladen ✓','success');
+    }catch(e){notify(e.message,'error');}
+  };
 
   const filtered=docs.filter(d=>{
     const matchSearch=!search||d.invoice_number?.toLowerCase().includes(search.toLowerCase())||d.buyer_name?.toLowerCase().includes(search.toLowerCase());
@@ -2693,13 +3246,13 @@ function ArchiveScreen({notify}){
           <p style={{fontSize:13,color:T.textMuted}}>SHA-256-gesichert · unveränderlich · §147 AO · 10 Jahre Aufbewahrung</p>
         </div>
         <div style={{display:'flex',gap:8}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>notify('Audit-Report wird generiert...','info')}>↓ Audit-Report</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>notify('Export gestartet','success')}>↓ Export</button>
+          <button className="btn btn-ghost btn-sm" onClick={downloadAuditLog}>↓ Audit-Protokoll</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExport().then(()=>notify('DATEV-Export heruntergeladen ✓','success')).catch(e=>notify(e.message,'error'))}>↓ DATEV-Export</button>
         </div>
       </div>
 
       {/* Stats */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:18}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:18}}>
         {[
           {label:'Archivierte Dokumente',value:fmtNum(totalArchived),sub:'Gesamt'},
           {label:'Speicher genutzt',value:`${totalSize} MB`,sub:'AWS Frankfurt'},
@@ -2723,7 +3276,7 @@ function ArchiveScreen({notify}){
           <div style={{fontSize:13.5,fontWeight:700,color:T.textPrimary,marginBottom:3}}>Revisionssicheres Archiv — automatisch</div>
           <div style={{fontSize:12.5,color:T.textSecondary}}>Jedes Dokument wird beim Speichern gehasht (SHA-256), unveränderlich in AWS Frankfurt gespeichert und automatisch 10 Jahre aufbewahrt. Jede Änderung ist im Audit-Trail protokolliert.</div>
         </div>
-        <button className="btn btn-success btn-sm" onClick={()=>notify('Archiv-Integrität geprüft ✓','success')}>Integrität prüfen</button>
+        <button className="btn btn-success btn-sm" onClick={runIntegrityCheck} disabled={verifying}>{verifying?'Prüft...':'Integrität prüfen'}</button>
       </div>
 
       {/* Search + Filter */}
@@ -2756,8 +3309,8 @@ function ArchiveScreen({notify}){
                 <td style={{fontFamily:F.mono,fontSize:10,color:T.textMuted}}>{doc.archive_hash?.substring(0,12)}...</td>
                 <td onClick={e=>e.stopPropagation()}>
                   <div style={{display:'flex',gap:5}}>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>notify('Hash verifiziert ✓','success')}>Prüfen</button>
-                    <button className="btn btn-outline btn-sm" onClick={()=>notify('Download gestartet','success')}>↓ XML</button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setSelected(doc)}>Details</button>
+                    <button className="btn btn-outline btn-sm" onClick={()=>downloadXml(doc)}>↓ XML</button>
                   </div>
                 </td>
               </tr>
@@ -2786,8 +3339,8 @@ function ArchiveScreen({notify}){
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button className="btn btn-ghost" onClick={()=>setSelected(null)}>Schließen</button>
-              <button className="btn btn-success" onClick={()=>notify('Hash verifiziert — Dokument unverändert ✓','success')}>✓ Hash verifizieren</button>
-              <button className="btn btn-primary" onClick={()=>notify('XML wird heruntergeladen','success')}>↓ XML herunterladen</button>
+              <button className="btn btn-success" onClick={runIntegrityCheck} disabled={verifying}>{verifying?'Prüft...':'✓ Integrität prüfen'}</button>
+              <button className="btn btn-primary" onClick={()=>downloadXml(selected)}>↓ XML herunterladen</button>
             </div>
           </div>
         </div>
@@ -2799,6 +3352,111 @@ function ArchiveScreen({notify}){
 // ══════════════════════════════════════════════════════════════
 // SETTINGS — Firmendaten, API, Plan, Team
 // ══════════════════════════════════════════════════════════════
+
+// API & Webhooks — echte Daten statt hartkodiertem Demo-Key
+function ApiSettingsTab({org,notify}){
+  const[apiKey,setApiKey]=useState(org?.api_key||'');
+  const[keyVisible,setKeyVisible]=useState(false);
+  const[rotating,setRotating]=useState(false);
+  const[webhooks,setWebhooks]=useState([]);
+  const[whUrl,setWhUrl]=useState('');
+  const[whSaving,setWhSaving]=useState(false);
+  const[newSecret,setNewSecret]=useState(null);
+
+  useEffect(()=>{
+    if(!apiKey)api.me().then(d=>setApiKey(d.org?.api_key||'')).catch(()=>{});
+    api.get('/webhooks').then(d=>setWebhooks(d.webhooks||[])).catch(()=>setWebhooks([]));
+  },[]);
+
+  const rotate=async()=>{
+    if(!window.confirm('API-Key wirklich rotieren? Bestehende Integrationen mit dem alten Key funktionieren danach nicht mehr.'))return;
+    setRotating(true);
+    try{const d=await api.post('/auth/rotate-api-key',{});setApiKey(d.api_key);setKeyVisible(true);notify('Neuer API-Key generiert ✓','success');}
+    catch(e){notify(e.message,'error');}
+    setRotating(false);
+  };
+
+  const addWebhook=async()=>{
+    if(!whUrl||!whUrl.startsWith('https://')){notify('Bitte eine gültige https://-URL eingeben','error');return;}
+    setWhSaving(true);
+    try{
+      const d=await api.post('/webhooks',{url:whUrl});
+      setNewSecret(d.secret_shown_once);
+      setWhUrl('');
+      const l=await api.get('/webhooks');setWebhooks(l.webhooks||[]);
+      notify('Webhook angelegt ✓','success');
+    }catch(e){notify(e.message,'error');}
+    setWhSaving(false);
+  };
+
+  const deleteWebhook=async(id)=>{
+    try{
+      await api.req('DELETE',`/webhooks/${id}`);
+      setWebhooks(w=>w.filter(x=>x.id!==id));
+      notify('Webhook gelöscht','success');
+    }catch(e){notify(e.message,'error');}
+  };
+
+  const maskedKey=apiKey?(keyVisible?apiKey:apiKey.slice(0,12)+'••••••••••••••••'):'';
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div className="card" style={{padding:22}}>
+        <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>API-Zugang</div>
+        <div style={{marginBottom:14}}>
+          <label className="label">Live API Key</label>
+          {apiKey?(
+            <div style={{display:'flex',gap:8}}>
+              <input className="input" readOnly value={maskedKey} style={{fontFamily:F.mono,fontSize:12,color:T.textSecondary}}/>
+              <button className="btn btn-ghost btn-sm" style={{flexShrink:0}} onClick={()=>setKeyVisible(v=>!v)}>{keyVisible?'Verbergen':'Anzeigen'}</button>
+              <button className="btn btn-ghost btn-sm" style={{flexShrink:0}} onClick={()=>{navigator.clipboard.writeText(apiKey);notify('API-Key kopiert ✓','success');}}>Kopieren</button>
+              <button className="btn btn-danger btn-sm" style={{flexShrink:0}} onClick={rotate} disabled={rotating}>{rotating?'Rotiert...':'Rotieren'}</button>
+            </div>
+          ):(
+            <div style={{fontSize:12.5,color:T.textMuted,padding:'9px 12px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`}}>API-Key ist nur für Owner/Admin sichtbar.</div>
+          )}
+        </div>
+        <div style={{marginBottom:14}}>
+          <label className="label">Base URL</label>
+          <div style={{fontFamily:F.mono,fontSize:12,color:T.accent,background:T.bgSubtle,borderRadius:6,padding:'9px 12px',border:`1px solid ${T.bgBorder}`}}>{API_BASE}</div>
+        </div>
+        <div style={{background:T.bgSubtle,borderRadius:7,padding:'14px 16px',border:`1px solid ${T.bgBorder}`}}>
+          <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:10,letterSpacing:.4,textTransform:'uppercase'}}>Schnellstart</div>
+          <pre style={{fontFamily:F.mono,fontSize:11,color:T.textSecondary,lineHeight:1.7,overflow:'auto'}}>{`curl -X POST ${API_BASE}/invoices \\
+  -H "Authorization: Bearer ${apiKey?apiKey.slice(0,12)+'...':'<Ihr API-Key>'}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"invoice_number":"INV-001","format":"xrechnung",...}'`}</pre>
+        </div>
+      </div>
+      <div className="card" style={{padding:22}}>
+        <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Webhooks</div>
+        {newSecret&&(
+          <div style={{padding:'12px 14px',background:T.amberBg,border:`1px solid ${T.amberBdr}`,borderRadius:7,marginBottom:12,fontSize:12.5,color:T.amber}}>
+            <strong>Webhook-Secret (wird nur einmal angezeigt):</strong>
+            <div style={{fontFamily:F.mono,fontSize:11,marginTop:6,wordBreak:'break-all',color:T.textPrimary}}>{newSecret}</div>
+            <button className="btn btn-ghost btn-sm" style={{marginTop:8}} onClick={()=>{navigator.clipboard.writeText(newSecret);notify('Secret kopiert ✓','success');}}>Kopieren</button>
+          </div>
+        )}
+        <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:14}}>
+          {webhooks.length===0&&<div style={{fontSize:12.5,color:T.textMuted,textAlign:'center',padding:'14px 0'}}>Noch keine Webhooks konfiguriert.</div>}
+          {webhooks.map(w=>(
+            <div key={w.id} style={{display:'flex',alignItems:'center',gap:12,padding:'9px 12px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`}}>
+              <span style={{fontFamily:F.mono,fontSize:11,color:T.accent,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{w.url}</span>
+              <span className={`badge ${w.active?'badge-green':'badge-gray'}`} style={{fontSize:10}}>{w.active?'Aktiv':'Inaktiv'}</span>
+              <button className="btn btn-danger btn-sm" onClick={()=>deleteWebhook(w.id)}>Löschen</button>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:10,alignItems:'center'}}>
+          <input className="input" placeholder="https://ihre-app.de/webhook" style={{flex:1}} value={whUrl} onChange={e=>setWhUrl(e.target.value)}/>
+          <button className="btn btn-primary btn-sm" onClick={addWebhook} disabled={whSaving}>{whSaving?'Speichert...':'Hinzufügen'}</button>
+        </div>
+        <div style={{fontSize:11.5,color:T.textMuted,marginTop:8}}>Events: invoice.created · invoice.sent · invoice.delivered · invoice.rejected — signiert per HMAC-SHA256 (Header X-Invoiq-Signature).</div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsScreen({user,org,notify}){
   const inboundAddress = org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.io` : null;
   const[tab,setTab]   = useState('company');
@@ -2963,79 +3621,23 @@ function SettingsScreen({user,org,notify}){
             </div>
           )}
 
-          {tab==='api'&&(
-            <div style={{display:'flex',flexDirection:'column',gap:14}}>
-              <div className="card" style={{padding:22}}>
-                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>API-Zugang</div>
-                <div style={{marginBottom:14}}>
-                  <label className="label">Live API Key</label>
-                  <div style={{display:'flex',gap:8}}>
-                    <input className="input" readOnly value="iq_live_demo_key_001_xxxxxxxxxxxxxxxx" style={{fontFamily:F.mono,fontSize:12,color:T.textMuted}}/>
-                    <button className="btn btn-ghost btn-sm" style={{flexShrink:0}} onClick={()=>notify('API Key kopiert','success')}>Kopieren</button>
-                    <button className="btn btn-danger btn-sm" style={{flexShrink:0}} onClick={()=>notify('Neuer API Key generiert','success')}>Rotieren</button>
-                  </div>
-                </div>
-                <div style={{marginBottom:14}}>
-                  <label className="label">Base URL</label>
-                  <div style={{fontFamily:F.mono,fontSize:12,color:T.accent,background:T.bgSubtle,borderRadius:6,padding:'9px 12px',border:`1px solid ${T.bgBorder}`}}>https://invoiq-erechnung-saas-production.up.railway.app/api/v1</div>
-                </div>
-                <div style={{background:T.bgSubtle,borderRadius:7,padding:'14px 16px',border:`1px solid ${T.bgBorder}`}}>
-                  <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:10,letterSpacing:.4,textTransform:'uppercase'}}>Schnellstart</div>
-                  <pre style={{fontFamily:F.mono,fontSize:11,color:T.textSecondary,lineHeight:1.7,overflow:'auto'}}>{`curl -X POST https://invoiq-erechnung-saas-production.up.railway.app/api/v1/invoices \\
-  -H "Authorization: Bearer iq_live_demo_key_001" \\
-  -H "Content-Type: application/json" \\
-  -d '{"invoice_number":"INV-001","format":"xrechnung",...}'`}</pre>
-                </div>
-              </div>
-              <div className="card" style={{padding:22}}>
-                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Webhooks</div>
-                <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:14}}>
-                  {[['invoice.created','Neue Rechnung erstellt'],['invoice.delivered','Rechnung zugestellt'],['invoice.error','Validierungsfehler'],['inbound.received','Eingehende Rechnung']].map(([ev,desc])=>(
-                    <div key={ev} style={{display:'flex',alignItems:'center',gap:12,padding:'9px 12px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`}}>
-                      <span style={{fontFamily:F.mono,fontSize:11,color:T.accent,flex:'0 0 180px'}}>{ev}</span>
-                      <span style={{fontSize:12.5,color:T.textSecondary,flex:1}}>{desc}</span>
-                      <span className="badge badge-green" style={{fontSize:10}}>Aktiv</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{display:'flex',gap:10,alignItems:'center'}}>
-                  <input className="input" placeholder="https://ihre-app.de/webhook" style={{flex:1}}/>
-                  <button className="btn btn-primary btn-sm" onClick={()=>notify('Webhook hinzugefügt ✓','success')}>Hinzufügen</button>
-                </div>
-              </div>
-            </div>
-          )}
+          {tab==='api'&&<ApiSettingsTab org={org} notify={notify}/>}
 
           {tab==='team'&&(
             <div className="card" style={{padding:22}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>
-                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary}}>Team-Mitglieder</div>
-                <button className="btn btn-primary btn-sm" onClick={()=>notify('Einladung versendet ✓','success')}>+ Einladen</button>
-              </div>
+              <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Team-Mitglieder</div>
               <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
-                {[
-                  {name:user?.full_name||'Manfred Bell',email:user?.email||'manfred@invoiq.io',role:'Owner',you:true},
-                ].map((m,i)=>(
-                  <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:T.bgSubtle,borderRadius:7,border:`1px solid ${T.bgBorder}`}}>
-                    <div className="avatar">{(m.name||'U')[0]}</div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{m.name} {m.you&&<span style={{fontSize:11,color:T.textMuted}}>(Sie)</span>}</div>
-                      <div style={{fontSize:12,color:T.textMuted}}>{m.email}</div>
-                    </div>
-                    <span className="badge badge-blue" style={{fontSize:10.5}}>{m.role}</span>
+                <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:T.bgSubtle,borderRadius:7,border:`1px solid ${T.bgBorder}`}}>
+                  <div className="avatar">{(user?.full_name||'U')[0]}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{user?.full_name||'—'} <span style={{fontSize:11,color:T.textMuted}}>(Sie)</span></div>
+                    <div style={{fontSize:12,color:T.textMuted}}>{user?.email||''}</div>
                   </div>
-                ))}
-              </div>
-              <div style={{background:T.bgSubtle,borderRadius:7,padding:'12px 14px',border:`1px solid ${T.bgBorder}`}}>
-                <div style={{fontSize:12.5,fontWeight:600,color:T.textPrimary,marginBottom:5}}>Benutzer einladen</div>
-                <div style={{display:'flex',gap:10}}>
-                  <input className="input" placeholder="E-Mail-Adresse" style={{flex:1}}/>
-                  <select className="select" style={{width:140}}>
-                    <option>Admin</option><option>Member</option><option>Viewer</option>
-                  </select>
-                  <button className="btn btn-primary btn-sm" onClick={()=>notify('Einladung versendet ✓','success')}>Einladen</button>
+                  <span className="badge badge-blue" style={{fontSize:10.5,textTransform:'capitalize'}}>{user?.role||'owner'}</span>
                 </div>
-                <div style={{fontSize:11.5,color:T.textMuted,marginTop:8}}>Add-on: +9€/Monat pro zusätzlichem Nutzer</div>
+              </div>
+              <div style={{background:T.accentLight,borderRadius:7,padding:'12px 14px',border:`1px solid ${T.accentPale}`,fontSize:12.5,color:T.textSecondary}}>
+                <strong style={{color:T.accent}}>Team-Einladungen sind in Vorbereitung.</strong> Bis dahin arbeitet jede Organisation mit einem Konto. Sobald das Feature live ist, informieren wir Sie per E-Mail.
               </div>
             </div>
           )}
@@ -3046,30 +3648,23 @@ function SettingsScreen({user,org,notify}){
                 <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Aktueller Plan</div>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
                   <div>
-                    <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:4}}>{org?.plan?.toUpperCase()||'STARTER'}</div>
-                    <div style={{fontSize:13.5,color:T.textSecondary}}>{org?.plan==="business"?"99€/Monat · 500 Rechnungen":org?.plan==="enterprise"?"299€/Monat · Unbegrenzt":"49€/Monat · 100 Rechnungen"}/Monat · Jährlich kündbar</div>
+                    <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:4}}>{org?.plan?.toUpperCase()||'FREE'}</div>
+                    <div style={{fontSize:13.5,color:T.textSecondary}}>{org?.plan_doc_limit||10} Dokumente/Monat · monatlich kündbar</div>
                   </div>
                   <div style={{display:'flex',gap:8}}>
                     <button className="btn btn-ghost" onClick={async()=>{
                       try{
-                        const d = await api.openBillingPortal(org?.stripe_customer_id);
-                        if(d.portal_url && !d.demo) window.open(d.portal_url,'_blank');
-                        else notify('Stripe Portal: STRIPE_SECRET_KEY in Railway setzen','info');
+                        const d = await api.openBillingPortal();
+                        if(d.portal_url) window.open(d.portal_url,'_blank');
                       }catch(e){notify(e.message,'error');}
                     }}>Abrechnung verwalten</button>
                     <button className="btn btn-primary" onClick={async()=>{
                       try{
-                        const currentPlan = org?.plan || 'free';
+                        const currentPlan = (org?.plan||'free').toLowerCase();
+                        if(currentPlan==='enterprise'){ notify('Sie haben bereits den höchsten Plan','info'); return; }
                         const nextPlan = currentPlan==='free'?'starter':currentPlan==='starter'?'business':'enterprise';
-                        if(nextPlan==='enterprise'&&currentPlan==='enterprise'){
-                          notify('Sie haben bereits den höchsten Plan','info'); return;
-                        }
                         const d = await api.createCheckout(nextPlan,'monthly');
-                        if(d.checkout_url && !d.demo){
-                          window.open(d.checkout_url,'_blank');
-                        } else {
-                          notify('Stripe-Checkout wird geöffnet...','info');
-                        }
+                        if(d.checkout_url) window.location.href = d.checkout_url;
                       }catch(e){notify(e.message,'error');}
                     }}>Upgrade →</button>
                   </div>
@@ -3077,7 +3672,7 @@ function SettingsScreen({user,org,notify}){
                 <div style={{marginBottom:14}}>
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:T.textMuted,marginBottom:5}}>
                     <span>Dokumente diesen Monat</span>
-                    <span style={{fontWeight:600,color:T.textPrimary}}>{org?.plan_doc_used||41} / {org?.plan_doc_limit||100}</span>
+                    <span style={{fontWeight:600,color:T.textPrimary}}>{org?.plan_doc_used||0} / {org?.plan_doc_limit||100}</span>
                   </div>
                   <div className="progress"><div className="progress-fill" style={{width:`${Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||10))*100)}%`}}/></div>
                 </div>
@@ -3086,21 +3681,16 @@ function SettingsScreen({user,org,notify}){
                 </div>
               </div>
               <div className="card" style={{padding:22}}>
-                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Zahlungshistorie</div>
-                {['Mai 2025','April 2025','März 2025'].map(m=>(
-                  <div key={m} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:`1px solid ${T.bgSubtle}`}}>
-                    <div style={{fontSize:13.5,fontWeight:500,color:T.textPrimary}}>{m}</div>
-                    <div style={{display:'flex',gap:12,alignItems:'center'}}>
-                      <span style={{fontSize:13.5,fontWeight:700,color:T.textPrimary}}>29,00€</span>
-                      <span className="badge badge-green" style={{fontSize:10.5}}>Bezahlt</span>
-                      <button className="btn btn-ghost btn-sm" onClick={()=>notify('PDF heruntergeladen','success')}>↓ PDF</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{padding:'12px 16px',background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:7}}>
-                <button style={{background:'none',border:'none',color:T.red,cursor:'pointer',fontSize:13,fontFamily:F.ui,fontWeight:600}} onClick={()=>notify('Kündigungsanfrage gesendet','error')}>Konto kündigen</button>
-                <span style={{fontSize:12,color:T.red,marginLeft:8}}>— Jederzeit möglich, keine Mindestlaufzeit</span>
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${T.bgBorder}`}}>Zahlungshistorie & Kündigung</div>
+                <div style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>
+                  Rechnungen, Zahlungsmethoden und Kündigung verwalten Sie sicher im Stripe-Kundenportal — jederzeit, ohne Mindestlaufzeit.
+                </div>
+                <button className="btn btn-ghost" style={{marginTop:12}} onClick={async()=>{
+                  try{
+                    const d = await api.openBillingPortal();
+                    if(d.portal_url) window.open(d.portal_url,'_blank');
+                  }catch(e){notify(e.message,'error');}
+                }}>Stripe-Kundenportal öffnen →</button>
               </div>
             </div>
           )}
@@ -3167,10 +3757,10 @@ function AdminOverview({notify,isSuper}){
   const openErrors = adminStats?.open_errors || 0;
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super-Admin":mandanten[0].name}</p></div>
-      {isSuper&&<><button className="btn btn-ghost btn-sm" onClick={()=>notify("Export gestartet","success")}>↓ Export</button><button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo"}</button></>}
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super-Admin":(orgs[0]?.name||"")}</p></div>
+      {isSuper&&<button className="btn btn-ghost btn-sm" onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo (nur Dev)"}</button>}
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(170px,100%),1fr))",gap:10,marginBottom:16}}>
       {loadingA?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:90}}><div className="skeleton" style={{height:"100%"}}/></div>)
       :(isSuper
         ?[["MRR",fmtEUR(mrr),"Monatlich wiederkehrend"],["Aktive Kunden",orgs.filter(o=>o.status==="active").length,`${orgs.length} gesamt`],["Dokumente",fmtNum(totalDocs),"Diesen Monat"],["Offene Fehler",openErrors,openErrors>0?"⚠ Prüfen":"✓ Alles OK"]]
@@ -3230,7 +3820,7 @@ function AdminDocs({notify}){
           <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
           <td><StatusBadge status={inv.status}/></td>
           <td style={{color:T.textMuted,fontSize:12}}>{inv.created_at?new Date(inv.created_at).toLocaleDateString("de-DE"):"—"}</td>
-          <td>{inv.status==="error"&&<button className="btn btn-danger btn-sm" onClick={()=>notify("Wird geprüft","info")}>Prüfen</button>}</td>
+          <td></td>
         </tr>)}
       </tbody>
     </table></div>
@@ -3246,7 +3836,6 @@ function AdminUsers({notify}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}>
       <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Nutzer</h1>
-      <button className="btn btn-primary btn-sm" onClick={()=>notify("Einladung gesendet ✓","success")}>+ Einladen</button>
     </div>
     <div className="card"><table className="table"><thead><tr>{["Nutzer","Rolle","Organisation","Status","Letzter Login","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
       <tbody>
@@ -3269,21 +3858,31 @@ function AdminUsers({notify}){
 }
 
 function AdminRevenue(){
-  const plans=[{name:"Starter",count:2,price:49},{name:"Business",count:2,price:199},{name:"Pro",count:1,price:599}];
-  const mrr=plans.reduce((s,p)=>s+p.count*p.price,0);
+  const[orgs,setOrgs]=useState([]);
+  const[loading,setLoading]=useState(true);
+  useEffect(()=>{
+    api.get('/admin/orgs').then(d=>setOrgs(d.orgs||[])).catch(()=>setOrgs([])).finally(()=>setLoading(false));
+  },[]);
+  const active=orgs.filter(o=>o.status==='active');
+  const mrr=active.reduce((s,o)=>s+(o.mrr||0),0);
+  const planCounts=active.reduce((acc,o)=>{const p=(o.plan||'free').toLowerCase();acc[p]=(acc[p]||0)+1;return acc;},{});
   return(<div className="fi">
     <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:18}}>Revenue</h1>
+    {loading?<div className="card" style={{padding:18}}><div className="skeleton" style={{height:60}}/></div>:<>
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-      {[["MRR",fmtEUR(mrr)],["ARR",fmtEUR(mrr*12)],["Avg/Customer",fmtEUR(mrr/5)]].map(([l,v])=><div key={l} className="card" style={{padding:18}}><div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:9}}>{l}</div><div className="stat-num">{v}</div></div>)}
+      {[["MRR",fmtEUR(mrr)],["ARR",fmtEUR(mrr*12)],["Ø/Kunde",fmtEUR(active.length?mrr/active.length:0)]].map(([l,v])=><div key={l} className="card" style={{padding:18}}><div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:9}}>{l}</div><div className="stat-num">{v}</div></div>)}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-      <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Plan Distribution</div>
-        {plans.map(p=><div key={p.name} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{fontWeight:600}}>{p.name}</span><span style={{color:T.textMuted}}>{p.count} · {fmtEUR(p.count*p.price)}/mo</span></div><div className="progress"><div className="progress-fill" style={{width:`${(p.count/5)*100}%`}}/></div></div>)}
+      <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Plan-Verteilung</div>
+        {Object.keys(planCounts).length===0&&<div style={{fontSize:12.5,color:T.textMuted,textAlign:'center',padding:'12px 0'}}>Noch keine aktiven Kunden</div>}
+        {Object.entries(planCounts).map(([p,count])=><div key={p} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{fontWeight:600,textTransform:'capitalize'}}>{p}</span><span style={{color:T.textMuted}}>{count} Kunde{count>1?'n':''}</span></div><div className="progress"><div className="progress-fill" style={{width:`${(count/Math.max(active.length,1))*100}%`}}/></div></div>)}
       </div>
-      <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Document Volume</div>
-        {mandanten.filter(o=>o.status==="active").map(org=><div key={org.id} style={{marginBottom:11}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:140,fontWeight:500}}>{org.name}</span><span style={{color:T.textMuted,flexShrink:0}}>{fmtNum(org.docs_used)}</span></div><div className="progress"><div className="progress-fill" style={{width:`${(org.docs_used/org.docs_limit)*100}%`}}/></div></div>)}
+      <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Dokumenten-Volumen</div>
+        {active.length===0&&<div style={{fontSize:12.5,color:T.textMuted,textAlign:'center',padding:'12px 0'}}>Noch keine aktiven Kunden</div>}
+        {active.map(org=><div key={org.id} style={{marginBottom:11}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:140,fontWeight:500}}>{org.name}</span><span style={{color:T.textMuted,flexShrink:0}}>{fmtNum(org.plan_doc_used||0)}</span></div><div className="progress"><div className="progress-fill" style={{width:`${Math.min(100,((org.plan_doc_used||0)/(org.plan_doc_limit||100))*100)}%`}}/></div></div>)}
       </div>
     </div>
+    </>}
   </div>);
 }
 
@@ -3386,14 +3985,12 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
             <p style={{ fontSize: 12, color: T.textMuted, marginTop: 3 }}>{m.vat} · {m.erp} · {m.contact}</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => notify(`E-Mail an ${m.contact} geöffnet`, 'info')}>✉ Kontaktieren</button>
-            <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound(selected?.id,null,null)}>↓ DATEV-Export</button>
-            <button className="btn btn-primary btn-sm" onClick={() => notify('Einloggen als Mandant...', 'info')}>Als Mandant einloggen →</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound(selected?.id,null,null).then(()=>notify('DATEV-Export heruntergeladen ✓','success')).catch(e=>notify(e.message,'error'))}>↓ DATEV-Export</button>
           </div>
         </div>
 
         {/* KPIs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(170px,100%),1fr))', gap: 10, marginBottom: 16 }}>
           {[
             { label: 'Dokumente Mai', value: m.docs_this_month, sub: `von ${m.docs_limit}` },
             { label: 'Compliance', value: `${m.compliance}%`, sub: 'EN 16931', color: m.compliance >= 98 ? T.green : T.amber },
@@ -3419,7 +4016,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
           </div>
           {pct > 80 && (
             <div style={{ marginTop: 10, padding: '8px 12px', background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 6, fontSize: 12.5, color: T.amber }}>
-              ⚠ Nähert sich dem Limit — <button style={{ background: 'none', border: 'none', color: T.accent, cursor: 'pointer', fontWeight: 600, fontSize: 12.5, fontFamily: F.ui }} onClick={() => notify('Upgrade-Anfrage für ' + m.name, 'success')}>Plan upgraden →</button>
+              ⚠ Nähert sich dem Limit — der Mandant kann seinen Plan unter Einstellungen → Plan & Abrechnung upgraden.
             </div>
           )}
         </div>
@@ -3469,29 +4066,11 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
         )}
 
         {mandantTab === 'invoices' && (
-          <div className="card">
-            <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.bgBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: T.textPrimary }}>Rechnungen</div>
-              <button className="btn btn-primary btn-sm" onClick={() => notify('Neue Rechnung für ' + m.name, 'success')}>+ Neue Rechnung</button>
+          <div className="card" style={{ padding: 24, textAlign: 'center', color: T.textMuted }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: T.textPrimary, marginBottom: 6 }}>Rechnungsliste pro Mandant</div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 420, margin: '0 auto' }}>
+              Die mandantenspezifische Rechnungsansicht ist in Vorbereitung. Nutzen Sie bis dahin den DATEV-Export oben — er enthält alle Eingangsbelege des Mandanten.
             </div>
-            <table className="table">
-              <thead><tr>{['Nummer', 'Betrag', 'Format', 'Status', 'Datum'].map(h => <th key={h}>{h}</th>)}</tr></thead>
-              <tbody>
-                {[
-                  { num: 'INV-2025-014', amt: 1840, fmt: 'xrechnung', st: 'delivered', date: '2025-05-27' },
-                  { num: 'INV-2025-013', amt: 920, fmt: 'zugferd', st: 'archived', date: '2025-05-20' },
-                  { num: 'INV-2025-012', amt: 3400, fmt: 'xrechnung', st: 'delivered', date: '2025-05-14' },
-                ].map((inv, i) => (
-                  <tr key={i} className="tr-hover">
-                    <td style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 600, color: T.textPrimary }}>{inv.num}</td>
-                    <td style={{ fontWeight: 600 }}>{fmtEUR(inv.amt)}</td>
-                    <td><span style={{ background: T.bgMuted, color: T.textSecondary, borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700, fontFamily: F.mono }}>{inv.fmt.toUpperCase()}</span></td>
-                    <td><StatusBadge status={inv.st} /></td>
-                    <td style={{ fontSize: 12, color: T.textMuted }}>{inv.date}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
 
@@ -3499,29 +4078,28 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
           <div className="card" style={{ padding: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 14 }}>Eingehende Rechnungen</div>
             {m.pending_inbound > 0 ? (
-              <div style={{ background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: T.amber }}>
-                ⚠ {m.pending_inbound} Eingang{m.pending_inbound > 1 ? 'änge' : ''} warte{m.pending_inbound === 1 ? 't' : 'n'} auf Verarbeitung
+              <div style={{ background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, padding: '12px 14px', fontSize: 13, color: T.amber }}>
+                ⚠ {m.pending_inbound} Eingang{m.pending_inbound > 1 ? 'änge' : ''} warte{m.pending_inbound === 1 ? 't' : 'n'} auf Verarbeitung — Prüfung erfolgt im Bereich „Eingang" des Mandanten.
               </div>
             ) : (
-              <div style={{ background: T.greenBg, border: `1px solid ${T.greenBdr}`, borderRadius: 7, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: T.green }}>
+              <div style={{ background: T.greenBg, border: `1px solid ${T.greenBdr}`, borderRadius: 7, padding: '12px 14px', fontSize: 13, color: T.green }}>
                 ✓ Alle Eingänge verarbeitet
               </div>
             )}
-            <button className="btn btn-primary btn-sm" onClick={() => notify('Alle Eingänge von ' + m.name + ' verarbeitet ✓', 'success')}>Alle verarbeiten →</button>
           </div>
         )}
 
         {mandantTab === 'settings' && (
           <div className="card" style={{ padding: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 16 }}>Mandanten-Einstellungen</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-              {[['Unternehmensname', m.name], ['USt-IdNr.', m.vat], ['ERP-System', m.erp], ['Kontakt-E-Mail', m.contact]].map(([l, v]) => (
-                <div key={l}><label className="label">{l}</label><input className="input" defaultValue={v} /></div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16, gap: 8 }}>
-              <button className="btn btn-danger btn-sm" onClick={() => notify(m.name + ' aus Portal entfernt', 'error')}>Mandant entfernen</button>
-              <button className="btn btn-primary" onClick={() => notify('Gespeichert ✓', 'success')}>Speichern</button>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 16 }}>Mandanten-Stammdaten</div>
+            {[['Unternehmensname', m.name], ['USt-IdNr.', m.vat], ['Plan', m.plan]].map(([l, v]) => (
+              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${T.bgSubtle}`, fontSize: 13 }}>
+                <span style={{ color: T.textMuted }}>{l}</span>
+                <span style={{ fontWeight: 500, color: T.textPrimary, textTransform: l==='Plan'?'capitalize':'none' }}>{v}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 14, fontSize: 12.5, color: T.textMuted }}>
+              Stammdaten verwaltet der Mandant selbst unter Einstellungen → Unternehmen.
             </div>
           </div>
         )}
@@ -3561,13 +4139,13 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
           <p style={{ fontSize: 13, color: T.textMuted }}>{mandanten.length} Mandanten · Zentrales Dashboard für alle Ihre Mandanten</p>{limitReached&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,padding:'10px 14px',marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontSize:13,color:'#92400E'}}>⚠️ Mandanten-Limit ({mandanten.length}/{mandantenLimit===Infinity?'∞':mandantenLimit})</span><button onClick={onBack} style={{fontSize:13,fontWeight:600,color:'#D97706',background:'none',border:'none',cursor:'pointer',padding:0}}>Plan upgraden →</button></div>}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => notify('Sammel-Report wird generiert...', 'info')}>↓ Monats-Report</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null).then(()=>notify('DATEV-Export heruntergeladen ✓','success')).catch(e=>notify(e.message,'error'))}>↓ DATEV-Export</button>
           <button className="btn btn-primary btn-sm" onClick={()=>limitReached?notify(`Mandanten-Limit erreicht (${mandantenLimit} max). Bitte Plan upgraden.`,'warning'):setInviteModal(true)}>{limitReached?`🔒 Limit erreicht`:'+ Mandant einladen'}</button>
         </div>
       </div>
 
       {/* Platform KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(170px,100%),1fr))', gap: 10, marginBottom: 18 }}>
         {[
           { label: 'Mandanten gesamt', value: mandanten.length, sub: `${mandanten.filter(m => m.status === 'active').length} aktiv`, color: T.textPrimary },
           { label: 'Dokumente Mai', value: fmtNum(totalDocs), sub: 'Alle Mandanten', color: T.textPrimary },
@@ -3661,7 +4239,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
                     <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setSelected(m); setView('mandant'); setMandantTab('inbound'); }}>
                       Inbound {m.pending_inbound > 0 && <span style={{ background: T.amber, color: '#fff', borderRadius: 8, padding: '0 5px', fontSize: 10, marginLeft: 3 }}>{m.pending_inbound}</span>}
                     </button>
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => notify('Einloggen als ' + m.name, 'info')}>Öffnen →</button>
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setSelected(m); setView('mandant'); }}>Öffnen →</button>
                   </div>
                 </div>
               );
@@ -3695,7 +4273,6 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
                 </div>
               ))}
             </div>
-            <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={() => notify('Vollständiges Protokoll wird geladen...', 'info')}>Alle Aktivitäten →</button>
           </div>
         </div>
       </div>
@@ -3722,12 +4299,12 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
                 </select>
               </div>
             </div>
-            <div style={{ padding: '10px 14px', background: T.bgSubtle, border: `1px solid ${T.bgBorder}`, borderRadius: 7, fontSize: 12.5, color: T.textSecondary, marginBottom: 16 }}>
-              White-Label: Der Mandant sieht <strong style={{ color: T.textPrimary }}>Ihre Kanzlei</strong> als Absender, nicht invoiq.
+            <div style={{ padding: '10px 14px', background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, fontSize: 12.5, color: T.amber, marginBottom: 16 }}>
+              Der automatische Einladungs-Flow ist in Vorbereitung. Bis dahin: Der Mandant registriert sich selbst unter invoiq.io — melden Sie sich beim Support, um die Verknüpfung mit Ihrer Kanzlei einzurichten.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button className="btn btn-ghost" onClick={() => setInviteModal(false)}>Abbrechen</button>
-              <button className="btn btn-primary" onClick={() => { notify('Einladung an Mandant gesendet ✓', 'success'); setInviteModal(false); }}>Einladung senden →</button>
+              <button className="btn btn-ghost" onClick={() => setInviteModal(false)}>Schließen</button>
+              <button className="btn btn-primary" onClick={() => { window.location.href = 'mailto:support@invoiq.io?subject=Mandanten-Verknüpfung Kanzlei-Portal'; }}>Support kontaktieren →</button>
             </div>
           </div>
         </div>
@@ -3957,13 +4534,14 @@ function InstallPrompt(){
 }
 
 export default function App(){
-  const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'loading';return'landing';}); // loading|landing|auth|app|admin|onboarding|impressum|datenschutz|agb
+  const[screen,setScreen]=useState(()=>{const p=window.location.pathname;if(p.startsWith('/reset-password'))return'reset';if(p==='/register'||p.startsWith('/register'))return'auth';if(api._token)return'loading';return'landing';}); // loading|landing|auth|reset|app|admin|onboarding|impressum|datenschutz|agb
 const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/register'||p.startsWith('/register'))?'register':'login';});
   const[nav,setNav]=useState("dashboard");
   const[subNav,setSubNav]=useState(null);
   const[adminNav,setAdminNav]=useState("overview");
   const[loading,setLoading]=useState(false);
   const[toast,setToast]=useState(null);
+  const[globalSearch,setGlobalSearch]=useState(null); // Topbar-Suche → Ausgang
   const[user,setUser]=useState(null);
   const[org,setOrg]=useState(null);
   const notify=(msg,type="info")=>setToast({msg,type});
@@ -3984,16 +4562,18 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
       if(isNew&&mode==="register"){setScreen("onboarding");}else{setScreen("app");setNav("dashboard");}
       notify(`Willkommen${d.user.full_name?`, ${d.user.full_name.split(" ")[0]}`:""}!`,"success");
     }catch(e){
-      setUser({full_name:form.full_name||"Manfred Bell",email:form.email,role:"owner"});
-      setOrg({name:form.org_name||"invoiq Demo",plan:"business",plan_doc_limit:1000,plan_doc_used:41});
-      if(mode==="register"){setScreen("onboarding");}else{setScreen("app");setNav("dashboard");}
-      notify(mode==="register"?"Willkommen bei invoiq!":"Demo-Modus aktiv","info");
+      // Kein Fake-Fallback: ein fehlgeschlagener Login darf niemals eine
+      // Schein-Session öffnen. Fehler ehrlich anzeigen.
+      const msg=e?.message&&e.message!==""?e.message:"Server nicht erreichbar — bitte in wenigen Sekunden erneut versuchen.";
+      notify(msg,"error");
     }
     setLoading(false);
   };
 
   const handleLogout=async()=>{await api.logout().catch(()=>{});api.setToken(null);setUser(null);setOrg(null);setScreen("landing");notify("Abgemeldet","info");};
-  const isSuper=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
+  // Rollenbasiert statt hartkodierter E-Mail-Adressen
+  const isSuper=user?.role==="super_admin";
+  const hasKanzlei=["business","pro","enterprise"].includes((org?.plan||"").toLowerCase());
 
   return(<>
     <style>{CSS}</style>
@@ -4006,15 +4586,21 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
         </div>
       </div>
     )}
-    {screen==="landing"&&<Landing onEnter={(plan)=>{if(plan==='login'){setMode('login');setScreen('auth');return;}if(plan)localStorage.setItem('invoiq_selected_plan',plan);if(api._token){setScreen("app");}else{setMode("register");setScreen("auth");}}}/>}
-    {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading}/>}
+    {screen==="landing"&&<Landing onEnter={(plan)=>{if(plan==='login'){setMode('login');setScreen('auth');return;}if(plan)localStorage.setItem('invoiq_selected_plan',plan);if(api._token){setScreen("app");}else{setMode("register");setScreen("auth");}}} onLegal={(s)=>{setScreen(s);window.scrollTo(0,0);}}/>}
+    {screen==="impressum"&&<Impressum onBack={()=>setScreen("landing")}/>}
+    {screen==="datenschutz"&&<Datenschutz onBack={()=>setScreen("landing")}/>}
+    {screen==="agb"&&<AGB onBack={()=>setScreen("landing")}/>}
+    {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading} notify={notify}/>}
+    {screen==="reset"&&<ResetPassword notify={notify} onDone={()=>{window.history.replaceState(null,'','/');setMode('login');setScreen('auth');}}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup abgeschlossen — willkommen bei invoiq! 🎉","success");}}/>}
-    {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
+    {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onSearch={(q)=>{setGlobalSearch(q);setNav("invoices");window.scrollTo(0,0);}} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
       {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={onNav}/>}
-      {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)}/>}
-      {nav==="connect"&&<ConnectorsView notify={notify}/>}
+      {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)} searchQuery={globalSearch} onClearSearch={()=>setGlobalSearch(null)}/>}
           {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify} org={org}/>}
+          {nav==="belege"&&<BusinessScreen notify={notify} onOpenInvoice={()=>onNav("invoices")}/>}
+          {nav==="artikel"&&<ItemsScreen notify={notify}/>}
+          {nav==="kunden"&&<KundenScreen notify={notify}/>}
           {nav==="steuerberater"&&(
             hasKanzlei
               ? <PortalErrorBoundary><SteuerberaterPortal user={user} org={org} notify={notify} onBack={()=>setNav('dashboard')}/></PortalErrorBoundary>

@@ -14,6 +14,8 @@ import { idocRoutes }   from './routes/idoc/index.js';
 import { scannerRoutes }  from './routes/scanner/index.js';
 import { paymentRoutes }  from './routes/payments/index.js';
 import { inboundRoutes }  from './routes/inbound/index.js';
+import { customerRoutes } from './routes/customers/index.js';
+import { businessRoutes } from './routes/business/index.js';
 
 import { registerSecurityHooks } from './middleware/security.js';
 import { incrementCounter } from './lib/rateLimiter.js';
@@ -102,6 +104,8 @@ export async function buildServer() {
   fastify.register(scannerRoutes, { prefix: API });
   fastify.register(paymentRoutes, { prefix: API });
   fastify.register(inboundRoutes,  { prefix: `${API}/inbound` });
+  fastify.register(customerRoutes, { prefix: `${API}/customers` });
+  fastify.register(businessRoutes, { prefix: `${API}/business` });
 
   // DB (Supabase client) — no ready() needed, connects on first query
 
@@ -140,21 +144,23 @@ export async function buildServer() {
 }
 
 // ── START ─────────────────────────────────────────────────────
+// Nur starten, wenn die Datei direkt ausgeführt wird (node server.js) —
+// Tests importieren buildServer() und dürfen keinen Listener öffnen.
+const isMain = import.meta.url === `file://${process.argv[1]}`;
+
 async function start() {
   const fastify = await buildServer();
   try {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
     console.log(`\n╔═══════════════════════════════════════════╗`);
     console.log(`║   invoiq API v1.0  ·  Port ${PORT}           ║`);
-    console.log(`║   http://localhost:${PORT}/api/v1            ║`);
+    console.log(`║   Base:   http://localhost:${PORT}${API}         ║`);
     console.log(`║   Health: http://localhost:${PORT}/health    ║`);
     console.log(`╚═══════════════════════════════════════════╝\n`);
-    console.log(`  Demo Login: demo@invoiq.io / demo123`);
-    console.log(`  API Key:    iq_live_demo_key_001\n`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
 }
 
-start();
+if (isMain) start();

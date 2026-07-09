@@ -1,12 +1,17 @@
 // tests/api.test.js — invoiq sequential integration tests
+// Benötigt eine erreichbare Supabase-Instanz (SUPABASE_URL +
+// SUPABASE_SERVICE_ROLE_KEY) und wird ohne diese übersprungen.
+// Der Server wird dynamisch importiert, damit der Import ohne env nicht knallt.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildServer } from '../src/server.js';
+
+const HAS_DB = !!(process.env.SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY));
 
 // Single test, fully sequential, no subtests
-test('invoiq full integration suite', { timeout: 30000 }, async () => {
+test('invoiq full integration suite', { timeout: 30000, skip: !HAS_DB && 'SUPABASE_URL nicht gesetzt — Integrationstests übersprungen' }, async () => {
   process.env.NODE_ENV = 'test';
-  process.env.JWT_SECRET = 'test-secret-min-32-chars-invoiq-test';
+  process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-min-32-chars-invoiq-test';
+  const { buildServer } = await import('../server.js');
   const f = await buildServer();
   await f.ready();
 
@@ -29,7 +34,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('GET /api/v1 → API info', async () => {
-    const r = await req({ method:'GET', url:'/api/v1' });
+    const r = await req({ method:'GET', url:'/v1' });
     assert.equal(r.statusCode, 200);
     const b = JSON.parse(r.body);
     assert.ok(b.formats_supported.includes('xrechnung'));
@@ -38,14 +43,14 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
 
   // AUTH
   await check('POST /auth/register → 201 + api_key', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/auth/register',
+    const r = await req({ method:'POST', url:'/v1/auth/register',
       payload: { email:`reg${Date.now()}@test.io`, password:'test12345', full_name:'Test', org_name:'Test GmbH' } });
     assert.equal(r.statusCode, 201);
     assert.match(JSON.parse(r.body).org.api_key, /^iq_live_/);
   });
 
   await check('POST /auth/login → 200 + token', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/auth/login',
+    const r = await req({ method:'POST', url:'/v1/auth/login',
       payload: { email:'demo@invoiq.io', password:'demo123' } });
     assert.equal(r.statusCode, 200);
     const b = JSON.parse(r.body);
@@ -54,39 +59,39 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /auth/login → 401 wrong password', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/auth/login',
+    const r = await req({ method:'POST', url:'/v1/auth/login',
       payload: { email:'demo@invoiq.io', password:'wrong' } });
     assert.equal(r.statusCode, 401);
   });
 
   await check('GET /auth/me → 200 user+org', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/auth/me',
+    const r = await req({ method:'GET', url:'/v1/auth/me',
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     assert.equal(JSON.parse(r.body).user.email, 'demo@invoiq.io');
   });
 
   await check('GET /auth/me → 401 no token', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/auth/me' });
+    const r = await req({ method:'GET', url:'/v1/auth/me' });
     assert.equal(r.statusCode, 401);
   });
 
   // API KEYS
   await check('API key: valid → 200', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/invoices',
+    const r = await req({ method:'GET', url:'/v1/invoices',
       headers: { authorization:'Bearer iq_live_demo_key_001' } });
     assert.equal(r.statusCode, 200);
   });
 
   await check('API key: invalid → 401', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/invoices',
+    const r = await req({ method:'GET', url:'/v1/invoices',
       headers: { authorization:'Bearer iq_live_bad' } });
     assert.equal(r.statusCode, 401);
   });
 
   // INVOICES
   await check('GET /invoices → list + total > 0', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/invoices',
+    const r = await req({ method:'GET', url:'/v1/invoices',
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     const b = JSON.parse(r.body);
@@ -95,14 +100,14 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('GET /invoices?direction=outbound → filtered', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/invoices?direction=outbound',
+    const r = await req({ method:'GET', url:'/v1/invoices?direction=outbound',
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     assert.ok(JSON.parse(r.body).invoices.every(i => i.direction === 'outbound'));
   });
 
   await check('GET /invoices/stats → compliance + plan', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/invoices/stats',
+    const r = await req({ method:'GET', url:'/v1/invoices/stats',
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     const b = JSON.parse(r.body);
@@ -111,7 +116,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /invoices → XRechnung EN 16931 validated', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/invoices',
+    const r = await req({ method:'POST', url:'/v1/invoices',
       headers: { authorization:`Bearer ${token}` },
       payload: {
         invoice_number:'TEST-2024-001', invoice_date:'2024-01-15', due_date:'2024-02-15',
@@ -135,7 +140,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /invoices → 422 missing seller BT-27', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/invoices',
+    const r = await req({ method:'POST', url:'/v1/invoices',
       headers: { authorization:`Bearer ${token}` },
       payload: { invoice_number:'BAD', invoice_date:'2024-01-15',
         seller_name:'', buyer_name:'Buyer',
@@ -146,7 +151,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /invoices → 422 no line items BR-16', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/invoices',
+    const r = await req({ method:'POST', url:'/v1/invoices',
       headers: { authorization:`Bearer ${token}` },
       payload: { invoice_number:'BAD2', invoice_date:'2024-01-15',
         seller_name:'Seller', buyer_name:'Buyer', line_items:[] }
@@ -156,14 +161,14 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('GET /invoices/:id → invoice detail', async () => {
-    const r = await req({ method:'GET', url:`/api/v1/invoices/${invoiceId}`,
+    const r = await req({ method:'GET', url:`/v1/invoices/${invoiceId}`,
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     assert.equal(JSON.parse(r.body).invoice_number, 'TEST-2024-001');
   });
 
   await check('GET /invoices/:id/xml → valid XRechnung UBL 2.1', async () => {
-    const r = await req({ method:'GET', url:`/api/v1/invoices/${invoiceId}/xml`,
+    const r = await req({ method:'GET', url:`/v1/invoices/${invoiceId}/xml`,
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     assert.ok(r.headers['content-type'].includes('application/xml'));
@@ -179,7 +184,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /invoices (ZUGFeRD) → CII/Factur-X XML', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/invoices',
+    const r = await req({ method:'POST', url:'/v1/invoices',
       headers: { authorization:`Bearer ${token}` },
       payload: { invoice_number:'ZUG-001', invoice_date:'2024-01-20',
         format:'zugferd', delivery_method:'manual',
@@ -189,7 +194,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
     assert.equal(r.statusCode, 201);
     zugferdId = JSON.parse(r.body).id;
 
-    const xr = await req({ method:'GET', url:`/api/v1/invoices/${zugferdId}/xml`,
+    const xr = await req({ method:'GET', url:`/v1/invoices/${zugferdId}/xml`,
       headers: { authorization:`Bearer ${token}` } });
     assert.ok(xr.body.includes('CrossIndustryInvoice'));
     assert.ok(xr.body.includes('factur-x'));
@@ -197,7 +202,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /invoices/:id/send → status=sent', async () => {
-    const r = await req({ method:'POST', url:`/api/v1/invoices/${invoiceId}/send`,
+    const r = await req({ method:'POST', url:`/v1/invoices/${invoiceId}/send`,
       headers: { authorization:`Bearer ${token}` },
       payload: { delivery_method:'manual' } });
     assert.equal(r.statusCode, 200);
@@ -205,7 +210,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /invoices/:id/archive → GoBD SHA-256 10yr', async () => {
-    const r = await req({ method:'POST', url:`/api/v1/invoices/${invoiceId}/archive`,
+    const r = await req({ method:'POST', url:`/v1/invoices/${invoiceId}/archive`,
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     const b = JSON.parse(r.body);
@@ -216,7 +221,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /invoices/:id/archive → 409 double archive', async () => {
-    const r = await req({ method:'POST', url:`/api/v1/invoices/${invoiceId}/archive`,
+    const r = await req({ method:'POST', url:`/v1/invoices/${invoiceId}/archive`,
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 409);
   });
@@ -231,7 +236,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   <cac:AccountingCustomerParty><cac:Party><cac:PartyName><cbc:Name>Empfänger</cbc:Name></cac:PartyName></cac:Party></cac:AccountingCustomerParty>
   <cac:LegalMonetaryTotal><cbc:PayableAmount currencyID="EUR">595.00</cbc:PayableAmount></cac:LegalMonetaryTotal>
 </ubl:Invoice>`;
-    const r = await req({ method:'POST', url:'/api/v1/invoices/inbound',
+    const r = await req({ method:'POST', url:'/v1/invoices/inbound',
       headers: { authorization:`Bearer ${token}` },
       payload: { xml_content: xml } });
     assert.equal(r.statusCode, 201);
@@ -241,7 +246,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /invoices/inbound → 422 invalid XML', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/invoices/inbound',
+    const r = await req({ method:'POST', url:'/v1/invoices/inbound',
       headers: { authorization:`Bearer ${token}` },
       payload: { xml_content:'<bad>not an invoice</bad>' } });
     assert.equal(r.statusCode, 422);
@@ -249,21 +254,21 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
 
   // ARCHIVE
   await check('GET /archive → ≥1 record', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/archive',
+    const r = await req({ method:'GET', url:'/v1/archive',
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     assert.ok(JSON.parse(r.body).total >= 1);
   });
 
   await check('GET /archive/verify/integrity → 0 failures', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/archive/verify/integrity',
+    const r = await req({ method:'GET', url:'/v1/archive/verify/integrity',
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     assert.equal(JSON.parse(r.body).failed, 0);
   });
 
   await check('GET /archive/audit/logs → audit trail', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/archive/audit/logs',
+    const r = await req({ method:'GET', url:'/v1/archive/audit/logs',
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     assert.ok(JSON.parse(r.body).total > 0);
@@ -271,7 +276,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
 
   // CONNECT
   await check('GET /connect/available → SAP+DATEV+REST', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/connect/available' });
+    const r = await req({ method:'GET', url:'/v1/connect/available' });
     assert.equal(r.statusCode, 200);
     const types = JSON.parse(r.body).connectors.map(c => c.type);
     assert.ok(types.includes('sap_s4'));
@@ -281,7 +286,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('POST /connect → creates DATEV connection', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/connect',
+    const r = await req({ method:'POST', url:'/v1/connect',
       headers: { authorization:`Bearer ${token}` },
       payload: { type:'datev', name:'DATEV Mandant', config:{ client_id:'abc' } } });
     assert.equal(r.statusCode, 201);
@@ -289,7 +294,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
 
   // WEBHOOKS
   await check('POST /webhooks → 201 + secret', async () => {
-    const r = await req({ method:'POST', url:'/api/v1/webhooks',
+    const r = await req({ method:'POST', url:'/v1/webhooks',
       headers: { authorization:`Bearer ${token}` },
       payload: { url:'https://example.com/hook', events:['invoice.sent'] } });
     assert.equal(r.statusCode, 201);
@@ -297,7 +302,7 @@ test('invoiq full integration suite', { timeout: 30000 }, async () => {
   });
 
   await check('GET /webhooks → secret masked', async () => {
-    const r = await req({ method:'GET', url:'/api/v1/webhooks',
+    const r = await req({ method:'GET', url:'/v1/webhooks',
       headers: { authorization:`Bearer ${token}` } });
     assert.equal(r.statusCode, 200);
     assert.ok(JSON.parse(r.body).webhooks.every(w => w.secret === '***'));
