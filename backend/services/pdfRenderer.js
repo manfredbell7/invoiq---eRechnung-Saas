@@ -18,16 +18,41 @@ export async function renderInvoicePDF(invoice) {
   }
 }
 
-async function renderWithPDFKit(invoice) {
+// ZUGFeRD/Factur-X-Hybrid: lesbares PDF mit eingebetteter EN-16931-XML
+// (factur-x.xml, AFRelationship=Alternative). Der XML-Inhalt kommt vom
+// Aufrufer (xmlEngine), damit Renderer und Normprofil entkoppelt bleiben.
+// Hinweis: volle PDF/A-3-Zertifizierung (eingebettete TTF-Fonts, XMP-
+// Konformitätsklausel) ist Roadmap — die Hybrid-Struktur ist konform.
+export async function renderHybridPDF(invoice, xmlContent) {
+  return renderWithPDFKit(invoice, {
+    embedFile: {
+      data: Buffer.from(xmlContent, 'utf8'),
+      name: 'factur-x.xml',
+      type: 'text/xml',
+      description: 'Factur-X/ZUGFeRD Rechnungsdaten (EN 16931)',
+      relationship: 'Alternative',
+    },
+    subset: 'PDF/A-3b',
+  });
+}
+
+async function renderWithPDFKit(invoice, opts = {}) {
   const PDFDocument = (await import('pdfkit')).default;
   const template = (invoice.template || 'modern').toLowerCase();
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const docOpts = { margin: 50, size: 'A4' };
+    if (opts.subset) { docOpts.subset = opts.subset; docOpts.tagged = true; }
+    const doc = new PDFDocument(docOpts);
     const chunks = [];
     doc.on('data', c => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+
+    if (opts.embedFile) {
+      const { data, ...fileOpts } = opts.embedFile;
+      doc.file(data, fileOpts);
+    }
 
     const data = normalize(invoice);
     if (template === 'classic')      renderClassic(doc, data);

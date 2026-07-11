@@ -1,0 +1,26 @@
+# Live-Smoke-Test gegen die Produktions-API (manuell auslösbar).
+# Fährt den kompletten Kernfluss in einem frischen Test-Mandanten:
+# Auth, Kunde, Artikel, Belegkette, XRechnung, FI-Kontierung, KI-Berater.
+name: smoke-live
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'API-Basis-URL'
+        required: false
+        default: 'https://api.invoiq.io'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Smoke-Test ausführen
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+        run: node backend/scripts/smoke-live.mjs

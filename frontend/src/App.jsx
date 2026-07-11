@@ -46,6 +46,11 @@ const api={
     const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click();
     setTimeout(()=>URL.revokeObjectURL(u),5000);
   },
+  // KI-Berater (AI Core)
+  aiChat:(messages)=>api.post('/ai/chat',{messages}),
+  aiExecute:(type,payload)=>api.post('/ai/execute-action',{type,payload}),
+  aiInsights:()=>api.get('/ai/insights'),
+  aiReview:(id)=>api.post(`/ai/review/${id}`,{}),
   // DATEV Export
   datevExport:()=>api.downloadFile('/invoices/datev-export'),
   datevExportInbound:(orgId,from,to)=>api.downloadFile(`/inbound/datev-export?from=${from||''}&to=${to||''}`),
@@ -1113,6 +1118,7 @@ const NAV_ICONS={
   kunden:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="5.8" cy="5.4" r="2.4" stroke="currentColor" strokeWidth="1.4"/><path d="M1.8 13.4c.5-2.3 2.1-3.6 4-3.6s3.5 1.3 4 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="11.6" cy="6.2" r="1.9" stroke="currentColor" strokeWidth="1.4"/><path d="M11.2 10.4c1.7.1 2.8 1.2 3.2 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
   settings:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.4"/><path d="M8 1.8v1.8M8 12.4v1.8M1.8 8h1.8M12.4 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
   steuerberater:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="5" width="12" height="8.5" rx="1.2" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 5V3.5a1 1 0 011-1h3a1 1 0 011 1V5M2 8.5h12" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  ki:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.5l1.4 3.6a2 2 0 001.2 1.2L14.2 7.7a.35.35 0 010 .66l-3.6 1.4a2 2 0 00-1.2 1.2L8 14.5a.35.35 0 01-.66 0L6 10.96a2 2 0 00-1.2-1.2L1.14 8.36a.35.35 0 010-.66L4.8 6.3A2 2 0 006 5.1L7.34 1.5a.35.35 0 01.66 0z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><circle cx="13" cy="2.8" r="1.1" fill="currentColor"/></svg>,
 };
 
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
@@ -1138,6 +1144,9 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
       {key:"belege",      label:"Belege & Aufträge"},
       {key:"artikel",     label:"Artikel & Leistungen"},
       {key:"kunden",      label:"Kunden"},
+    ]},
+    {title:"KI",items:[
+      {key:"ki",          label:"KI-Berater"},
     ]},
   ];
 
@@ -1200,7 +1209,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
         <button className="mobile-menu-btn" onClick={()=>setMobileNav(true)} aria-label="Menü öffnen">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke={T.textSecondary} strokeWidth="1.6" strokeLinecap="round"/></svg>
         </button>
-        <div style={{fontSize:14,fontWeight:700,color:T.textPrimary,letterSpacing:"-.01em",whiteSpace:"nowrap"}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen"}[nav]||nav}</div>
+        <div style={{fontSize:14,fontWeight:700,color:T.textPrimary,letterSpacing:"-.01em",whiteSpace:"nowrap"}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen","ki":"KI-Berater"}[nav]||nav}</div>
         <div style={{flex:1,maxWidth:340}}>
           <div style={{position:"relative"}}>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}><circle cx="7" cy="7" r="4.5" stroke={T.textMuted} strokeWidth="1.5"/><path d="M10.5 10.5L14 14" stroke={T.textMuted} strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -3090,6 +3099,131 @@ function ItemsScreen({notify}){
   </div>);
 }
 
+// ── KI-BERATER (AI Core: Chat + Insights + Aktionsbestätigung) ─
+function KIScreen({notify}){
+  const[messages,setMessages]=useState([]);       // {role, content}
+  const[actions,setActions]=useState([]);          // bestätigungspflichtige Vorschläge
+  const[input,setInput]=useState("");
+  const[busy,setBusy]=useState(false);
+  const[insights,setInsights]=useState(null);
+  const[insightsLoading,setInsightsLoading]=useState(true);
+  const scrollRef=useRef(null);
+
+  useEffect(()=>{api.aiInsights().then(setInsights).catch(()=>setInsights(null)).finally(()=>setInsightsLoading(false));},[]);
+  useEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=scrollRef.current.scrollHeight;},[messages,busy]);
+
+  const send=async(text)=>{
+    const q=(text||input).trim();
+    if(!q||busy)return;
+    setInput("");
+    const next=[...messages,{role:"user",content:q}];
+    setMessages(next);
+    setBusy(true);
+    try{
+      const res=await api.aiChat(next.slice(-16));
+      setMessages(m=>[...m,{role:"assistant",content:res.reply}]);
+      if(res.actions?.length)setActions(a=>[...a,...res.actions]);
+    }catch(e){
+      setMessages(m=>[...m,{role:"assistant",content:`⚠ ${e.message||"KI-Dienst nicht erreichbar."}`}]);
+    }finally{setBusy(false);}
+  };
+
+  const executeAction=async(action)=>{
+    setBusy(true);
+    try{
+      await api.aiExecute(action.type,action.payload);
+      setActions(a=>a.filter(x=>x.id!==action.id));
+      notify("Aktion ausgeführt ✓","success");
+      setMessages(m=>[...m,{role:"assistant",content:`✓ Ausgeführt: ${action.summary}`}]);
+    }catch(e){notify(e.message||"Ausführung fehlgeschlagen","error");}
+    finally{setBusy(false);}
+  };
+
+  const SUGGESTIONS=[
+    "Wie ist meine Liquiditätslage?",
+    "Zeige mir alle unbezahlten Rechnungen",
+    "Erstelle eine Rechnung für Mustermann GmbH über 5.000 € Beratungsleistung",
+    "Welche Angebote sind noch offen?",
+  ];
+
+  return(<div>
+    <div style={{marginBottom:18}}>
+      <h1 className="h1">KI-Berater</h1>
+      <div className="caption">Ihr ERP-Berater: fragt Zahlen ab, prüft Belege, setzt Sprache in Aktionen um — jede Schreibaktion bestätigen Sie vorher.</div>
+    </div>
+
+    {/* Insights-Karte */}
+    <div className="card" style={{marginBottom:16,padding:"16px 18px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        {NAV_ICONS.ki}<b style={{fontSize:14}}>KI-Insights</b>
+        {insights&&!insights.ai_available&&<span className="badge">nur Kennzahlen — KI offline</span>}
+      </div>
+      {insightsLoading?<div className="caption">Analysiere Kennzahlen…</div>
+       :insights?.commentary?<div style={{fontSize:13.5,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{insights.commentary}</div>
+       :insights?.cashflow?<div style={{fontSize:13.5}}>
+          Offene Forderungen: <b>{(insights.cashflow.open_receivables||0).toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</b>
+          {" · "}Verbindlichkeiten: <b>{(insights.cashflow.open_payables||0).toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</b>
+          {" · "}Fällig diese Woche: <b>{(insights.cashflow.due_this_week_in||0).toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</b>
+        </div>
+       :<div className="caption">Keine Kennzahlen verfügbar.</div>}
+    </div>
+
+    {/* Bestätigungspflichtige Aktionen */}
+    {actions.map(a=>(
+      <div key={a.id} className="card" style={{marginBottom:12,padding:"14px 16px",borderLeft:`3px solid ${T.accent||"#635BFF"}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+          <div style={{minWidth:220,flex:1}}>
+            <div style={{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:.4,color:T.textMuted,marginBottom:3}}>Vorschlag zur Bestätigung</div>
+            <div style={{fontSize:14,fontWeight:600}}>{a.summary}</div>
+            {a.totals&&<div className="caption" style={{marginTop:4}}>
+              Netto {a.totals.net.toFixed(2)} € · Steuer {a.totals.tax.toFixed(2)} € · <b>Brutto {a.totals.gross.toFixed(2)} €</b>
+            </div>}
+            {(a.warnings||[]).map((w,i)=>(
+              <div key={i} style={{fontSize:12.5,marginTop:5,color:w.severity==="error"?"#DC2626":"#B45309"}}>⚠ {w.msg}</div>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button className="btn btn-ghost btn-sm" disabled={busy} onClick={()=>setActions(x=>x.filter(y=>y.id!==a.id))}>Verwerfen</button>
+            <button className="btn btn-primary btn-sm" disabled={busy||(a.warnings||[]).some(w=>w.severity==="error")} onClick={()=>executeAction(a)}>Bestätigen & ausführen</button>
+          </div>
+        </div>
+      </div>
+    ))}
+
+    {/* Chat */}
+    <div className="card" style={{padding:0,display:"flex",flexDirection:"column",height:"52vh",minHeight:340}}>
+      <div ref={scrollRef} style={{flex:1,overflowY:"auto",padding:"16px 18px"}}>
+        {messages.length===0&&<div>
+          <div className="caption" style={{marginBottom:10}}>Fragen Sie auf Deutsch — zum Beispiel:</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {SUGGESTIONS.map(s=>(
+              <button key={s} className="btn btn-outline btn-sm" style={{fontWeight:500}} onClick={()=>send(s)}>{s}</button>
+            ))}
+          </div>
+        </div>}
+        {messages.map((m,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:10}}>
+            <div style={{
+              maxWidth:"78%",padding:"9px 13px",borderRadius:12,fontSize:13.5,lineHeight:1.55,whiteSpace:"pre-wrap",
+              background:m.role==="user"?(T.accent||"#635BFF"):T.bgSubtle,
+              color:m.role==="user"?"#fff":"inherit",
+              borderBottomRightRadius:m.role==="user"?4:12,
+              borderBottomLeftRadius:m.role==="user"?12:4,
+            }}>{m.content}</div>
+          </div>
+        ))}
+        {busy&&<div className="caption" style={{padding:"4px 2px"}}>KI-Berater denkt nach…</div>}
+      </div>
+      <div style={{display:"flex",gap:8,padding:"12px 14px",borderTop:`1px solid ${T.border||"#E5E7EB"}`}}>
+        <input className="input" style={{flex:1}} placeholder="z. B. „Erstelle Rechnung für Kunde Mustermann über 5000 EUR Beratung“"
+          value={input} onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} disabled={busy}/>
+        <button className="btn btn-primary" onClick={()=>send()} disabled={busy||!input.trim()}>Senden</button>
+      </div>
+    </div>
+  </div>);
+}
+
 // ── KUNDEN (Stammdaten) ───────────────────────────────────────
 function KundenScreen({notify}){
   const[customers,setCustomers]=useState([]);
@@ -4601,6 +4735,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
           {nav==="belege"&&<BusinessScreen notify={notify} onOpenInvoice={()=>onNav("invoices")}/>}
           {nav==="artikel"&&<ItemsScreen notify={notify}/>}
           {nav==="kunden"&&<KundenScreen notify={notify}/>}
+          {nav==="ki"&&<KIScreen notify={notify}/>}
           {nav==="steuerberater"&&(
             hasKanzlei
               ? <PortalErrorBoundary><SteuerberaterPortal user={user} org={org} notify={notify} onBack={()=>setNav('dashboard')}/></PortalErrorBoundary>

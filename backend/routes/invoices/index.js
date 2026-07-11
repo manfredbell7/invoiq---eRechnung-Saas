@@ -319,6 +319,24 @@ export async function invoiceRoutes(fastify) {
     return reply.send(pdfBuffer);
   });
 
+  // ── GET HYBRID-PDF (ZUGFeRD: PDF mit eingebetteter factur-x.xml) ─
+  fastify.get('/:id/hybrid-pdf', { preHandler: authMiddleware }, async (req, reply) => {
+    const invoice = await db.findInvoiceById(req.params.id, req.org.id);
+    if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
+
+    const { generateFacturX } = await import('../../services/xmlEngine.js');
+    const { renderHybridPDF } = await import('../../services/pdfRenderer.js');
+    const inv = typeof invoice.line_items === 'string'
+      ? { ...invoice, line_items: JSON.parse(invoice.line_items || '[]') }
+      : invoice;
+    const xml = generateFacturX(inv);
+    const pdfBuffer = await renderHybridPDF(inv, xml);
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', `attachment; filename="${invoice.invoice_number}-zugferd.pdf"`);
+    return reply.send(pdfBuffer);
+  });
+
   // ── VALIDATE ─────────────────────────────────────────────────
   fastify.post('/:id/validate', { preHandler: authMiddleware }, async (req, reply) => {
     const invoice = await db.findInvoiceById(req.params.id, req.org.id);
