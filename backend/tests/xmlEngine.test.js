@@ -83,16 +83,81 @@ test('generateZUGFeRD: CII mit gemischten MwSt-Sätzen', () => {
   assert.ok(xml.includes('<ram:RateApplicablePercent>7</ram:RateApplicablePercent>'));
 });
 
-test('generateFacturX: nutzt EN16931-Profil statt extended', () => {
+test('generateFacturX: offizielle EN16931-Guideline, kein extended-Profil', () => {
   const xml = generateFacturX(VALID_INVOICE);
-  assert.ok(xml.includes('factur-x.eu:1p0:en16931'));
-  assert.ok(!xml.includes('factur-x.eu:1p0:extended'));
+  assert.ok(xml.includes('<ram:ID>urn:cen.eu:en16931:2017</ram:ID>'));
+  assert.ok(!xml.includes('extended'));
 });
 
 test('generateXML: Dispatch nach Format', () => {
   assert.ok(generateXML({ ...VALID_INVOICE, format: 'zugferd' }).includes('CrossIndustryInvoice'));
   assert.ok(generateXML({ ...VALID_INVOICE, format: 'xrechnung' }).includes('ubl:Invoice'));
   assert.ok(generateXML({ ...VALID_INVOICE, format: 'peppol' }).includes('ubl:Invoice'));
+  assert.ok(generateXML({ ...VALID_INVOICE, format: 'xrechnung-cii' }).includes('CrossIndustryInvoice'));
+});
+
+test('generatePeppolBIS: eigene Peppol-CustomizationID (BIS Billing 3.0)', () => {
+  const xml = generateXML({ ...VALID_INVOICE, format: 'peppol' });
+  assert.ok(xml.includes('urn:fdc:peppol.eu:2017:poacc:billing:3.0'));
+  assert.ok(!xml.includes('xrechnung_3.0'));
+});
+
+test('generateXRechnungCII: CII-Syntax mit XRechnung-Guideline', () => {
+  const xml = generateXML({ ...VALID_INVOICE, format: 'xrechnung-cii' });
+  assert.ok(xml.includes('CrossIndustryInvoice'));
+  assert.ok(xml.includes('xrechnung_3.0'));
+});
+
+test('Steuerkennzeichen RC: Kategorie AE mit Befreiungsgrund im XML', () => {
+  const inv = {
+    ...VALID_INVOICE,
+    line_items: [{ description: 'Bauleistung', quantity: 1, unit_price: 1000, tax_code: 'RC' }],
+  };
+  const ubl = generateXRechnung(inv);
+  assert.ok(ubl.includes('<cbc:ID>AE</cbc:ID>'));
+  assert.ok(ubl.includes('TaxExemptionReason'));
+  assert.ok(ubl.includes('>0.00<')); // keine Steuer
+  const cii = generateZUGFeRD(inv);
+  assert.ok(cii.includes('<ram:CategoryCode>AE</ram:CategoryCode>'));
+  assert.ok(cii.includes('ExemptionReason'));
+});
+
+test('Steuerkennzeichen IG: Kategorie K (innergem. Lieferung)', () => {
+  const xml = generateXRechnung({
+    ...VALID_INVOICE,
+    buyer_country: 'FR', buyer_vat_id: 'FR12345678901',
+    line_items: [{ description: 'Ware', quantity: 5, unit_price: 20, tax_code: 'IG' }],
+  });
+  assert.ok(xml.includes('<cbc:ID>K</cbc:ID>'));
+});
+
+test('PaymentMeans: IBAN erscheint als SEPA-Überweisung (Code 58)', () => {
+  const inv = { ...VALID_INVOICE, seller_iban: 'DE89 3704 0044 0532 0130 00', seller_bic: 'COBADEFFXXX' };
+  const ubl = generateXRechnung(inv);
+  assert.ok(ubl.includes('<cbc:PaymentMeansCode>58</cbc:PaymentMeansCode>'));
+  assert.ok(ubl.includes('DE89370400440532013000'));
+  const cii = generateZUGFeRD(inv);
+  assert.ok(cii.includes('<ram:IBANID>DE89370400440532013000</ram:IBANID>'));
+  assert.ok(cii.includes('COBADEFFXXX'));
+});
+
+test('Leitweg-ID wird als BuyerReference (BT-10) übernommen', () => {
+  const xml = generateXRechnung({ ...VALID_INVOICE, leitweg_id: '04011000-1234512345-06' });
+  assert.ok(xml.includes('<cbc:BuyerReference>04011000-1234512345-06</cbc:BuyerReference>'));
+});
+
+test('Gemischte Steuersätze: getrennte TaxSubtotals mit Gruppenrundung', () => {
+  const xml = generateXRechnung({
+    ...VALID_INVOICE,
+    line_items: [
+      { description: 'Ware A', quantity: 1, unit_price: 100, tax_code: 'S19' },
+      { description: 'Buch',   quantity: 2, unit_price: 50,  tax_code: 'S7' },
+    ],
+  });
+  // 100 netto @19 = 19.00 · 100 netto @7 = 7.00 · brutto 226.00
+  assert.ok(xml.includes('>19.00<'));
+  assert.ok(xml.includes('>7.00<'));
+  assert.ok(xml.includes('>226.00<'));
 });
 
 test('hashXML: deterministisch, 64 Hex-Zeichen', () => {
