@@ -180,7 +180,7 @@ await step('FI: Kontenplan SKR03 abrufbar', async () => {
 });
 
 await step('FI: Rechnung automatisch kontieren (Debitor an Erlös+USt)', async () => {
-  const r = await call('POST', `/fi/post-invoice/${invoiceId}`);
+  const r = await call('POST', `/fi/post-invoice/${invoiceId}`, {});
   assert(r.status === 201, `HTTP ${r.status}: ${JSON.stringify(r.data).slice(0, 250)}`);
   const lines = r.data.lines || [];
   assert(lines.some(l => l.account === '1400' && parseFloat(l.debit) === 1428), 'Debitor-Zeile fehlt');
@@ -190,7 +190,7 @@ await step('FI: Rechnung automatisch kontieren (Debitor an Erlös+USt)', async (
 });
 
 await step('FI: Doppelbuchung wird idempotent abgelehnt (409)', async () => {
-  const r = await call('POST', `/fi/post-invoice/${invoiceId}`);
+  const r = await call('POST', `/fi/post-invoice/${invoiceId}`, {});
   assert(r.status === 409, `HTTP ${r.status} statt 409`);
 });
 
