@@ -12,6 +12,7 @@
     "migrate:status": "node scripts/migrate.js status"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@aws-sdk/client-s3": "^3.692.0",
     "@fastify/cors": "^11.2.0",
     "@fastify/jwt": "^10.1.0",
