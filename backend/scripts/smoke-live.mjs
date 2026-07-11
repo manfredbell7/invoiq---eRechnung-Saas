@@ -225,6 +225,51 @@ await step('KI-Berater: Insights liefern Kennzahlen', async () => {
   return r.data.ai_available ? 'inkl. KI-Kommentar' : 'nur Kennzahlen (KI offline)';
 });
 
+// ── BILLING (Stripe, echter Test-Key der Live-Umgebung) ──────
+await step('Stripe: Checkout-Session (Plan starter) wird real bei Stripe angelegt', async () => {
+  const r = await call('POST', '/payments/checkout', { plan: 'starter', billing: 'monthly' });
+  assert(r.status === 200, `HTTP ${r.status}: ${JSON.stringify(r.data).slice(0, 250)}`);
+  assert((r.data.checkout_url || '').includes('stripe.com'), `keine Stripe-URL: ${r.data.checkout_url}`);
+  assert((r.data.session_id || '').startsWith('cs_'), 'keine Session-ID (cs_…)');
+  return r.data.session_id;
+});
+
+await step('Stripe: Webhook lehnt ungültige Signatur ab (400)', async () => {
+  const ctrl = new AbortController();
+  const res = await fetch(`${V}/payments/webhook`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'stripe-signature': 't=1,v1=deadbeef' },
+    body: JSON.stringify({ type: 'payment_intent.succeeded' }),
+    signal: ctrl.signal,
+  });
+  assert(res.status === 400, `HTTP ${res.status} statt 400 (503 hieße: Stripe-Webhook-Secret fehlt)`);
+});
+
+// ── MAIL-INBOUND (Mailgun-Signaturprüfung) ────────────────────
+await step('Mailgun: Inbound-Webhook lehnt ungültige Signatur ab (403)', async () => {
+  const res = await fetch(`${V}/inbound/email`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      recipient: 'test@rechnungen.invoiq.io', sender: 'x@example.com', subject: 'Smoke',
+      timestamp: String(Math.floor(Date.now() / 1000)), token: 'smoketoken', signature: 'ungueltig',
+    }),
+  });
+  assert(res.status === 403, `HTTP ${res.status} statt 403 — Signaturprüfung nicht aktiv?`);
+});
+
+await step('Mailgun: Replay-Schutz — alter Timestamp wird abgelehnt (403)', async () => {
+  const res = await fetch(`${V}/inbound/email`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      recipient: 'test@rechnungen.invoiq.io', sender: 'x@example.com', subject: 'Smoke',
+      timestamp: '1600000000', token: 'smoketoken', signature: 'ungueltig',
+    }),
+  });
+  assert(res.status === 403, `HTTP ${res.status} statt 403`);
+});
+
 // ── ERGEBNIS ─────────────────────────────────────────────────
 console.log(`\n══════════════════════════════════════`);
 console.log(`Ergebnis: ${passed} bestanden · ${failed} fehlgeschlagen`);
