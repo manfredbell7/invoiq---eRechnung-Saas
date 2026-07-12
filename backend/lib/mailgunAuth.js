@@ -25,13 +25,15 @@ function pruneSeenTokens() {
  * @returns {{ ok: boolean, reason?: string }}
  */
 export function verifyMailgunSignature(parts) {
-  const signingKey = process.env.MAILGUN_SIGNING_KEY;
+  // Provider-neutral: INBOUND_SIGNING_KEY ist der neue Name; MAILGUN_SIGNING_KEY
+  // bleibt als Alias, damit bestehende Deployments nicht brechen.
+  const signingKey = process.env.INBOUND_SIGNING_KEY || process.env.MAILGUN_SIGNING_KEY;
 
   if (!signingKey) {
     // Ohne Key kann nicht verifiziert werden. In Production ablehnen,
     // in dev/test mit Warnung durchlassen (lokales Testen per curl).
     if (process.env.NODE_ENV === 'production') {
-      return { ok: false, reason: 'MAILGUN_SIGNING_KEY nicht konfiguriert — Inbound-Webhook abgelehnt' };
+      return { ok: false, reason: 'INBOUND_SIGNING_KEY nicht konfiguriert — Inbound-Webhook abgelehnt' };
     }
     return { ok: true, reason: 'dev-mode: Signaturprüfung übersprungen (MAILGUN_SIGNING_KEY fehlt)' };
   }

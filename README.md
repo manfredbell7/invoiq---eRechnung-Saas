@@ -26,7 +26,7 @@ npm run dev          # http://localhost:5173 (VITE_API_URL auf lokales Backend s
 | `JWT_SECRET` | Auth-Tokens | Prozess startet nicht |
 | `REDIS_URL` | verteiltes Rate-Limiting | Prozess startet nicht |
 | `AWS_*` (4 Variablen) | GoBD-Archiv (S3 Frankfurt) | Prozess startet nicht |
-| `MAILGUN_SIGNING_KEY` | Inbound-Webhook-Signatur | Inbound-Mails werden abgelehnt |
+| `INBOUND_SIGNING_KEY` | Inbound-Webhook-Signatur (optional, E-Mail-Eingang) | Inbound-Mails werden abgelehnt |
 | `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `STRIPE_PRICE_*` | Billing | Checkout/Portal liefern 503 |
 | `RESEND_API_KEY` | E-Mail-Versand | Versand schlägt mit klarem Fehler fehl |
 | `ANTHROPIC_API_KEY` | KI-Extraktion (Scanner/PDF) | Scanner liefert 503, PDFs landen im Status „pruefung" |
