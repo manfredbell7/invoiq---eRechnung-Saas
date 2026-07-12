@@ -579,10 +579,16 @@ export async function invoiceRoutes(fastify) {
 // ── SANITIZE (remove sensitive internal fields) ───────────────
 function sanitizeInvoice(inv) {
   const { xml_content, ...rest } = inv;
+  // Überfällig ist ein abgeleiteter Zustand: gesendet/validiert + Fälligkeit
+  // überschritten + nicht bezahlt/storniert. Wird nicht persistiert, damit
+  // kein Cron nötig ist und der Zustand immer tagesaktuell stimmt.
+  const overdue = ['sent', 'validated'].includes(inv.status)
+    && inv.due_date && inv.due_date < new Date().toISOString().slice(0, 10);
   return {
     ...rest,
     has_xml: !!xml_content,
     xml_size_bytes: xml_content ? xml_content.length : 0,
+    effective_status: overdue ? 'overdue' : inv.status,
   };
 }
 
@@ -635,6 +641,118 @@ function sanitizeInvoice(inv) {
     if (!peppol_id) return reply.code(400).send({ error: 'peppol_id Query-Parameter fehlt' });
     const { lookupPeppolId } = await import('../../services/peppolSoftService.js');
     return lookupPeppolId(peppol_id);
+  });
+
+  // ── ALS BEZAHLT MARKIEREN ─────────────────────────────────────
+  fastify.post('/:id/mark-paid', { preHandler: authMiddleware }, async (req, reply) => {
+    const invoice = await db.findInvoiceById(req.params.id, req.org.id);
+    if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
+    if (invoice.status === 'cancelled') return reply.code(409).send({ error: 'Stornierte Rechnungen können nicht bezahlt werden.' });
+    if (invoice.status === 'paid') return reply.code(409).send({ error: 'Rechnung ist bereits als bezahlt markiert.' });
+
+    await db.updateInvoice(invoice.id, req.org.id, { status: 'paid', paid_at: new Date().toISOString() });
+    await db.createAuditLog({ org_id: req.org.id, user_id: req.user?.id, invoice_id: invoice.id, action: 'marked_paid', details: {} });
+    return { success: true, status: 'paid' };
+  });
+
+  // ── STORNIEREN (Stornorechnung mit Negativbeträgen) ──────────
+  // GoBD: die Originalrechnung bleibt unverändert erhalten; der Storno ist
+  // ein eigenes Dokument mit Referenz und spiegelverkehrten Beträgen.
+  fastify.post('/:id/cancel', { preHandler: authMiddleware }, async (req, reply) => {
+    const original = await db.findInvoiceById(req.params.id, req.org.id);
+    if (!original) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
+    if (original.status === 'cancelled') return reply.code(409).send({ error: 'Rechnung ist bereits storniert.' });
+    if (original.invoice_kind === 'cancellation') return reply.code(409).send({ error: 'Eine Stornorechnung kann nicht storniert werden.' });
+
+    const items = (typeof original.line_items === 'string'
+      ? JSON.parse(original.line_items || '[]') : (original.line_items || []))
+      .map(it => ({ ...it, quantity: -(parseFloat(it.quantity) || 0) }));
+
+    const storno = await db.createInvoice({
+      org_id: req.org.id,
+      invoice_number: `STORNO-${original.invoice_number}`,
+      invoice_date: new Date().toISOString().slice(0, 10),
+      format: original.format || 'xrechnung',
+      direction: 'outbound',
+      status: 'validated',
+      invoice_kind: 'cancellation',
+      related_invoice_id: original.id,
+      seller_name: original.seller_name, seller_vat_id: original.seller_vat_id,
+      seller_address: original.seller_address, seller_city: original.seller_city,
+      seller_iban: original.seller_iban,
+      buyer_name: original.buyer_name, buyer_vat_id: original.buyer_vat_id,
+      buyer_address: original.buyer_address, buyer_city: original.buyer_city,
+      buyer_country: original.buyer_country, buyer_email: original.buyer_email,
+      amount_net: -(parseFloat(original.amount_net) || 0),
+      amount_vat: -(parseFloat(original.amount_vat) || 0),
+      amount_gross: -(parseFloat(original.amount_gross) || 0),
+      currency: original.currency || 'EUR',
+      line_items: items,
+      reference: original.invoice_number,
+      brand_color: original.brand_color || null,
+      notes: `Storno zu Rechnung ${original.invoice_number} vom ${original.invoice_date}.`,
+      created_by: req.user?.id || null,
+    });
+
+    await db.updateInvoice(original.id, req.org.id, { status: 'cancelled' });
+    await db.createAuditLog({
+      org_id: req.org.id, user_id: req.user?.id, invoice_id: original.id,
+      action: 'cancelled', details: { storno_id: storno.id, storno_number: storno.invoice_number },
+    });
+    return reply.code(201).send({ success: true, storno: sanitizeInvoice(storno) });
+  });
+
+  // ── KORRIGIEREN (Storno + Korrektur-Entwurf mit Referenz) ────
+  fastify.post('/:id/correct', { preHandler: authMiddleware }, async (req, reply) => {
+    const original = await db.findInvoiceById(req.params.id, req.org.id);
+    if (!original) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
+    if (original.invoice_kind === 'cancellation') return reply.code(409).send({ error: 'Stornorechnungen können nicht korrigiert werden.' });
+    if (original.status === 'cancelled') return reply.code(409).send({ error: 'Rechnung ist bereits storniert — bitte neue Rechnung erstellen.' });
+
+    // 1) Original per Stornorechnung ausgleichen (gleiche Logik wie /cancel)
+    const cancelRes = await fastify.inject({
+      method: 'POST', url: `/v1/invoices/${original.id}/cancel`,
+      headers: { authorization: req.headers.authorization, 'content-type': 'application/json' },
+      payload: {},
+    });
+    if (cancelRes.statusCode >= 400) {
+      return reply.code(cancelRes.statusCode).send(JSON.parse(cancelRes.body));
+    }
+
+    // 2) Korrektur-Entwurf mit kopierten Positionen und Referenz anlegen
+    const items = typeof original.line_items === 'string'
+      ? JSON.parse(original.line_items || '[]') : (original.line_items || []);
+    const draft = await db.createInvoice({
+      org_id: req.org.id,
+      invoice_number: `${original.invoice_number}-K1`,
+      invoice_date: new Date().toISOString().slice(0, 10),
+      due_date: original.due_date || null,
+      format: original.format || 'xrechnung',
+      direction: 'outbound',
+      status: 'draft',
+      invoice_kind: 'correction',
+      related_invoice_id: original.id,
+      seller_name: original.seller_name, seller_vat_id: original.seller_vat_id,
+      seller_address: original.seller_address, seller_city: original.seller_city,
+      seller_iban: original.seller_iban,
+      buyer_name: original.buyer_name, buyer_vat_id: original.buyer_vat_id,
+      buyer_address: original.buyer_address, buyer_city: original.buyer_city,
+      buyer_country: original.buyer_country, buyer_email: original.buyer_email,
+      amount_net: original.amount_net, amount_vat: original.amount_vat,
+      amount_gross: original.amount_gross,
+      currency: original.currency || 'EUR',
+      line_items: items,
+      reference: original.invoice_number,
+      brand_color: original.brand_color || null,
+      notes: `Korrekturrechnung zu ${original.invoice_number} vom ${original.invoice_date}.`,
+      created_by: req.user?.id || null,
+    });
+
+    await db.createAuditLog({
+      org_id: req.org.id, user_id: req.user?.id, invoice_id: original.id,
+      action: 'corrected', details: { draft_id: draft.id, draft_number: draft.invoice_number },
+    });
+    return reply.code(201).send({ success: true, draft: sanitizeInvoice(draft) });
   });
 
   // ── DATEV EXPORT (alle Rechnungen einer Org) ──────────────────

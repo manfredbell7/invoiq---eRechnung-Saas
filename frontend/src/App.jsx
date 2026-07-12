@@ -113,7 +113,7 @@ function Wordmark({size=22,inverted=false,iconOnly=false}){
 }
 
 function StatusBadge({status}){
-  const m={delivered:["badge-green","Zugestellt"],validated:["badge-blue","Validiert"],sent:["badge-blue","Gesendet"],error:["badge-red","Fehler"],pending:["badge-amber","Ausstehend"],archived:["badge-gray","Archiviert"],draft:["badge-gray","Entwurf"],active:["badge-green","Aktiv"],trial:["badge-purple","Trial"],suspended:["badge-red","Gesperrt"],free:["badge-gray","Free"],starter:["badge-gray","Starter"],business:["badge-blue","Business"],enterprise:["badge-purple","Enterprise"],pro:["badge-amber","Pro"],super_admin:["badge-red","Super Admin"],owner:["badge-gray","Owner"],admin:["badge-blue","Admin"],member:["badge-gray","Member"],
+  const m={delivered:["badge-green","Zugestellt"],validated:["badge-blue","Validiert"],sent:["badge-blue","Gesendet"],error:["badge-red","Fehler"],pending:["badge-amber","Ausstehend"],archived:["badge-gray","Archiviert"],draft:["badge-gray","Entwurf"],paid:["badge-green","Bezahlt"],overdue:["badge-red","Überfällig"],cancelled:["badge-red","Storniert"],active:["badge-green","Aktiv"],trial:["badge-purple","Trial"],suspended:["badge-red","Gesperrt"],free:["badge-gray","Free"],starter:["badge-gray","Starter"],business:["badge-blue","Business"],enterprise:["badge-purple","Enterprise"],pro:["badge-amber","Pro"],super_admin:["badge-red","Super Admin"],owner:["badge-gray","Owner"],admin:["badge-blue","Admin"],member:["badge-gray","Member"],
   // Belegfluss-Status (SAP-nah)
   offen:["badge-amber","Offen"],beantwortet:["badge-blue","Beantwortet"],entwurf:["badge-gray","Entwurf"],gesendet:["badge-blue","Gesendet"],angenommen:["badge-green","Angenommen"],abgelehnt:["badge-red","Abgelehnt"],abgelaufen:["badge-gray","Abgelaufen"],bestaetigt:["badge-blue","Bestätigt"],geliefert:["badge-purple","Geliefert"],fakturiert:["badge-green","Fakturiert"],storniert:["badge-red","Storniert"]};
   const[cls,lbl]=m[status]||["badge-gray",status];
@@ -1480,7 +1480,7 @@ function Dashboard({user,org,notify,onNav}){
               <td style={{color:T.textPrimary}}>{inv.buyer_name||'—'}</td>
               <td style={{fontWeight:600,color:T.textPrimary}}>{fmtEUR(inv.amount_gross)}</td>
               <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:'2px 7px',fontSize:11.5,fontWeight:600,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
-              <td><StatusBadge status={inv.status}/></td>
+              <td><StatusBadge status={inv.effective_status||inv.status}/></td>
               <td style={{color:T.textMuted,fontSize:12}}>{fmtAgo(inv.created_at)}</td>
             </tr>)
           }
@@ -1708,7 +1708,7 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
             <td>{inv.buyer_name||"—"}</td>
             <td style={{fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
             <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
-            <td><StatusBadge status={inv.status}/></td>
+            <td><StatusBadge status={inv.effective_status||inv.status}/></td>
             <td style={{fontSize:12,color:T.textMuted,whiteSpace:"nowrap"}} className="num">{inv.created_at?new Date(inv.created_at).toLocaleDateString("de-DE"):"—"}</td>
             <td onClick={e=>e.stopPropagation()}><div style={{display:"flex",gap:5}}>
               {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>{setCurrentInvId(inv.id);setEmailTo(inv.buyer_email||'');setEmailModal(true);}}>✉ Senden</button>}
@@ -1745,7 +1745,7 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
           <div>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
               <span style={{fontSize:17,fontWeight:700,fontFamily:F.mono,color:T.textPrimary}}>{detail.invoice_number}</span>
-              <StatusBadge status={detail.status}/>
+              <StatusBadge status={detail.effective_status||detail.status}/>
               {detail.validation_passed===false&&<span className="badge badge-red">Validierung fehlgeschlagen</span>}
             </div>
             <div style={{fontSize:12.5,color:T.textMuted}}>{detail.buyer_name||"—"} · {detail.format?.toUpperCase()} · {detail.invoice_date?new Date(detail.invoice_date).toLocaleDateString("de-DE"):"—"}</div>
@@ -1809,6 +1809,22 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
         <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:14,paddingTop:14,borderTop:`1px solid ${T.bgBorder}`}}>
           {detail.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(detail.id).then(c=>setXml({content:c,id:detail.id,number:detail.invoice_number})).catch(e=>notify(e.message,"error"))}>XML ansehen</button>}
           <button className="btn btn-ghost btn-sm" onClick={()=>api.openPDF(detail.id).catch(e=>notify(e.message,"error"))}>PDF öffnen</button>
+          {["validated","sent"].includes(detail.status)&&detail.invoice_kind!=="cancellation"&&<>
+            <button className="btn btn-ghost btn-sm" onClick={async()=>{
+              try{await api.post(`/invoices/${detail.id}/mark-paid`,{});notify("Als bezahlt markiert ✓","success");setDetail(null);load();}
+              catch(e){notify(e.message,"error");}
+            }}>✓ Bezahlt</button>
+            <button className="btn btn-ghost btn-sm" onClick={async()=>{
+              if(!window.confirm(`Rechnung ${detail.invoice_number} korrigieren?\n\nDas Original wird per Stornorechnung ausgeglichen und ein Korrektur-Entwurf mit allen Positionen angelegt.`))return;
+              try{const r=await api.post(`/invoices/${detail.id}/correct`,{});notify(`Korrektur-Entwurf ${r.draft?.invoice_number} angelegt ✓`,"success");setDetail(null);load();}
+              catch(e){notify(e.message,"error");}
+            }}>✎ Korrigieren</button>
+            <button className="btn btn-danger btn-sm" onClick={async()=>{
+              if(!window.confirm(`Rechnung ${detail.invoice_number} stornieren?\n\nEs wird eine Stornorechnung mit Negativbeträgen erstellt. Das Original bleibt GoBD-konform erhalten.`))return;
+              try{const r=await api.post(`/invoices/${detail.id}/cancel`,{});notify(`Storniert — ${r.storno?.invoice_number} erstellt ✓`,"success");setDetail(null);load();}
+              catch(e){notify(e.message,"error");}
+            }}>⊘ Stornieren</button>
+          </>}
           {detail.status==="validated"&&<button className="btn btn-primary btn-sm" onClick={()=>{setCurrentInvId(detail.id);setEmailTo(detail.buyer_email||'');setDetail(null);setEmailModal(true);}}>✉ Senden</button>}
         </div>
       </div>
@@ -4021,7 +4037,7 @@ function AdminDocs({notify}){
           <td style={{fontSize:13}}>{inv.buyer_name||"—"}</td>
           <td style={{fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
           <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
-          <td><StatusBadge status={inv.status}/></td>
+          <td><StatusBadge status={inv.effective_status||inv.status}/></td>
           <td style={{color:T.textMuted,fontSize:12}}>{inv.created_at?new Date(inv.created_at).toLocaleDateString("de-DE"):"—"}</td>
           <td></td>
         </tr>)}
