@@ -242,6 +242,21 @@ await step('KI-Berater: Insights liefern Kennzahlen', async () => {
   return r.data.ai_available ? 'inkl. KI-Kommentar' : 'nur Kennzahlen (KI offline)';
 });
 
+// ── RECHNUNGSAKTIONEN ─────────────────────────────────────────
+await step('Storno: erzeugt Stornorechnung mit Negativbetrag, Original → storniert', async () => {
+  const r = await call('POST', `/invoices/${invoiceId}/cancel`, {});
+  assert(r.status === 201, `HTTP ${r.status}: ${JSON.stringify(r.data).slice(0, 200)}`);
+  assert(parseFloat(r.data.storno?.amount_gross) === -1428, `Storno-Betrag ${r.data.storno?.amount_gross} statt -1428`);
+  const orig = await call('GET', `/invoices/${invoiceId}`);
+  assert(orig.data.status === 'cancelled', `Original-Status ${orig.data.status} statt cancelled`);
+  return r.data.storno.invoice_number;
+});
+
+await step('Storno: bereits stornierte Rechnung wird abgelehnt (409)', async () => {
+  const r = await call('POST', `/invoices/${invoiceId}/cancel`, {});
+  assert(r.status === 409, `HTTP ${r.status} statt 409`);
+});
+
 // ── BILLING (Stripe, echter Test-Key der Live-Umgebung) ──────
 await step('Stripe: Checkout-Session (Plan starter) wird real bei Stripe angelegt', async () => {
   const r = await call('POST', '/payments/checkout', { plan: 'starter', billing: 'monthly' });
