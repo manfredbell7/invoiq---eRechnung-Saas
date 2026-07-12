@@ -65,6 +65,23 @@ await step('Health-Check', async () => {
   return `env=${r.data.env}, version=${r.data.version}`;
 });
 
+// CORS: jede Produktions-Domain muss die API aus dem Browser erreichen dürfen
+for (const domain of ['https://invoiq.io', 'https://invoiq.de', 'https://www.invoiq.de', 'https://invoiq.fr']) {
+  await step(`CORS-Preflight erlaubt ${domain}`, async () => {
+    const res = await fetch(`${V}/auth/login`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: domain,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type,authorization',
+      },
+    });
+    const acao = res.headers.get('access-control-allow-origin');
+    assert(res.status < 400, `Preflight HTTP ${res.status}`);
+    assert(acao === domain, `Access-Control-Allow-Origin="${acao}" statt "${domain}"`);
+  });
+}
+
 await step('Registrierung (neuer Mandant) + JWT', async () => {
   const r = await call('POST', '/auth/register', {
     email: EMAIL, password: PASSWORD,

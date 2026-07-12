@@ -39,8 +39,13 @@ export async function buildServer() {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
       const allowed = [
+        // Alle Produktions-Domains (Vercel-Projekt: .io/.de/.fr + www)
         'https://invoiq.io',
         'https://www.invoiq.io',
+        'https://invoiq.de',
+        'https://www.invoiq.de',
+        'https://invoiq.fr',
+        'https://www.invoiq.fr',
         process.env.FRONTEND_URL,
         'http://localhost:5173',
         'http://localhost:3000',
