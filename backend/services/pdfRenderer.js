@@ -1,265 +1,328 @@
-// services/pdfRenderer.js
-// Rendert Rechnungen als lesbares PDF — mit 3 Design-Vorlagen:
-//   modern  → Akzent-Balken oben, Akzentfarbe #635BFF
-//   classic → klassisch schwarz/weiß, Geschäftsbrief-Stil
-//   minimal → reduziert, viel Weißraum, dünne Linien
-// Verwendet PDFKit. Fallback: einfaches Text-PDF wenn PDFKit fehlt.
+// services/pdfRenderer.js — Professionelles Rechnungs-PDF (DIN-5008-nah)
+//
+// Aufbau: farbiger Briefkopf mit Logo + Firmenname · Absenderzeile über dem
+// Empfänger-Fensterbereich · Info-Block rechts (Nr./Datum/Fälligkeit/USt-IdNr.)
+// · Positionstabelle mit Markenfarbe · Summenblock · Zahlungsblock mit
+// IBAN/BIC/Bank · dreispaltige Fußzeile (Anschrift | Bank | Register/Steuer)
+// auf JEDER Seite inkl. "Seite X von Y".
+//
+// Seitenlogik: Inhalt fließt — eine neue Seite entsteht NUR, wenn die
+// Positionsliste den Platz sprengt (manuelle y-Verwaltung, kein pdfkit-
+// Auto-Umbruch; der verursachte früher 3 Seiten für 1 Seite Inhalt).
+//
+// Farbe: invoice.brand_color (je Rechnung) > org.brand_color (Mandant) > Default.
 
-const ACCENT = '#635BFF';
-const DARK   = '#0A2540';
-const GRAY   = '#6B7280';
-const LIGHT  = '#E5E7EB';
+const PAGE_W = 595.28;   // A4 Punkte
+const PAGE_H = 841.89;
+const M = 50;            // Seitenrand
+const FOOTER_H = 78;     // reservierte Fußzeile
+const GRAY = '#6B7280';
+const DARK = '#111827';
+const LIGHT = '#E5E7EB';
 
-export async function renderInvoicePDF(invoice) {
+const eur = (n) => (parseFloat(n) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const de = (d) => {
+  if (!d) return '—';
+  const x = new Date(d);
+  return isNaN(x) ? String(d)
+    : x.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+function normalize(invoice, org = {}) {
+  const items = (typeof invoice.line_items === 'string'
+    ? JSON.parse(invoice.line_items || '[]') : (invoice.line_items || []))
+    .map(it => {
+      const qty = parseFloat(it.quantity ?? 1) || 0;
+      const price = parseFloat(it.unit_price ?? 0) || 0;
+      const vat = it.vat_rate !== undefined ? parseFloat(it.vat_rate) : 19;
+      return { desc: it.description || '', qty, unit: it.unit || '', price, vat, total: qty * price };
+    });
+  const net = items.reduce((s, i) => s + i.total, 0);
+  const vatGroups = {};
+  for (const i of items) {
+    vatGroups[i.vat] = (vatGroups[i.vat] || 0) + i.total * (i.vat / 100);
+  }
+  const vatTotal = Object.values(vatGroups).reduce((s, v) => s + v, 0);
+  // Konsistenz im Dokument: sobald Positionen da sind, wird der Gesamtbetrag
+  // aus ihnen gerechnet — nie aus einem evtl. abweichenden amount_gross.
+  const gross = items.length ? net + vatTotal : (parseFloat(invoice.amount_gross) || 0);
+
+  const kind = invoice.invoice_kind || 'standard';
+  const title = kind === 'cancellation' ? 'Stornorechnung'
+    : kind === 'correction' ? 'Korrekturrechnung' : 'Rechnung';
+
+  return {
+    title, kind,
+    number: invoice.invoice_number || '—',
+    date: de(invoice.invoice_date || invoice.created_at),
+    due: invoice.due_date ? de(invoice.due_date) : null,
+    reference: invoice.reference || null,
+    relatedNumber: invoice.related_invoice_number || null,
+    notes: invoice.notes || null,
+    buyer: {
+      name: invoice.buyer_name || '',
+      address: invoice.buyer_address || '',
+      city: [invoice.buyer_zip, invoice.buyer_city].filter(Boolean).join(' ') || invoice.buyer_city || '',
+      country: invoice.buyer_country && invoice.buyer_country !== 'DE' ? invoice.buyer_country : null,
+      vatId: invoice.buyer_vat_id || null,
+    },
+    seller: {
+      name: invoice.seller_name || org.name || '',
+      address: invoice.seller_address || org.address || '',
+      city: [org.zip, invoice.seller_city || org.city].filter(Boolean).join(' '),
+      vatId: invoice.seller_vat_id || org.vat_id || '',
+      taxNumber: org.tax_number || '',
+      iban: (invoice.seller_iban || org.iban || '').replace(/(.{4})/g, '$1 ').trim(),
+      bic: org.bic || '',
+      bank: org.bank_name || '',
+      registerNumber: org.register_number || '',
+      registerCourt: org.register_court || '',
+      director: org.managing_director || '',
+      email: org.email || '',
+      phone: org.phone || '',
+      website: org.website || '',
+    },
+    logo: org.logo_data || null,
+    color: invoice.brand_color || org.brand_color || '#635BFF',
+    items, net, vatGroups, vatTotal, gross,
+  };
+}
+
+export async function renderInvoicePDF(invoice, org = {}) {
   try {
-    return await renderWithPDFKit(invoice);
+    return await renderProfessional(invoice, org, null);
   } catch (err) {
     return renderSimplePDF(invoice);
   }
 }
 
-// ZUGFeRD/Factur-X-Hybrid: lesbares PDF mit eingebetteter EN-16931-XML
-// (factur-x.xml, AFRelationship=Alternative). Der XML-Inhalt kommt vom
-// Aufrufer (xmlEngine), damit Renderer und Normprofil entkoppelt bleiben.
-// Hinweis: volle PDF/A-3-Zertifizierung (eingebettete TTF-Fonts, XMP-
-// Konformitätsklausel) ist Roadmap — die Hybrid-Struktur ist konform.
-export async function renderHybridPDF(invoice, xmlContent) {
-  return renderWithPDFKit(invoice, {
-    embedFile: {
-      data: Buffer.from(xmlContent, 'utf8'),
-      name: 'factur-x.xml',
-      type: 'text/xml',
-      description: 'Factur-X/ZUGFeRD Rechnungsdaten (EN 16931)',
-      relationship: 'Alternative',
-    },
-    subset: 'PDF/A-3b',
+// ZUGFeRD/Factur-X-Hybrid: identisches Layout + eingebettete factur-x.xml
+export async function renderHybridPDF(invoice, xmlContent, org = {}) {
+  return renderProfessional(invoice, org, {
+    data: Buffer.from(xmlContent, 'utf8'),
+    name: 'factur-x.xml',
+    type: 'text/xml',
+    description: 'Factur-X/ZUGFeRD Rechnungsdaten (EN 16931)',
+    relationship: 'Alternative',
   });
 }
 
-async function renderWithPDFKit(invoice, opts = {}) {
+async function renderProfessional(invoice, org, embedFile) {
   const PDFDocument = (await import('pdfkit')).default;
-  const template = (invoice.template || 'modern').toLowerCase();
+  const d = normalize(invoice, org);
 
   return new Promise((resolve, reject) => {
-    const docOpts = { margin: 50, size: 'A4' };
-    if (opts.subset) { docOpts.subset = opts.subset; docOpts.tagged = true; }
+    const docOpts = { size: 'A4', margin: 0, bufferPages: true };
+    if (embedFile) { docOpts.subset = 'PDF/A-3b'; docOpts.tagged = true; }
     const doc = new PDFDocument(docOpts);
     const chunks = [];
     doc.on('data', c => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+    if (embedFile) { const { data, ...opts } = embedFile; doc.file(data, opts); }
 
-    if (opts.embedFile) {
-      const { data, ...fileOpts } = opts.embedFile;
-      doc.file(data, fileOpts);
+    const C = d.color;
+    const bottomLimit = PAGE_H - FOOTER_H - 20;
+    let logoImg = null;
+    if (d.logo) {
+      try { logoImg = Buffer.from(d.logo.split(',')[1], 'base64'); } catch { /* Logo optional */ }
     }
 
-    const data = normalize(invoice);
-    if (template === 'classic')      renderClassic(doc, data);
-    else if (template === 'minimal') renderMinimal(doc, data);
-    else                             renderModern(doc, data);
+    // ── Briefkopf (nur Seite 1 groß, Folgeseiten schmal) ─────
+    const header = (first) => {
+      if (first) {
+        doc.rect(0, 0, PAGE_W, 8).fill(C);                       // Farbband
+        let x = M;
+        if (logoImg) {
+          try { doc.image(logoImg, M, 26, { fit: [120, 44] }); x = M + 134; } catch { /* defekt → nur Text */ }
+        }
+        doc.fillColor(DARK).font('Helvetica-Bold').fontSize(17).text(d.seller.name, x, 32, { width: 300 });
+        const contact = [d.seller.email, d.seller.phone, d.seller.website].filter(Boolean).join('  ·  ');
+        if (contact) doc.font('Helvetica').fontSize(8.5).fillColor(GRAY).text(contact, x, 54, { width: 340 });
+        return 96;
+      }
+      doc.rect(0, 0, PAGE_W, 6).fill(C);
+      doc.fillColor(GRAY).font('Helvetica').fontSize(8)
+        .text(`${d.title} ${d.number} · ${d.seller.name}`, M, 22);
+      return 48;
+    };
+
+    let y = header(true);
+
+    // ── Absenderzeile + Empfänger (Fensterbereich) ───────────
+    const senderLine = [d.seller.name, d.seller.address, d.seller.city].filter(Boolean).join(' · ');
+    doc.fontSize(7.5).fillColor(GRAY).text(senderLine, M, y + 18, { width: 250 });
+    doc.moveTo(M, y + 29).lineTo(M + 220, y + 29).strokeColor(LIGHT).lineWidth(0.5).stroke();
+
+    let ry = y + 38;
+    doc.fillColor(DARK).font('Helvetica-Bold').fontSize(11).text(d.buyer.name, M, ry);
+    doc.font('Helvetica').fontSize(10);
+    for (const line of [d.buyer.address, d.buyer.city, d.buyer.country].filter(Boolean)) {
+      ry = doc.y; doc.text(line, M, ry);
+    }
+
+    // ── Info-Block rechts ────────────────────────────────────
+    const infoX = 360, infoW = PAGE_W - M - infoX;
+    let iy = y + 18;
+    const info = [
+      ['Rechnungsnummer', d.number],
+      ['Rechnungsdatum', d.date],
+      ...(d.due ? [['Zahlbar bis', d.due]] : []),
+      ...(d.relatedNumber ? [[d.kind === 'cancellation' ? 'Storno zu' : 'Korrektur zu', d.relatedNumber]] : []),
+      ...(d.reference ? [['Referenz', d.reference]] : []),
+      ...(d.seller.vatId ? [['USt-IdNr.', d.seller.vatId]] : []),
+      ...(d.buyer.vatId ? [['USt-IdNr. Kunde', d.buyer.vatId]] : []),
+    ];
+    doc.fontSize(9);
+    for (const [k, v] of info) {
+      doc.fillColor(GRAY).font('Helvetica').text(k, infoX, iy, { width: 105 });
+      doc.fillColor(DARK).font('Helvetica-Bold').text(String(v), infoX + 108, iy, { width: infoW - 108, align: 'right' });
+      iy += 15;
+    }
+
+    // ── Titel ────────────────────────────────────────────────
+    y = Math.max(doc.y + 30, iy + 26, 268);
+    doc.fillColor(C).font('Helvetica-Bold').fontSize(19).text(d.title + (d.kind === 'standard' ? ` ${d.number}` : ''), M, y);
+    y += 30;
+
+    // ── Positionstabelle ─────────────────────────────────────
+    const cols = [
+      { key: 'pos',   label: 'Pos.',        x: M,       w: 28,  align: 'left' },
+      { key: 'desc',  label: 'Beschreibung', x: M + 32,  w: 216, align: 'left' },
+      { key: 'qty',   label: 'Menge',       x: M + 254, w: 46,  align: 'right' },
+      { key: 'price', label: 'Einzelpreis', x: M + 306, w: 70,  align: 'right' },
+      { key: 'vat',   label: 'USt.',        x: M + 382, w: 36,  align: 'right' },
+      { key: 'total', label: 'Betrag',      x: M + 424, w: PAGE_W - 2 * M - 424, align: 'right' },
+    ];
+    const tableHead = () => {
+      doc.rect(M, y, PAGE_W - 2 * M, 20).fill(C);
+      doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(8.5);
+      for (const c of cols) doc.text(c.label, c.x + 4, y + 6, { width: c.w - 8, align: c.align });
+      y += 20;
+    };
+    tableHead();
+
+    doc.font('Helvetica').fontSize(9);
+    d.items.forEach((it, idx) => {
+      const descH = doc.heightOfString(it.desc || '—', { width: cols[1].w - 8 });
+      const rowH = Math.max(18, descH + 8);
+      if (y + rowH > bottomLimit) {           // Umbruch NUR wenn nötig
+        doc.addPage();
+        y = header(false);
+        tableHead();
+        doc.font('Helvetica').fontSize(9);
+      }
+      if (idx % 2 === 1) doc.rect(M, y, PAGE_W - 2 * M, rowH).fill('#F8F9FB');
+      doc.fillColor(DARK);
+      const vals = {
+        pos: String(idx + 1),
+        desc: it.desc || '—',
+        qty: `${it.qty}${it.unit && it.unit !== 'C62' ? ' ' + it.unit : ''}`,
+        price: eur(it.price),
+        vat: `${it.vat} %`,
+        total: eur(it.total),
+      };
+      for (const c of cols) doc.text(vals[c.key], c.x + 4, y + 5, { width: c.w - 8, align: c.align });
+      y += rowH;
+    });
+    doc.moveTo(M, y).lineTo(PAGE_W - M, y).strokeColor(LIGHT).lineWidth(0.75).stroke();
+
+    // ── Summenblock (bricht als Ganzes um, falls kein Platz) ─
+    const sumLines = [
+      ['Nettobetrag', eur(d.net)],
+      ...Object.entries(d.vatGroups).map(([rate, amt]) => [`zzgl. ${rate} % USt.`, eur(amt)]),
+    ];
+    const sumH = (sumLines.length + 1) * 17 + 14;
+    if (y + sumH > bottomLimit) { doc.addPage(); y = header(false); }
+    y += 10;
+    const sx = 330, sw = PAGE_W - M - sx;
+    doc.fontSize(9.5).font('Helvetica');
+    for (const [k, v] of sumLines) {
+      doc.fillColor(GRAY).text(k, sx, y, { width: sw - 90 });
+      doc.fillColor(DARK).text(v, sx + sw - 88, y, { width: 88, align: 'right' });
+      y += 17;
+    }
+    doc.rect(sx, y, sw, 24).fill(C);
+    doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10.5)
+      .text('Gesamtbetrag', sx + 8, y + 6, { width: sw - 100 })
+      .text(eur(d.gross), sx + sw - 96, y + 6, { width: 88, align: 'right' });
+    y += 40;
+
+    // ── Zahlungsblock ────────────────────────────────────────
+    const payLines = [];
+    if (d.kind === 'cancellation') {
+      payLines.push('Diese Stornorechnung gleicht die referenzierte Rechnung aus. Es ist keine Zahlung fällig.');
+    } else if (d.seller.iban) {
+      payLines.push(`Bitte überweisen Sie den Betrag${d.due ? ` bis zum ${d.due}` : ''} auf folgendes Konto:`);
+      payLines.push(`IBAN ${d.seller.iban}${d.seller.bic ? `   ·   BIC ${d.seller.bic}` : ''}${d.seller.bank ? `   ·   ${d.seller.bank}` : ''}`);
+      payLines.push(`Verwendungszweck: ${d.number}`);
+    }
+    if (d.notes) payLines.push('', d.notes);
+    if (payLines.length) {
+      const payH = payLines.length * 13 + 24;
+      if (y + payH > bottomLimit) { doc.addPage(); y = header(false); }
+      doc.rect(M, y, PAGE_W - 2 * M, payH).fill('#F8F9FB');
+      doc.rect(M, y, 3, payH).fill(C);
+      let py = y + 12;
+      doc.fontSize(9);
+      payLines.forEach((line, i) => {
+        doc.fillColor(i === 1 && d.kind !== 'cancellation' ? DARK : GRAY)
+          .font(i === 1 && d.kind !== 'cancellation' ? 'Helvetica-Bold' : 'Helvetica')
+          .text(line, M + 14, py, { width: PAGE_W - 2 * M - 28 });
+        py += 13;
+      });
+      y += payH;
+    }
+
+    // ── Fußzeile auf jeder Seite + Seitenzahlen ──────────────
+    const range = doc.bufferedPageRange();
+    for (let p = 0; p < range.count; p++) {
+      doc.switchToPage(range.start + p);
+      const fy = PAGE_H - FOOTER_H;
+      doc.moveTo(M, fy).lineTo(PAGE_W - M, fy).strokeColor(LIGHT).lineWidth(0.5).stroke();
+      doc.fontSize(7).font('Helvetica').fillColor(GRAY);
+      const colW = (PAGE_W - 2 * M) / 3;
+      doc.text([d.seller.name, d.seller.address, d.seller.city].filter(Boolean).join('\n'), M, fy + 8, { width: colW - 10 });
+      doc.text([
+        d.seller.bank && `Bank: ${d.seller.bank}`,
+        d.seller.iban && `IBAN: ${d.seller.iban}`,
+        d.seller.bic && `BIC: ${d.seller.bic}`,
+      ].filter(Boolean).join('\n'), M + colW, fy + 8, { width: colW - 10 });
+      doc.text([
+        d.seller.vatId && `USt-IdNr.: ${d.seller.vatId}`,
+        d.seller.taxNumber && `Steuernummer: ${d.seller.taxNumber}`,
+        d.seller.registerNumber && `${d.seller.registerNumber}${d.seller.registerCourt ? ` · ${d.seller.registerCourt}` : ''}`,
+        d.seller.director && `Geschäftsführung: ${d.seller.director}`,
+      ].filter(Boolean).join('\n'), M + 2 * colW, fy + 8, { width: colW - 10 });
+      if (range.count > 1) {
+        doc.text(`Seite ${p + 1} von ${range.count}`, M, fy + FOOTER_H - 18, { width: PAGE_W - 2 * M, align: 'center' });
+      }
+    }
 
     doc.end();
   });
 }
 
-function normalize(invoice) {
-  const items = (invoice.line_items || []).map(it => {
-    const qty = parseFloat(it.quantity || 1);
-    const price = parseFloat(it.unit_price || 0);
-    const vat = parseFloat(it.vat_rate || 19);
-    return { desc: it.description || '', qty, price, vat, total: qty * price };
-  });
-  let net = items.reduce((s, i) => s + i.total, 0);
-  if (net === 0 && invoice.amount) net = parseFloat(invoice.amount) / 1.19;
-  const vatAmt = items.length
-    ? items.reduce((s, i) => s + i.total * (i.vat / 100), 0)
-    : net * 0.19;
-  const gross = parseFloat(invoice.amount || (net + vatAmt));
-  return {
-    number: invoice.invoice_number || '-',
-    date: formatDate(invoice.invoice_date || invoice.created_at),
-    due: formatDate(invoice.due_date),
-    format: (invoice.format || 'XRechnung').toUpperCase(),
-    sellerName: invoice.seller_name || invoice.sender_name || 'Lieferant',
-    sellerAddr: invoice.seller_address || '',
-    sellerCity: invoice.seller_city || '',
-    sellerVat: invoice.seller_vat_id || '',
-    sellerIban: invoice.seller_iban || '',
-    buyerName: invoice.buyer_name || invoice.org_name || '',
-    buyerAddr: invoice.buyer_address || '',
-    buyerCity: invoice.buyer_city || '',
-    items, net, vatAmt, gross,
-    hash: (invoice.xml_hash || '').slice(0, 16),
-  };
-}
-
-// VORLAGE 1: MODERN
-function renderModern(doc, d) {
-  doc.rect(0, 0, 595, 8).fill(ACCENT);
-  doc.fontSize(22).fillColor(DARK).font('Helvetica-Bold').text('Rechnung', 50, 45);
-  doc.fontSize(9).fillColor(ACCENT).font('Helvetica')
-     .text('EN 16931 konform  ·  GoBD  ·  SHA-256 gesichert', 50, 74);
-  doc.roundedRect(400, 42, 145, 40, 6).fill(ACCENT + '14');
-  doc.fontSize(8).fillColor(GRAY).font('Helvetica').text('RECHNUNGSNR.', 412, 50);
-  doc.fontSize(13).fillColor(ACCENT).font('Helvetica-Bold').text(d.number, 412, 62);
-  partyBlock(doc, d, 110);
-  const tableY = metaRow(doc, d, 200);
-  const rowEnd = itemsTable(doc, d, tableY, ACCENT, true);
-  totalsBlock(doc, d, rowEnd + 15, ACCENT);
-  modernFooter(doc, d);
-}
-
-// VORLAGE 2: CLASSIC
-function renderClassic(doc, d) {
-  doc.fontSize(10).fillColor(DARK).font('Helvetica').text(d.sellerName, 50, 45);
-  doc.fontSize(8).fillColor(GRAY)
-     .text([d.sellerAddr, d.sellerCity].filter(Boolean).join(' · '), 50, 60);
-  doc.moveTo(50, 78).lineTo(545, 78).strokeColor(DARK).lineWidth(1.2).stroke();
-  doc.fontSize(11).fillColor(DARK).font('Helvetica-Bold').text(d.buyerName, 50, 100);
-  doc.fontSize(9).fillColor('#374151').font('Helvetica')
-     .text(d.buyerAddr, 50, 116).text(d.buyerCity, 50, 128);
-  doc.fontSize(18).fillColor(DARK).font('Helvetica-Bold').text('RECHNUNG', 350, 100);
-  doc.fontSize(9).fillColor('#374151').font('Helvetica')
-     .text('Nr. ' + d.number, 350, 124)
-     .text('Datum: ' + d.date, 350, 137)
-     .text('Faellig: ' + d.due, 350, 150);
-  const rowEnd = itemsTable(doc, d, 185, DARK, false);
-  totalsBlock(doc, d, rowEnd + 15, DARK);
-  if (d.sellerIban) {
-    doc.fontSize(9).fillColor('#374151').font('Helvetica')
-       .text('Zahlbar bis ' + d.due + ' auf IBAN: ' + d.sellerIban, 50, 720);
-  }
-  classicFooter(doc, d);
-}
-
-// VORLAGE 3: MINIMAL
-function renderMinimal(doc, d) {
-  doc.fontSize(28).fillColor(DARK).font('Helvetica').text('Rechnung', 50, 60);
-  doc.fontSize(9).fillColor(GRAY).font('Helvetica').text(d.number, 50, 96);
-  doc.fontSize(8).fillColor(GRAY).text('Datum', 400, 64).text('Faellig', 480, 64);
-  doc.fontSize(9).fillColor(DARK).text(d.date, 400, 76).text(d.due, 480, 76);
-  doc.moveTo(50, 120).lineTo(545, 120).strokeColor(LIGHT).lineWidth(0.5).stroke();
-  doc.fontSize(8).fillColor(GRAY).text('Von', 50, 138);
-  doc.fontSize(10).fillColor(DARK).font('Helvetica-Bold').text(d.sellerName, 50, 150);
-  doc.fontSize(8).fillColor('#374151').font('Helvetica').text(d.sellerCity, 50, 164);
-  doc.fontSize(8).fillColor(GRAY).text('An', 300, 138);
-  doc.fontSize(10).fillColor(DARK).font('Helvetica-Bold').text(d.buyerName, 300, 150);
-  doc.fontSize(8).fillColor('#374151').font('Helvetica').text(d.buyerCity, 300, 164);
-  const rowEnd = itemsTableMinimal(doc, d, 210);
-  totalsBlock(doc, d, rowEnd + 20, DARK);
-  minimalFooter(doc, d);
-}
-
-function partyBlock(doc, d, y) {
-  doc.fontSize(8).fillColor(GRAY).font('Helvetica').text('VON', 50, y);
-  doc.fontSize(11).fillColor('#111827').font('Helvetica-Bold').text(d.sellerName, 50, y + 12);
-  doc.fontSize(9).fillColor('#374151').font('Helvetica')
-     .text(d.sellerAddr, 50, y + 26).text(d.sellerCity, 50, y + 38)
-     .text(d.sellerVat ? 'USt-IdNr.: ' + d.sellerVat : '', 50, y + 50);
-  doc.fontSize(8).fillColor(GRAY).text('AN', 300, y);
-  doc.fontSize(11).fillColor('#111827').font('Helvetica-Bold').text(d.buyerName, 300, y + 12);
-  doc.fontSize(9).fillColor('#374151').font('Helvetica')
-     .text(d.buyerAddr, 300, y + 26).text(d.buyerCity, 300, y + 38);
-}
-
-function metaRow(doc, d, y) {
-  doc.moveTo(50, y).lineTo(545, y).strokeColor(LIGHT).lineWidth(0.5).stroke();
-  const meta = [['Rechnungsdatum', d.date], ['Faelligkeitsdatum', d.due], ['Format', d.format]];
-  meta.forEach(([l, v], i) => {
-    const mx = 50 + i * 165;
-    doc.fontSize(8).fillColor(GRAY).font('Helvetica').text(l, mx, y + 10);
-    doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(v, mx, y + 22);
-  });
-  doc.moveTo(50, y + 42).lineTo(545, y + 42).strokeColor(LIGHT).lineWidth(0.5).stroke();
-  return y + 55;
-}
-
-function itemsTable(doc, d, tableY, headColor, filled) {
-  const headers = ['Beschreibung', 'Menge', 'Einzelpreis', 'MwSt', 'Gesamt'];
-  const colX = [50, 290, 340, 415, 465];
-  if (filled) doc.rect(50, tableY, 495, 20).fill(headColor + '14');
-  else doc.moveTo(50, tableY + 18).lineTo(545, tableY + 18).strokeColor(headColor).lineWidth(1).stroke();
-  headers.forEach((h, i) => {
-    doc.fontSize(8).fillColor(filled ? headColor : DARK).font('Helvetica-Bold').text(h, colX[i], tableY + 6);
-  });
-  let rowY = tableY + 24;
-  const rows = d.items.length ? d.items : [{ desc: 'Leistung gemaess Rechnung', qty: 1, price: d.net, vat: 19, total: d.net }];
-  rows.forEach((it, idx) => {
-    if (filled && idx % 2 === 0) doc.rect(50, rowY - 2, 495, 18).fill('#F9FAFB');
-    doc.fontSize(9).fillColor('#111827').font('Helvetica')
-       .text((it.desc || '').slice(0, 50), colX[0], rowY)
-       .text(String(it.qty), colX[1], rowY)
-       .text(fmtEur(it.price), colX[2], rowY)
-       .text(it.vat + '%', colX[3], rowY)
-       .text(fmtEur(it.total), colX[4], rowY);
-    rowY += 20;
-  });
-  return rowY;
-}
-
-function itemsTableMinimal(doc, d, tableY) {
-  doc.moveTo(50, tableY).lineTo(545, tableY).strokeColor(LIGHT).lineWidth(0.5).stroke();
-  let rowY = tableY + 14;
-  const rows = d.items.length ? d.items : [{ desc: 'Leistung gemaess Rechnung', qty: 1, price: d.net, vat: 19, total: d.net }];
-  rows.forEach(it => {
-    doc.fontSize(10).fillColor(DARK).font('Helvetica')
-       .text((it.desc || '').slice(0, 55), 50, rowY)
-       .text(fmtEur(it.total), 465, rowY, { align: 'right', width: 80 });
-    doc.fontSize(8).fillColor(GRAY)
-       .text(it.qty + ' x ' + fmtEur(it.price) + ' · ' + it.vat + '% MwSt', 50, rowY + 12);
-    rowY += 34;
-  });
-  doc.moveTo(50, rowY).lineTo(545, rowY).strokeColor(LIGHT).lineWidth(0.5).stroke();
-  return rowY;
-}
-
-function totalsBlock(doc, d, totY, accent) {
-  doc.moveTo(350, totY).lineTo(545, totY).strokeColor(LIGHT).lineWidth(0.5).stroke();
-  const totals = [['Nettobetrag', fmtEur(d.net)], ['MwSt', fmtEur(d.vatAmt)]];
-  totals.forEach(([l, v], i) => {
-    doc.fontSize(9).fillColor('#374151').font('Helvetica').text(l, 350, totY + 10 + i * 16);
-    doc.text(v, 490, totY + 10 + i * 16, { align: 'right', width: 55 });
-  });
-  doc.moveTo(350, totY + 44).lineTo(545, totY + 44).strokeColor(accent).lineWidth(1).stroke();
-  doc.fontSize(12).fillColor(accent).font('Helvetica-Bold')
-     .text('Bruttobetrag', 350, totY + 52)
-     .text(fmtEur(d.gross), 470, totY + 52, { align: 'right', width: 75 });
-}
-
-function modernFooter(doc, d) {
-  doc.rect(0, 800, 595, 42).fill(ACCENT + '0A');
-  doc.fontSize(7).fillColor('#9CA3AF')
-     .text('Erstellt mit invoiq.io  ·  EN 16931 · GoBD §147 AO · ZUGFeRD/XRechnung', 50, 812)
-     .text('SHA-256: ' + d.hash + '...', 50, 822);
-}
-function classicFooter(doc, d) {
-  doc.moveTo(50, 800).lineTo(545, 800).strokeColor(DARK).lineWidth(0.5).stroke();
-  doc.fontSize(7).fillColor(GRAY)
-     .text(d.sellerName + '  ·  USt-IdNr.: ' + (d.sellerVat || '—') + '  ·  EN 16931 konform  ·  invoiq.io', 50, 808);
-}
-function minimalFooter(doc, d) {
-  doc.fontSize(7).fillColor('#C0C7D0').text('invoiq.io  ·  EN 16931  ·  GoBD', 50, 815);
-}
-
+// ── Fallback: minimales Text-PDF (falls PDFKit fehlt/crasht) ──
 function renderSimplePDF(invoice) {
-  const content = [
-    'Rechnung: ' + (invoice.invoice_number || '-'),
-    'Von:      ' + (invoice.seller_name || invoice.sender_name || 'Lieferant'),
-    'An:       ' + (invoice.buyer_name || '-'),
-    'Datum:    ' + formatDate(invoice.invoice_date || invoice.created_at),
-    'Betrag:   ' + fmtEur(parseFloat(invoice.amount || 0)),
-    'Format:   ' + (invoice.format || 'XRechnung').toUpperCase(),
-    'EN 16931 konform - GoBD - invoiq.io'
-  ].join('\n');
-  const stream = '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n4 0 obj<</Length ' + (content.length + 50) + '>>\nstream\nBT /F1 11 Tf 50 750 Td 15 TL\n' + content.split('\n').map(l => '(' + l.replace(/[()\\]/g, '\\$&') + ') Tj T*').join('\n') + '\nET\nendstream\nendobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\nxref\n0 6\n0000000000 65535 f\ntrailer<</Size 6/Root 1 0 R>>\nstartxref\n470\n%%EOF';
-  return Buffer.from(stream, 'utf-8');
-}
-
-function formatDate(d) {
-  if (!d) return '-';
-  try { return new Date(d).toLocaleDateString('de-DE'); } catch { return String(d); }
-}
-function fmtEur(n) {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n || 0);
+  const esc = (s) => String(s || '').replace(/[()\\]/g, '\\$&');
+  const lines = [
+    `Rechnung ${invoice.invoice_number || ''}`,
+    `Datum: ${invoice.invoice_date || ''}`,
+    `Von: ${invoice.seller_name || ''}`,
+    `An: ${invoice.buyer_name || ''}`,
+    `Betrag: ${invoice.amount_gross || 0} EUR`,
+  ];
+  const content = lines.map((l, i) => `BT /F1 12 Tf 50 ${780 - i * 20} Td (${esc(l)}) Tj ET`).join('\n');
+  const pdf = `%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj
+4 0 obj<</Length ${content.length}>>stream
+${content}
+endstream endobj
+5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
+trailer<</Root 1 0 R>>
+%%EOF`;
+  return Buffer.from(pdf);
 }

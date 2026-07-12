@@ -149,6 +149,7 @@ export async function invoiceRoutes(fastify) {
           },
           notes: { type: 'string' },
           reference: { type: 'string' },
+          brand_color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
           status: { type: 'string', enum: ['draft'] },
         }
       }
@@ -254,6 +255,7 @@ export async function invoiceRoutes(fastify) {
       line_items: invoiceData.line_items,
       notes: invoiceData.notes || null,
       reference: invoiceData.reference || null,
+      brand_color: invoiceData.brand_color || null,
       xml_content: invoiceData.xml_content || null,
       xml_hash: invoiceData.xml_hash || null,
       validation_result: validation,
@@ -312,7 +314,7 @@ export async function invoiceRoutes(fastify) {
     if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
 
     const { renderInvoicePDF } = await import('../../services/pdfRenderer.js');
-    const pdfBuffer = await renderInvoicePDF(invoice);
+    const pdfBuffer = await renderInvoicePDF(invoice, req.org);
 
     reply.header('Content-Type', 'application/pdf');
     reply.header('Content-Disposition', `inline; filename="${invoice.invoice_number}.pdf"`);
@@ -330,10 +332,35 @@ export async function invoiceRoutes(fastify) {
       ? { ...invoice, line_items: JSON.parse(invoice.line_items || '[]') }
       : invoice;
     const xml = generateFacturX(inv);
-    const pdfBuffer = await renderHybridPDF(inv, xml);
+    const pdfBuffer = await renderHybridPDF(inv, xml, req.org);
 
     reply.header('Content-Type', 'application/pdf');
     reply.header('Content-Disposition', `attachment; filename="${invoice.invoice_number}-zugferd.pdf"`);
+    return reply.send(pdfBuffer);
+  });
+
+  // ── LIVE-VORSCHAU (PDF rendern OHNE zu speichern) ─────────────
+  // Nimmt Rechnungsdaten wie POST /, rendert das PDF mit den Mandanten-
+  // Stammdaten und liefert es inline zurück — für die Browser-Vorschau
+  // vor dem Speichern.
+  fastify.post('/preview-pdf', { preHandler: authMiddleware }, async (req, reply) => {
+    const b = req.body || {};
+    const org = req.org;
+    const invoice = {
+      ...b,
+      invoice_number: b.invoice_number || 'ENTWURF',
+      invoice_date: b.invoice_date || new Date().toISOString().slice(0, 10),
+      seller_name: b.seller_name || org.name || '',
+      seller_vat_id: b.seller_vat_id || org.vat_id || '',
+      seller_address: b.seller_address || org.address || '',
+      seller_city: b.seller_city || org.city || '',
+      seller_iban: b.seller_iban || org.iban || '',
+      line_items: Array.isArray(b.line_items) ? b.line_items.slice(0, 200) : [],
+    };
+    const { renderInvoicePDF } = await import('../../services/pdfRenderer.js');
+    const pdfBuffer = await renderInvoicePDF(invoice, org);
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', 'inline; filename="vorschau.pdf"');
     return reply.send(pdfBuffer);
   });
 
@@ -483,7 +510,7 @@ export async function invoiceRoutes(fastify) {
     let pdfBuffer = null;
     try {
       const { renderInvoicePDF } = await import('../../services/pdfRenderer.js');
-      pdfBuffer = await renderInvoicePDF(invoice);
+      pdfBuffer = await renderInvoicePDF(invoice, req.org);
     } catch (e) {
       req.log?.warn?.('PDF-Rendering fehlgeschlagen, sende nur XML');
     }

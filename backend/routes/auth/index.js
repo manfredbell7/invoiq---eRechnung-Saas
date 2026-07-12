@@ -316,6 +316,15 @@ export async function authRoutes(fastify) {
       country:          org.country          || 'DE',
       iban:             org.iban             || '',
       bic:              org.bic              || '',
+      bank_name:        org.bank_name        || '',
+      tax_number:       org.tax_number       || '',
+      register_number:  org.register_number  || '',
+      register_court:   org.register_court   || '',
+      managing_director: org.managing_director || '',
+      logo_data:        org.logo_data        || '',
+      brand_color:      org.brand_color      || '#635BFF',
+      email:            org.email            || '',
+      website:          org.website          || '',
       phone:            org.phone            || '',
       default_format:   org.default_format   || 'xrechnung',
       default_delivery: org.default_delivery || 'email',
@@ -329,11 +338,26 @@ export async function authRoutes(fastify) {
   // ── SETTINGS POST ────────────────────────────────────────────
   fastify.post('/settings', { preHandler: authMiddleware }, async (req, reply) => {
     const allowed = ['name','vat_id','address','city','zip','country','iban','bic','phone',
+                     'bank_name','tax_number','register_number','register_court',
+                     'managing_director','logo_data','brand_color','email','website',
                      'default_format','default_delivery','auto_archive','en16931_strict',
                      'peppol_enabled','vida_reporting'];
     const updates = {};
     for(const key of allowed){
       if(req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+    // Branding-Validierung: Farbe muss Hex sein, Logo eine Bild-Data-URL ≤ 300 KB
+    if (updates.brand_color !== undefined && updates.brand_color !== '' &&
+        !/^#[0-9a-fA-F]{6}$/.test(updates.brand_color)) {
+      return reply.code(400).send({ error: 'Primärfarbe muss ein Hex-Wert sein (z. B. #635BFF).' });
+    }
+    if (updates.logo_data !== undefined && updates.logo_data !== '') {
+      if (!/^data:image\/(png|jpeg|jpg);base64,/.test(updates.logo_data)) {
+        return reply.code(400).send({ error: 'Logo muss eine PNG- oder JPEG-Datei sein.' });
+      }
+      if (updates.logo_data.length > 400_000) {
+        return reply.code(400).send({ error: 'Logo zu groß — bitte maximal 300 KB verwenden.' });
+      }
     }
     updates.updated_at = new Date().toISOString();
 

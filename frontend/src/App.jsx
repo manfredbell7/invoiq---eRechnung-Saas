@@ -1614,7 +1614,12 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
           <div><label className="label">Nummer</label><input className="input" value={form.invoice_number} onChange={e=>upd("invoice_number",e.target.value)}/></div>
           <div><label className="label">Format</label><select className="select" value={form.format} onChange={e=>upd("format",e.target.value)}><option value="xrechnung">XRechnung 3.0</option><option value="zugferd">ZUGFeRD 2.4</option><option value="facturx">FacturX 1.0</option><option value="peppol">Peppol BIS 3.0</option></select></div>
-          <div><label className="label">Design-Vorlage</label><select className="select" value={form.template||"modern"} onChange={e=>upd("template",e.target.value)}><option value="modern">Modern (Blau)</option><option value="classic">Classic (Klassisch)</option><option value="minimal">Minimal (Clean)</option></select></div>
+          <div><label className="label">PDF-Farbe <span style={{fontWeight:400,color:T.textMuted}}>(Standard: Firmenfarbe)</span></label>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <input type="color" value={form.brand_color||"#635BFF"} onChange={e=>upd("brand_color",e.target.value)} style={{width:38,height:32,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:2,cursor:"pointer",background:"#fff"}}/>
+              {form.brand_color&&<button className="btn btn-ghost btn-sm" style={{fontSize:11}} onClick={()=>upd("brand_color",undefined)}>zurücksetzen</button>}
+            </div>
+          </div>
           <div><label className="label">Rechnungsdatum</label><input className="input" type="date" value={form.invoice_date} onChange={e=>upd("invoice_date",e.target.value)}/></div>
           <div><label className="label">Fälligkeitsdatum</label><input className="input" type="date" value={form.due_date} onChange={e=>upd("due_date",e.target.value)}/></div>
         </div>
@@ -1653,6 +1658,14 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
       </div>
     </div>
     <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginBottom:16}}>
+      <button className="btn btn-outline" style={{fontSize:13.5,padding:"10px 20px"}} disabled={saving||generating} onClick={async()=>{
+        try{
+          const res=await fetch(`${API_BASE}/invoices/preview-pdf`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${api._token}`},body:JSON.stringify(form)});
+          if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||`Vorschau fehlgeschlagen (${res.status})`);}
+          const blob=await res.blob();
+          window.open(URL.createObjectURL(blob),"_blank");
+        }catch(e){notify(e.message||"Vorschau fehlgeschlagen","error");}
+      }}>👁 Vorschau (PDF)</button>
       <button className="btn btn-ghost" style={{fontSize:13.5,padding:"10px 20px"}} onClick={saveDraft} disabled={saving||generating}>{saving?<><Spinner size={14}/>&nbsp;Speichert...</>:"Als Entwurf speichern"}</button>
       <button className="btn btn-primary" style={{fontSize:13.5,padding:"10px 24px"}} onClick={generate} disabled={generating||saving}>{generating?<><Spinner color="#fff" size={14}/>&nbsp;Wird generiert...</>:"⚡ XRechnung generieren"}</button>
     </div>
@@ -3606,6 +3619,14 @@ function SettingsScreen({user,org,notify}){
     bic:              org?.bic||'',
     email:            user?.email||'',
     phone:            org?.phone||'',
+    bank_name:        org?.bank_name||'',
+    tax_number:       org?.tax_number||'',
+    register_number:  org?.register_number||'',
+    register_court:   org?.register_court||'',
+    managing_director: org?.managing_director||'',
+    logo_data:        org?.logo_data||'',
+    brand_color:      org?.brand_color||'#635BFF',
+    website:          org?.website||'',
     default_format:   org?.default_format||'xrechnung',
     default_delivery: org?.default_delivery||'email',
     auto_archive:     org?.auto_archive!==false,
@@ -3613,6 +3634,15 @@ function SettingsScreen({user,org,notify}){
     peppol_enabled:   org?.peppol_enabled||false,
     vida_reporting:   org?.vida_reporting||false,
   });
+
+  const onLogoFile=(file)=>{
+    if(!file)return;
+    if(!/image\/(png|jpeg)/.test(file.type)){notify('Bitte PNG oder JPEG wählen','error');return;}
+    if(file.size>300*1024){notify('Logo zu groß — max. 300 KB','error');return;}
+    const r=new FileReader();
+    r.onload=()=>upd('logo_data',r.result);
+    r.readAsDataURL(file);
+  };
 
   // Org-Daten beim Laden holen
   useEffect(()=>{
@@ -3675,6 +3705,45 @@ function SettingsScreen({user,org,notify}){
                   <div><label className="label">E-Mail (Rechnungseingang)</label><input className="input" type="email" value={form.email} onChange={e=>upd('email',e.target.value)}/></div>
                   <div><label className="label">Telefon</label><input className="input" value={form.phone} onChange={e=>upd('phone',e.target.value)} placeholder="+49 30 123456"/></div>
                 </div>
+
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,margin:'12px 0 0',paddingTop:14,borderTop:`1px solid ${T.bgBorder}`}}>Bank & Registerdaten <span style={{fontWeight:400,color:T.textMuted}}>(erscheinen auf jeder Rechnung)</span></div>
+                <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:14}}>
+                  <div><label className="label">IBAN</label><input className="input" value={form.iban} onChange={e=>upd('iban',e.target.value)} placeholder="DE89 3704 0044 0532 0130 00"/></div>
+                  <div><label className="label">BIC</label><input className="input" value={form.bic} onChange={e=>upd('bic',e.target.value)} placeholder="COBADEFFXXX"/></div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+                  <div><label className="label">Bank</label><input className="input" value={form.bank_name} onChange={e=>upd('bank_name',e.target.value)} placeholder="Commerzbank Saarbrücken"/></div>
+                  <div><label className="label">Steuernummer</label><input className="input" value={form.tax_number} onChange={e=>upd('tax_number',e.target.value)} placeholder="040/123/45678"/></div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14}}>
+                  <div><label className="label">Handelsregister-Nr.</label><input className="input" value={form.register_number} onChange={e=>upd('register_number',e.target.value)} placeholder="HRB 12345"/></div>
+                  <div><label className="label">Amtsgericht</label><input className="input" value={form.register_court} onChange={e=>upd('register_court',e.target.value)} placeholder="Amtsgericht Saarbrücken"/></div>
+                  <div><label className="label">Geschäftsführung</label><input className="input" value={form.managing_director} onChange={e=>upd('managing_director',e.target.value)} placeholder="Max Mustermann"/></div>
+                </div>
+
+                <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,margin:'12px 0 0',paddingTop:14,borderTop:`1px solid ${T.bgBorder}`}}>Branding <span style={{fontWeight:400,color:T.textMuted}}>(Logo & Farbe für Rechnungs-PDFs)</span></div>
+                <div style={{display:'flex',gap:18,alignItems:'center',flexWrap:'wrap'}}>
+                  <div>
+                    <label className="label">Primärfarbe</label>
+                    <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                      <input type="color" value={form.brand_color||'#635BFF'} onChange={e=>upd('brand_color',e.target.value)} style={{width:44,height:34,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:2,cursor:'pointer',background:'#fff'}}/>
+                      <input className="input" style={{width:110}} value={form.brand_color||''} onChange={e=>upd('brand_color',e.target.value)} placeholder="#635BFF"/>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="label">Logo (PNG/JPEG, max. 300 KB)</label>
+                    <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                      {form.logo_data
+                        ? <img src={form.logo_data} alt="Logo" style={{height:40,maxWidth:140,objectFit:'contain',border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:4,background:'#fff'}}/>
+                        : <div style={{height:40,width:120,border:`1px dashed ${T.bgBorder}`,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:T.textMuted}}>Kein Logo</div>}
+                      <label className="btn btn-outline btn-sm" style={{cursor:'pointer'}}>
+                        Hochladen<input type="file" accept="image/png,image/jpeg" style={{display:'none'}} onChange={e=>onLogoFile(e.target.files?.[0])}/>
+                      </label>
+                      {form.logo_data&&<button className="btn btn-ghost btn-sm" onClick={()=>upd('logo_data','')}>Entfernen</button>}
+                    </div>
+                  </div>
+                </div>
+                <div><label className="label">Website</label><input className="input" value={form.website} onChange={e=>upd('website',e.target.value)} placeholder="https://ihre-firma.de"/></div>
                 <div style={{background:T.bgSubtle,borderRadius:8,padding:'14px 16px',border:`1px solid ${T.bgBorder}`,marginTop:4}}>
                   <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:12,letterSpacing:.4,textTransform:'uppercase'}}>Bankverbindung (für SEPA-Zahlungen) — optional</div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
