@@ -22,7 +22,7 @@ const api={
     try{const res=await fetch(`${API_BASE}${path}`,{method,headers,body:body?JSON.stringify(body):undefined});const data=await res.json();if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);return data;}
     catch(err){if(err.message.includes("fetch"))throw new Error("");throw err;}
   },
-  get:(p)=>api.req("GET",p),post:(p,b)=>api.req("POST",p,b),patch:(p,b)=>api.req("PATCH",p,b),
+  get:(p)=>api.req("GET",p),post:(p,b)=>api.req("POST",p,b),patch:(p,b)=>api.req("PATCH",p,b),del:(p)=>api.req("DELETE",p),
   login:(b)=>api.post("/auth/login",b),register:(b)=>api.post("/auth/register",b),
   me:()=>api.get("/auth/me"),logout:()=>api.post("/auth/logout",{}),
   getStats:()=>api.get("/invoices/stats"),listInvoices:(q="")=>api.get(`/invoices${q}`),
@@ -1120,6 +1120,11 @@ const NAV_ICONS={
   steuerberater:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="5" width="12" height="8.5" rx="1.2" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 5V3.5a1 1 0 011-1h3a1 1 0 011 1V5M2 8.5h12" stroke="currentColor" strokeWidth="1.4"/></svg>,
   ki:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.5l1.4 3.6a2 2 0 001.2 1.2L14.2 7.7a.35.35 0 010 .66l-3.6 1.4a2 2 0 00-1.2 1.2L8 14.5a.35.35 0 01-.66 0L6 10.96a2 2 0 00-1.2-1.2L1.14 8.36a.35.35 0 010-.66L4.8 6.3A2 2 0 006 5.1L7.34 1.5a.35.35 0 01.66 0z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><circle cx="13" cy="2.8" r="1.1" fill="currentColor"/></svg>,
 };
+// ERP-Module nutzen vorhandene Icon-Formen (eigene Farbe kommt aus ERP_MODULES)
+NAV_ICONS["erp-mm"]=NAV_ICONS.artikel; NAV_ICONS["erp-pp"]=NAV_ICONS.settings;
+NAV_ICONS["erp-co"]=NAV_ICONS.invoices; NAV_ICONS["erp-hcm"]=NAV_ICONS.kunden;
+NAV_ICONS["erp-crm"]=NAV_ICONS.kunden; NAV_ICONS["erp-pm"]=NAV_ICONS.belege;
+NAV_ICONS["erp-qm"]=NAV_ICONS.scanner; NAV_ICONS["erp-dms"]=NAV_ICONS.archive;
 
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
   // Kanzlei-Portal ab Business-Plan (siehe Pricing: Business/Pro/Enterprise enthalten es)
@@ -1147,6 +1152,16 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
     ]},
     {title:"KI",items:[
       {key:"ki",          label:"KI-Berater"},
+    ]},
+    {title:"ERP-Module",items:[
+      {key:"erp-mm",  label:"Materialwirtschaft"},
+      {key:"erp-pp",  label:"Produktion"},
+      {key:"erp-co",  label:"Controlling"},
+      {key:"erp-hcm", label:"Personal"},
+      {key:"erp-crm", label:"CRM"},
+      {key:"erp-pm",  label:"Projekte"},
+      {key:"erp-qm",  label:"Qualität"},
+      {key:"erp-dms", label:"Dokumente"},
     ]},
   ];
 
@@ -1209,7 +1224,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
         <button className="mobile-menu-btn" onClick={()=>setMobileNav(true)} aria-label="Menü öffnen">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke={T.textSecondary} strokeWidth="1.6" strokeLinecap="round"/></svg>
         </button>
-        <div style={{fontSize:14,fontWeight:700,color:T.textPrimary,letterSpacing:"-.01em",whiteSpace:"nowrap"}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen","ki":"KI-Berater"}[nav]||nav}</div>
+        <div style={{fontSize:14,fontWeight:700,color:T.textPrimary,letterSpacing:"-.01em",whiteSpace:"nowrap"}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen","ki":"KI-Berater","erp-mm":"ERP · Materialwirtschaft","erp-pp":"ERP · Produktion","erp-co":"ERP · Controlling","erp-hcm":"ERP · Personal","erp-crm":"ERP · CRM","erp-pm":"ERP · Projekte","erp-qm":"ERP · Qualität","erp-dms":"ERP · Dokumente"}[nav]||nav}</div>
         <div style={{flex:1,maxWidth:340}}>
           <div style={{position:"relative"}}>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}><circle cx="7" cy="7" r="4.5" stroke={T.textMuted} strokeWidth="1.5"/><path d="M10.5 10.5L14 14" stroke={T.textMuted} strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -1325,6 +1340,22 @@ function Dashboard({user,org,notify,onNav}){
         <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`${org.inbound_email_slug}@rechnungen.invoiq.io`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
       </div>
     )}
+
+    {/* ERP-Modul-Kacheln (SAP-nah) */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:16}}>
+      {ERP_MODULES.map(m=>(
+        <div key={m.key} className="card" style={{padding:'14px 14px 12px',cursor:'pointer',borderTop:`3px solid ${m.color}`,transition:'box-shadow .15s'}}
+          onClick={()=>onNav(`erp-${m.key}`)}
+          onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${m.color}`}
+          onMouseLeave={e=>e.currentTarget.style.boxShadow=''}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+            <span style={{background:m.color,color:'#fff',borderRadius:6,fontSize:10.5,fontWeight:800,padding:'3px 6px',letterSpacing:.5}}>{m.code}</span>
+            <b style={{fontSize:12.5}}>{m.label}</b>
+          </div>
+          <div style={{fontSize:11,color:T.textMuted,lineHeight:1.45}}>{m.desc}</div>
+        </div>
+      ))}
+    </div>
 
     {/* KPIs — klickbar */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:16}}>
@@ -3128,6 +3159,267 @@ function ItemsScreen({notify}){
   </div>);
 }
 
+// ── ERP-MODULE (SAP-nahe Grundstruktur) ───────────────────────
+// Konfigurationsgetrieben: eine Definition je Modul/Ressource, ein
+// generischer Screen für alle. Felder: k=API-Feld, l=Label,
+// t=text|number|date|select|textarea, opt=Select-Optionen, req=Pflicht.
+const ERP_MODULES=[
+  {key:"mm",code:"MM",label:"Materialwirtschaft",color:"#0E7C5B",desc:"Material, Lager, Bestellungen, Inventur",resources:[
+    {key:"materials",label:"Materialien",fields:[
+      {k:"material_number",l:"Material-Nr."},{k:"name",l:"Bezeichnung",req:1},{k:"unit",l:"Einheit"},
+      {k:"purchase_price",l:"EK-Preis €",t:"number"},{k:"sales_price",l:"VK-Preis €",t:"number"},
+      {k:"stock_qty",l:"Bestand",t:"number"},{k:"min_stock",l:"Mindestbestand",t:"number"},{k:"location",l:"Lagerort"}]},
+    {key:"purchase-orders",label:"Bestellungen",fields:[
+      {k:"order_number",l:"Bestell-Nr.",req:1},{k:"supplier_name",l:"Lieferant",req:1},
+      {k:"status",l:"Status",t:"select",opt:["entwurf","bestellt","teilgeliefert","geliefert","storniert"]},
+      {k:"order_date",l:"Bestelldatum",t:"date"},{k:"expected_date",l:"Liefertermin",t:"date"},
+      {k:"total_net",l:"Netto €",t:"number"},{k:"notes",l:"Notizen",t:"textarea"}]},
+    {key:"stock-movements",label:"Bewegungen",readonly:1,fields:[
+      {k:"moved_at",l:"Zeitpunkt",t:"date"},{k:"movement_type",l:"Art"},{k:"quantity",l:"Menge",t:"number"},{k:"reference",l:"Referenz"},{k:"note",l:"Notiz"}]},
+  ]},
+  {key:"pp",code:"PP",label:"Produktion",color:"#B45309",desc:"Stücklisten, Fertigungsaufträge, Status",resources:[
+    {key:"boms",label:"Stücklisten",fields:[
+      {k:"name",l:"Bezeichnung",req:1},{k:"version",l:"Version",t:"number"}]},
+    {key:"production-orders",label:"Fertigungsaufträge",fields:[
+      {k:"order_number",l:"Auftrags-Nr.",req:1},{k:"description",l:"Beschreibung"},
+      {k:"quantity",l:"Menge",t:"number"},
+      {k:"status",l:"Status",t:"select",opt:["geplant","freigegeben","in_arbeit","fertig","storniert"]},
+      {k:"workcenter",l:"Arbeitsplatz"},{k:"start_date",l:"Start",t:"date"},{k:"end_date",l:"Ende",t:"date"}]},
+  ]},
+  {key:"co",code:"CO",label:"Controlling",color:"#1D4ED8",desc:"Kostenstellen, Budget, Soll/Ist, Verrechnung",resources:[
+    {key:"cost-objects",label:"Kostenträger",fields:[
+      {k:"code",l:"Code",req:1},{k:"name",l:"Bezeichnung",req:1}]},
+    {key:"budgets",label:"Budgets",fields:[
+      {k:"cost_center_id",l:"Kostenstellen-ID",req:1},{k:"year",l:"Jahr",t:"number",req:1},
+      {k:"amount",l:"Budget €",t:"number",req:1},{k:"note",l:"Notiz"}]},
+    {key:"allocations",label:"Verrechnungen",fields:[
+      {k:"from_cost_center_id",l:"Von Kostenstelle (ID)",req:1},{k:"to_cost_center_id",l:"An Kostenstelle (ID)",req:1},
+      {k:"amount",l:"Betrag €",t:"number",req:1},{k:"period",l:"Periode (JJJJ-MM)"},{k:"note",l:"Notiz"}]},
+    {key:"__co_report",label:"Soll/Ist",special:"co_report"},
+  ]},
+  {key:"hcm",code:"HCM",label:"Personal",color:"#7C3AED",desc:"Mitarbeiter, Abteilungen, Urlaub, Lohn (LODAS)",resources:[
+    {key:"employees",label:"Mitarbeiter",fields:[
+      {k:"employee_number",l:"Personal-Nr."},{k:"first_name",l:"Vorname",req:1},{k:"last_name",l:"Nachname",req:1},
+      {k:"email",l:"E-Mail"},{k:"position",l:"Position"},{k:"hire_date",l:"Eintritt",t:"date"},
+      {k:"salary",l:"Brutto/Monat €",t:"number"},{k:"weekly_hours",l:"Std./Woche",t:"number"},{k:"vacation_days",l:"Urlaubstage",t:"number"}]},
+    {key:"departments",label:"Abteilungen",fields:[
+      {k:"name",l:"Name",req:1},{k:"head_name",l:"Leitung"}]},
+    {key:"leave-requests",label:"Urlaub",fields:[
+      {k:"employee_id",l:"Mitarbeiter-ID",req:1},
+      {k:"leave_type",l:"Art",t:"select",opt:["urlaub","krank","sonderurlaub"]},
+      {k:"from_date",l:"Von",t:"date",req:1},{k:"to_date",l:"Bis",t:"date",req:1},{k:"days",l:"Tage",t:"number",req:1},
+      {k:"status",l:"Status",t:"select",opt:["beantragt","genehmigt","abgelehnt"]},{k:"note",l:"Notiz"}]},
+    {key:"payroll-runs",label:"Lohnläufe",special:"lodas",fields:[
+      {k:"period",l:"Periode (JJJJ-MM)",req:1},
+      {k:"status",l:"Status",t:"select",opt:["entwurf","abgerechnet"]},
+      {k:"total_gross",l:"Brutto gesamt €",t:"number"},{k:"employee_count",l:"Mitarbeiter",t:"number"}]},
+  ]},
+  {key:"crm",code:"CRM",label:"CRM",color:"#DB2777",desc:"Opportunities, Pipeline, Kontakthistorie",resources:[
+    {key:"opportunities",label:"Opportunities",fields:[
+      {k:"name",l:"Bezeichnung",req:1},
+      {k:"stage",l:"Phase",t:"select",opt:["lead","qualifiziert","angebot","verhandlung","gewonnen","verloren"]},
+      {k:"value",l:"Wert €",t:"number"},{k:"probability",l:"Wahrsch. %",t:"number"},
+      {k:"expected_close",l:"Abschluss",t:"date"},{k:"owner",l:"Verantwortlich"},{k:"notes",l:"Notizen",t:"textarea"}]},
+    {key:"activities",label:"Aktivitäten",fields:[
+      {k:"activity_type",l:"Art",t:"select",opt:["anruf","email","termin","notiz"]},
+      {k:"subject",l:"Betreff",req:1},{k:"content",l:"Inhalt",t:"textarea"},{k:"activity_date",l:"Datum",t:"date"}]},
+  ]},
+  {key:"pm",code:"PM",label:"Projekte",color:"#0891B2",desc:"Projekte, Meilensteine, Zeiterfassung",resources:[
+    {key:"projects",label:"Projekte",fields:[
+      {k:"project_number",l:"Projekt-Nr."},{k:"name",l:"Name",req:1},
+      {k:"status",l:"Status",t:"select",opt:["geplant","aktiv","pausiert","abgeschlossen"]},
+      {k:"budget",l:"Budget €",t:"number"},{k:"start_date",l:"Start",t:"date"},{k:"end_date",l:"Ende",t:"date"},{k:"notes",l:"Notizen",t:"textarea"}]},
+    {key:"milestones",label:"Meilensteine",fields:[
+      {k:"project_id",l:"Projekt-ID",req:1},{k:"name",l:"Name",req:1},{k:"due_date",l:"Fällig",t:"date"},
+      {k:"status",l:"Status",t:"select",opt:["offen","erledigt"]}]},
+    {key:"time-entries",label:"Zeiterfassung",fields:[
+      {k:"project_id",l:"Projekt-ID",req:1},{k:"entry_date",l:"Datum",t:"date"},{k:"hours",l:"Stunden",t:"number",req:1},
+      {k:"description",l:"Tätigkeit"},{k:"billable",l:"Abrechenbar",t:"select",opt:["true","false"]}]},
+  ]},
+  {key:"qm",code:"QM",label:"Qualität",color:"#DC2626",desc:"Prüfpläne, Reklamationen",resources:[
+    {key:"inspection-plans",label:"Prüfpläne",fields:[
+      {k:"name",l:"Bezeichnung",req:1},{k:"criteria",l:"Prüfkriterien",t:"textarea"}]},
+    {key:"complaints",label:"Reklamationen",fields:[
+      {k:"complaint_number",l:"Nummer"},
+      {k:"source",l:"Quelle",t:"select",opt:["kunde","lieferant","intern"]},
+      {k:"reference",l:"Referenz"},{k:"description",l:"Beschreibung",req:1,t:"textarea"},
+      {k:"severity",l:"Schwere",t:"select",opt:["niedrig","mittel","hoch","kritisch"]},
+      {k:"status",l:"Status",t:"select",opt:["offen","in_bearbeitung","geschlossen"]},
+      {k:"resolution",l:"Lösung",t:"textarea"}]},
+  ]},
+  {key:"dms",code:"DMS",label:"Dokumente",color:"#4B5563",desc:"Upload, Kategorien, Versionierung",resources:[
+    {key:"documents",label:"Dokumente",special:"dms",fields:[
+      {k:"title",l:"Titel",req:1},
+      {k:"category",l:"Kategorie",t:"select",opt:["allgemein","vertrag","rechnung","personal","technik"]},
+      {k:"tags",l:"Tags (kommagetrennt)"},{k:"version",l:"Version",t:"number"}]},
+  ]},
+];
+
+function ERPScreen({moduleKey,notify}){
+  const mod=ERP_MODULES.find(m=>m.key===moduleKey)||ERP_MODULES[0];
+  const[resKey,setResKey]=useState(mod.resources[0].key);
+  useEffect(()=>{setResKey(mod.resources[0].key);},[moduleKey]);
+  const res=mod.resources.find(r=>r.key===resKey)||mod.resources[0];
+  const[rows,setRows]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[search,setSearch]=useState("");
+  const[modal,setModal]=useState(null);      // {mode:'new'|'edit', row}
+  const[busy,setBusy]=useState(false);
+  const[alerts,setAlerts]=useState([]);
+  const[report,setReport]=useState(null);
+
+  const load=useCallback(()=>{
+    if(res.special==="co_report"){
+      setLoading(true);
+      api.get("/erp/co/report").then(setReport).catch(()=>setReport(null)).finally(()=>setLoading(false));
+      return;
+    }
+    setLoading(true);
+    api.get(`/erp/${res.key}${search?`?search=${encodeURIComponent(search)}`:""}`)
+      .then(d=>setRows(d.items||[]))
+      .catch(e=>{notify(e.message,"error");setRows([]);})
+      .finally(()=>setLoading(false));
+  },[res.key,res.special,search]);
+  useEffect(()=>{load();},[load]);
+  useEffect(()=>{
+    if(mod.key==="mm")api.get("/erp/mm/alerts").then(d=>setAlerts(d.alerts||[])).catch(()=>setAlerts([]));
+  },[mod.key,rows.length]);
+
+  const fmtCell=(f,v)=>{
+    if(v===null||v===undefined||v==="")return "—";
+    if(f.t==="number")return typeof v==="number"?v.toLocaleString("de-DE"):v;
+    if(f.t==="date")return String(v).slice(0,10).split("-").reverse().join(".");
+    return String(v);
+  };
+  const saveModal=async()=>{
+    const missing=res.fields.filter(f=>f.req&&!(modal.row[f.k]??"").toString().trim());
+    if(missing.length){notify(`Pflichtfeld fehlt: ${missing[0].l}`,"error");return;}
+    setBusy(true);
+    try{
+      const body={};
+      for(const f of res.fields){
+        let v=modal.row[f.k];
+        if(v===""||v===undefined)continue;
+        if(f.t==="number")v=parseFloat(v);
+        if(f.opt&&(v==="true"||v==="false"))v=v==="true";
+        body[f.k]=v;
+      }
+      if(modal.file)body.content_data=modal.file.data,body.filename=modal.file.name,body.mime_type=modal.file.type,body.size_bytes=modal.file.size;
+      if(modal.mode==="new")await api.post(`/erp/${res.key}`,body);
+      else await api.patch(`/erp/${res.key}/${modal.row.id}`,body);
+      notify("Gespeichert ✓","success");setModal(null);load();
+    }catch(e){notify(e.message,"error");}
+    finally{setBusy(false);}
+  };
+
+  return(<div>
+    {/* Breadcrumb */}
+    <div style={{fontSize:12,color:T.textMuted,marginBottom:6}}>ERP <span style={{margin:"0 4px"}}>/</span> <b style={{color:mod.color}}>{mod.label}</b> <span style={{margin:"0 4px"}}>/</span> {res.label}</div>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+      <span style={{background:mod.color,color:"#fff",borderRadius:8,fontSize:12,fontWeight:800,padding:"5px 9px",letterSpacing:.5}}>{mod.code}</span>
+      <div><h1 className="h1" style={{marginBottom:0}}>{mod.label}</h1><div className="caption">{mod.desc}</div></div>
+    </div>
+
+    {mod.key==="mm"&&alerts.length>0&&(
+      <div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:9,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#B91C1C"}}>
+        ⚠ <b>Mindestbestand unterschritten:</b> {alerts.map(a=>`${a.name} (${a.stock_qty}/${a.min_stock} ${a.unit||""})`).join(" · ")}
+      </div>
+    )}
+
+    {/* Ressourcen-Tabs */}
+    <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+      {mod.resources.map(r=>(
+        <button key={r.key} className={`btn btn-sm ${resKey===r.key?"btn-dark":"btn-ghost"}`} onClick={()=>{setResKey(r.key);setSearch("");}}>{r.label}</button>
+      ))}
+      <div style={{flex:1}}/>
+      {res.special==="lodas"&&<button className="btn btn-outline btn-sm" onClick={()=>api.downloadFile(`/erp/hcm/lodas-export?period=${new Date().toISOString().slice(0,7)}`).then(()=>{notify("LODAS-Export heruntergeladen ✓","success");load();}).catch(e=>notify(e.message,"error"))}>↓ LODAS-Export</button>}
+      {!res.readonly&&res.special!=="co_report"&&<button className="btn btn-primary btn-sm" onClick={()=>setModal({mode:"new",row:{}})}>+ Neu</button>}
+    </div>
+
+    {res.special==="co_report"?(
+      <div className="card" style={{padding:0,overflow:"hidden"}}>
+        <div style={{overflowX:"auto"}}><table style={{width:"100%"}}>
+          <thead><tr><th>Kostenstelle</th><th>Bezeichnung</th><th style={{textAlign:"right"}}>Budget (Soll)</th><th style={{textAlign:"right"}}>Ist</th><th style={{textAlign:"right"}}>Abweichung</th></tr></thead>
+          <tbody>
+            {loading?<tr><td colSpan={5} style={{padding:20}}><Spinner/></td></tr>
+            :!(report?.rows||[]).length?<tr><td colSpan={5} style={{padding:20,color:T.textMuted,fontSize:13}}>Keine Kostenstellen — unter FI/Controlling anlegen (Budgets-Tab braucht die Kostenstellen-ID).</td></tr>
+            :report.rows.map(r=>(
+              <tr key={r.id}>
+                <td style={{fontFamily:F.mono}}>{r.code}</td><td>{r.name}</td>
+                <td style={{textAlign:"right"}}>{r.budget.toLocaleString("de-DE")} €</td>
+                <td style={{textAlign:"right"}}>{r.actual.toLocaleString("de-DE")} €</td>
+                <td style={{textAlign:"right",color:r.deviation>0?"#DC2626":"#059669",fontWeight:600}}>{r.deviation>0?"+":""}{r.deviation.toLocaleString("de-DE")} €</td>
+              </tr>))}
+          </tbody>
+        </table></div>
+      </div>
+    ):(<>
+      <div style={{marginBottom:10,maxWidth:320}}>
+        <input className="input" placeholder="Suchen…" value={search} onChange={e=>setSearch(e.target.value)}/>
+      </div>
+      <div className="card" style={{padding:0,overflow:"hidden"}}>
+        <div style={{overflowX:"auto"}}><table style={{width:"100%"}}>
+          <thead><tr>{res.fields.slice(0,6).map(f=><th key={f.k}>{f.l}</th>)}<th/></tr></thead>
+          <tbody>
+            {loading?<tr><td colSpan={7} style={{padding:20}}><Spinner/></td></tr>
+            :!rows.length?<tr><td colSpan={7} style={{padding:20,color:T.textMuted,fontSize:13}}>Noch keine Einträge{res.readonly?"":" — legen Sie den ersten mit „+ Neu“ an"}.</td></tr>
+            :rows.map(r=>(
+              <tr key={r.id} style={{cursor:res.readonly?"default":"pointer"}} onClick={()=>!res.readonly&&setModal({mode:"edit",row:{...r}})}>
+                {res.fields.slice(0,6).map(f=><td key={f.k}>{fmtCell(f,r[f.k])}</td>)}
+                <td style={{textAlign:"right"}}>
+                  {res.special==="dms"&&r.has_file&&<button className="btn btn-ghost btn-sm" onClick={e=>{e.stopPropagation();api.downloadFile(`/erp/dms/documents/${r.id}/file`).catch(x=>notify(x.message,"error"));}}>↓</button>}
+                  {!res.readonly&&<button className="btn btn-ghost btn-sm" onClick={async e=>{e.stopPropagation();if(!window.confirm("Eintrag löschen/deaktivieren?"))return;try{await api.del(`/erp/${res.key}/${r.id}`);notify("Entfernt ✓","success");load();}catch(x){notify(x.message,"error");}}}>×</button>}
+                </td>
+              </tr>))}
+          </tbody>
+        </table></div>
+      </div>
+    </>)}
+
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(null)}>
+      <div className="modal" style={{maxWidth:560}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <b style={{fontSize:15}}>{modal.mode==="new"?`${res.label}: Neu`:`${res.label}: Bearbeiten`}</b>
+          <button onClick={()=>setModal(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:T.textMuted}}>×</button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11}}>
+          {res.fields.map(f=>(
+            <div key={f.k} style={f.t==="textarea"?{gridColumn:"1 / -1"}:undefined}>
+              <label className="label">{f.l}{f.req?" *":""}</label>
+              {f.t==="select"
+                ?<select className="select" value={modal.row[f.k]??""} onChange={e=>setModal(m=>({...m,row:{...m.row,[f.k]:e.target.value}}))}>
+                   <option value="">—</option>{f.opt.map(o=><option key={o} value={o}>{o}</option>)}
+                 </select>
+                :f.t==="textarea"
+                ?<textarea className="input" rows={3} value={modal.row[f.k]??""} onChange={e=>setModal(m=>({...m,row:{...m.row,[f.k]:e.target.value}}))}/>
+                :<input className="input" type={f.t==="number"?"number":f.t==="date"?"date":"text"}
+                   value={(modal.row[f.k]??"").toString().slice(0,f.t==="date"?10:200)}
+                   onChange={e=>setModal(m=>({...m,row:{...m.row,[f.k]:e.target.value}}))}/>}
+            </div>
+          ))}
+          {res.special==="dms"&&modal.mode==="new"&&(
+            <div style={{gridColumn:"1 / -1"}}>
+              <label className="label">Datei (max. 2 MB)</label>
+              <input type="file" onChange={e=>{
+                const file=e.target.files?.[0];if(!file)return;
+                if(file.size>2*1024*1024){notify("Datei zu groß — max. 2 MB","error");return;}
+                const rd=new FileReader();
+                rd.onload=()=>setModal(m=>({...m,file:{data:rd.result,name:file.name,type:file.type,size:file.size}}));
+                rd.readAsDataURL(file);
+              }}/>
+              {modal.file&&<div className="caption" style={{marginTop:4}}>{modal.file.name} ({Math.round(modal.file.size/1024)} KB)</div>}
+            </div>
+          )}
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setModal(null)}>Abbrechen</button>
+          <button className="btn btn-primary btn-sm" disabled={busy} onClick={saveModal}>{busy?"Speichert…":"Speichern"}</button>
+        </div>
+      </div>
+    </div>}
+  </div>);
+}
+
 // ── KI-BERATER (AI Core: Chat + Insights + Aktionsbestätigung) ─
 function KIScreen({notify}){
   const[messages,setMessages]=useState([]);       // {role, content}
@@ -4821,6 +5113,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
           {nav==="artikel"&&<ItemsScreen notify={notify}/>}
           {nav==="kunden"&&<KundenScreen notify={notify}/>}
           {nav==="ki"&&<KIScreen notify={notify}/>}
+          {nav?.startsWith("erp-")&&<ERPScreen moduleKey={nav.slice(4)} notify={notify}/>}
           {nav==="steuerberater"&&(
             hasKanzlei
               ? <PortalErrorBoundary><SteuerberaterPortal user={user} org={org} notify={notify} onBack={()=>setNav('dashboard')}/></PortalErrorBoundary>
