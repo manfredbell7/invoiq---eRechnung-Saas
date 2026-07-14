@@ -20,7 +20,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
   // API-Calls + Nicht-GET: immer Netzwerk, nie cachen
-  if (url.pathname.startsWith('/v1/') || url.hostname.includes('api.invoiq.io') || e.request.method !== 'GET') {
+  if (url.pathname.startsWith('/v1/') || url.hostname.startsWith('api.invoiq.') || e.request.method !== 'GET') {
     return; // Browser-Standard
   }
 

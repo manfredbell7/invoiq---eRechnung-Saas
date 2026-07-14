@@ -9,15 +9,17 @@ import { parseInboundXML, validateEN16931, hashXML } from './xmlEngine.js';
 
 /**
  * Org anhand der Empfängeradresse(n) auflösen.
- * Unterstützt [slug]@rechnungen.invoiq.io (neu) und rechnungen-[slug]@invoiq.io (alt).
+ * Unterstützt [slug]@rechnungen.invoiq.de (aktuell) sowie die Alt-Formate
+ * [slug]@rechnungen.invoiq.io und rechnungen-[slug]@invoiq.de/.io —
+ * bereits kommunizierte Adressen bleiben so gültig.
  * @param {string[]|string} recipients
  */
 export async function resolveOrgByRecipient(recipients) {
   const list = Array.isArray(recipients) ? recipients : [recipients];
   for (const r of list) {
     const addr = String(r || '');
-    const match = addr.match(/([a-z0-9\-]+)@rechnungen\.invoiq\.io/i)
-               || addr.match(/rechnungen-([a-z0-9\-]+)@invoiq\.io/i);
+    const match = addr.match(/([a-z0-9\-]+)@rechnungen\.invoiq\.(?:de|io)/i)
+               || addr.match(/rechnungen-([a-z0-9\-]+)@invoiq\.(?:de|io)/i);
     if (!match) continue;
     const { data: org } = await supabase
       .from('organizations')

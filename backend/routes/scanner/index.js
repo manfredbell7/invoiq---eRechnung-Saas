@@ -138,7 +138,7 @@ Regeln:
   });
   // ── FOTO PER E-MAIL / WHATSAPP ────────────────────────────────
   // POST /v1/scanner/from-email
-  // Mailgun Inbound: User schickt Foto/PDF an scanner@invoiq.io
+  // Mailgun Inbound: User schickt Foto/PDF an scanner@invoiq.de
   // → KI extrahiert Felder → als Entwurf in Rechnungen gespeichert
   fastify.post('/scanner/from-email', async (req, reply) => {
     try {

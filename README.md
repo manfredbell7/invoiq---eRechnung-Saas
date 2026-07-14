@@ -2,7 +2,7 @@
 
 > E-Rechnung für jedes System. XRechnung · ZUGFeRD · Peppol — in 48 Stunden live.
 
-🌐 **Website:** invoiq.io
+🌐 **Website:** invoiq.de
 
 ## Schnellstart
 
@@ -46,14 +46,46 @@ Feature-Flag ausgeblendet — **kein Code wurde entfernt**.
 - Entwickler-Override ohne Rebuild: in der Browser-Konsole
   `localStorage.setItem("invoiq_feature_erp","1")` und Seite neu laden.
 
+## Domain-Umzug invoiq.io → invoiq.de — Cutover-Checkliste
+
+Der Code referenziert seit diesem Stand durchgehend **invoiq.de**
+(Frontend `https://invoiq.de`, API `https://api.invoiq.de`, Inbound
+`[slug]@rechnungen.invoiq.de`). Damit das Live-System funktioniert, müssen
+diese Schritte **manuell** erledigt werden — idealerweise VOR dem Deploy
+dieses Stands:
+
+1. **Hostinger-DNS (invoiq.de):**
+   - `api` → CNAME auf den Railway-Zielhost (wird beim Anlegen der Custom
+     Domain in Railway angezeigt)
+   - Resend-Einträge laut Tabellen unten (SPF, DKIM, DMARC, MX)
+2. **Railway:** unter *Service → Settings → Networking* die Custom Domain
+   `api.invoiq.de` hinzufügen. Danach ENV-Variablen anpassen:
+   - `FRONTEND_URL=https://invoiq.de` (Passwort-Reset-Links, Stripe-Redirects)
+   - `EMAIL_FROM=rechnungen@invoiq.de` (bzw. Variable löschen — der neue
+     Code-Default ist bereits `rechnungen@invoiq.de`)
+   - `INBOUND_EMAIL_DOMAIN` löschen oder auf `rechnungen.invoiq.de` setzen
+   - `RESEND_WEBHOOK_SECRET` bleibt unverändert (kommt aus Resend)
+3. **Vercel:** `invoiq.de` + `www.invoiq.de` als (primäre) Domains des
+   Projekts prüfen; falls `VITE_API_URL` gesetzt ist, auf
+   `https://api.invoiq.de/v1` ändern und neu deployen.
+4. **Resend:** Domains `invoiq.de` (Versand) und `rechnungen.invoiq.de`
+   (Empfang) anlegen — Details unten.
+5. **Supabase:** keine Änderung nötig — die App nutzt eigene JWT-Auth
+   (Service-Role-Key), Supabase-Auth-Redirect-URLs sind nicht im Einsatz;
+   alle Nutzer-Links (z. B. Passwort-Reset) hängen an `FRONTEND_URL`.
+
+Übergangsphase: `invoiq.io` bleibt in der CORS-Allowlist und der
+Inbound-Webhook akzeptiert Alt-Adressen `[slug]@rechnungen.invoiq.io`
+weiter — bestehende Mandanten-Adressen brechen also nicht.
+
 ## DNS-Setup (Hostinger) — E-Mail-Versand & -Eingang
 
-Alle Einträge werden bei Hostinger unter **Domains → invoiq.io → DNS / Nameserver**
+Alle Einträge werden bei Hostinger unter **Domains → invoiq.de → DNS / Nameserver**
 gepflegt. Die mit `<…>` markierten Werte sind kontospezifisch und stehen im
 Resend-Dashboard unter [resend.com/domains](https://resend.com/domains) nach dem
 Anlegen der jeweiligen Domain — die Werte dort sind maßgeblich.
 
-### 1. Versand (Outbound) — Domain `invoiq.io` bei Resend anlegen
+### 1. Versand (Outbound) — Domain `invoiq.de` bei Resend anlegen
 
 | Typ | Name/Host | Wert | Priorität | Zweck |
 |---|---|---|---|---|
@@ -62,25 +94,25 @@ Anlegen der jeweiligen Domain — die Werte dort sind maßgeblich.
 | TXT | `resend._domainkey` | `p=<DKIM-Public-Key aus dem Resend-Dashboard>` | — | DKIM |
 | TXT | `_dmarc` | `v=DMARC1; p=none;` | — | DMARC (Empfehlung) |
 
-Absenderadresse ist `EMAIL_FROM` (Default `rechnungen@invoiq.io`). Solange die
+Absenderadresse ist `EMAIL_FROM` (Default `rechnungen@invoiq.de`). Solange die
 Domain nicht verifiziert ist, lehnt Resend jeden Versand ab — die App zeigt dann
 eine klare Fehlermeldung, und der Status ist in **Einstellungen → Unternehmen →
 E-Mail-Domain-Status** (grün/rot) sichtbar.
 
-### 2. Eingang (Inbound) — Domain `rechnungen.invoiq.io` bei Resend anlegen
+### 2. Eingang (Inbound) — Domain `rechnungen.invoiq.de` bei Resend anlegen
 
 | Typ | Name/Host | Wert | Priorität | Zweck |
 |---|---|---|---|---|
 | MX | `rechnungen` | `<Inbound-MX-Host aus dem Resend-Dashboard>` | 10 | Mailzustellung an Resend |
 
 Danach in Resend:
-1. **Inbound-Route** als Catch-all `*@rechnungen.invoiq.io` anlegen.
-2. **Webhook** auf `https://api.invoiq.io/v1/webhooks/email-inbound` für das
+1. **Inbound-Route** als Catch-all `*@rechnungen.invoiq.de` anlegen.
+2. **Webhook** auf `https://api.invoiq.de/v1/webhooks/email-inbound` für das
    Event `email.received` einrichten.
 3. Das angezeigte Signing Secret (`whsec_…`) in Railway als
    `RESEND_WEBHOOK_SECRET` setzen.
 
-Jeder Mandant hat automatisch die Adresse `[slug]@rechnungen.invoiq.io`
+Jeder Mandant hat automatisch die Adresse `[slug]@rechnungen.invoiq.de`
 (sichtbar auf dem Dashboard und in den Einstellungen). Eingehende
 XRechnung-/ZUGFeRD-Anhänge landen geparst im **Eingang**, PDFs ohne XML im
 Status „Prüfung"; der Absender wird als Lieferant angelegt.
