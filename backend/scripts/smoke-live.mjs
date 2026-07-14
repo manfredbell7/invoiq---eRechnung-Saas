@@ -302,6 +302,24 @@ await step('Mailgun: Replay-Schutz — alter Timestamp wird abgelehnt (403)', as
   assert(res.status === 403, `HTTP ${res.status} statt 403`);
 });
 
+await step('Resend-Inbound: Webhook lehnt unsignierte Zustellung ab (403/503)', async () => {
+  const res = await fetch(`${V}/webhooks/email-inbound`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'email.received', data: { to: ['test@rechnungen.invoiq.io'], from: 'x@example.com', subject: 'Smoke' } }),
+  });
+  // 403 = Secret gesetzt, Signatur fehlt · 503 = RESEND_WEBHOOK_SECRET noch nicht konfiguriert
+  assert([403, 503].includes(res.status), `HTTP ${res.status} statt 403/503 — Signaturprüfung nicht aktiv?`);
+});
+
+await step('E-Mail-Domain-Status: Endpoint liefert Versand-/Eingangs-Domain', async () => {
+  const res = await fetch(`${V}/auth/email-domain-status`, { headers: { Authorization: `Bearer ${token}` } });
+  assert(res.status === 200, `HTTP ${res.status}`);
+  const b = await res.json();
+  assert(b.outbound?.domain && b.inbound?.domain, `Antwort unvollständig: ${JSON.stringify(b)}`);
+  console.log(`   → Versand ${b.outbound.domain}: ${b.outbound.status} · Empfang ${b.inbound.domain}: ${b.inbound.status}`);
+});
+
 // ── ERGEBNIS ─────────────────────────────────────────────────
 console.log(`\n══════════════════════════════════════`);
 console.log(`Ergebnis: ${passed} bestanden · ${failed} fehlgeschlagen`);
