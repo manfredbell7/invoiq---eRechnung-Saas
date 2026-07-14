@@ -40,11 +40,12 @@ export async function buildServer() {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
       const allowed = [
-        // Alle Produktions-Domains (Vercel-Projekt: .io/.de/.fr + www)
-        'https://invoiq.io',
-        'https://www.invoiq.io',
+        // Alle Produktions-Domains (Hauptdomain: invoiq.de; .io/.fr als
+        // weiterhin erreichbare Alt-/Zusatz-Domains des Vercel-Projekts)
         'https://invoiq.de',
         'https://www.invoiq.de',
+        'https://invoiq.io',
+        'https://www.invoiq.io',
         'https://invoiq.fr',
         'https://www.invoiq.fr',
         process.env.FRONTEND_URL,
@@ -87,7 +88,7 @@ export async function buildServer() {
     name: 'invoiq API',
     version: 'v1',
     description: 'E-Invoice Platform — XRechnung · ZUGFeRD · Peppol',
-    docs: 'https://docs.invoiq.io',
+    docs: 'https://docs.invoiq.de',
     endpoints: {
       auth:     `${API}/auth`,
       invoices: `${API}/invoices`,

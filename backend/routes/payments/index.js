@@ -89,8 +89,8 @@ export async function paymentRoutes(fastify) {
         payment_method_types: ['card', 'sepa_debit'],
         locale: 'de',
         line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${process.env.FRONTEND_URL || 'https://invoiq.io'}?checkout=success&plan=${plan}`,
-        cancel_url: `${process.env.FRONTEND_URL || 'https://invoiq.io'}?checkout=cancelled`,
+        success_url: `${process.env.FRONTEND_URL || 'https://invoiq.de'}?checkout=success&plan=${plan}`,
+        cancel_url: `${process.env.FRONTEND_URL || 'https://invoiq.de'}?checkout=cancelled`,
         client_reference_id: req.org.id,
         customer: req.org.stripe_customer_id || undefined,
         customer_email: req.org.stripe_customer_id ? undefined : req.user?.email,
@@ -126,7 +126,7 @@ export async function paymentRoutes(fastify) {
     try {
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        return_url: `${process.env.FRONTEND_URL || 'https://invoiq.io'}/settings`,
+        return_url: `${process.env.FRONTEND_URL || 'https://invoiq.de'}/settings`,
       });
       return reply.send({ portal_url: session.url });
     } catch (err) {

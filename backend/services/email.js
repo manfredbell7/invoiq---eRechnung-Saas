@@ -1,5 +1,5 @@
 // src/services/email.js
-// Resend Email Service for invoiq.io
+// Resend Email Service for invoiq.de
 
 import { Resend } from 'resend';
 
@@ -15,7 +15,7 @@ function getResend() {
 // FROM_EMAIL bleibt als Alt-Alias, damit bestehende Deployments nicht brechen.
 // WICHTIG: Die Domain der Absenderadresse MUSS bei Resend verifiziert sein
 // (resend.com/domains), sonst lehnt Resend jeden Versand ab.
-const FROM_EMAIL = process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'rechnungen@invoiq.io';
+const FROM_EMAIL = process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'rechnungen@invoiq.de';
 const FROM_NAME = process.env.EMAIL_FROM_NAME || 'invoiq E-Rechnung';
 
 // Zentraler Versand: einheitlicher Absender + verständliche Fehlermeldungen.
@@ -33,7 +33,7 @@ async function sendMail(payload) {
   if (error) {
     const msg = String(error.message || error.name || error);
     if (/not verified|verify your domain|domain/i.test(msg)) {
-      const domain = FROM_EMAIL.split('@')[1] || 'invoiq.io';
+      const domain = FROM_EMAIL.split('@')[1] || 'invoiq.de';
       const e = new Error(
         `E-Mail-Versand blockiert: Die Absender-Domain „${domain}" ist bei Resend nicht verifiziert. `
         + `Bitte auf resend.com/domains die Domain anlegen und die angezeigten DNS-Einträge (DKIM, SPF) `
@@ -51,7 +51,7 @@ async function sendMail(payload) {
 }
 
 // Inbound-Domain für die persönlichen e-Rechnungs-Adressen ([slug]@…)
-export const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || 'rechnungen.invoiq.io';
+export const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || 'rechnungen.invoiq.de';
 
 /**
  * Verifikationsstatus der Absender- und Eingangs-Domain bei Resend.
@@ -59,7 +59,7 @@ export const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || 'rechnungen.in
  * Seite grün/rot anzeigen kann statt mit einem Fehler zu brechen.
  */
 export async function getEmailDomainStatus() {
-  const outboundDomain = FROM_EMAIL.split('@')[1] || 'invoiq.io';
+  const outboundDomain = FROM_EMAIL.split('@')[1] || 'invoiq.de';
   const base = {
     from: `${FROM_NAME} <${FROM_EMAIL}>`,
     outbound: { domain: outboundDomain, status: 'unknown', verified: false },
@@ -200,8 +200,8 @@ export async function sendTestEmail({ to }) {
   try {
     const data = await sendMail({
       to,
-      subject: 'Test Email - invoiq.io',
-      html: '<p>This is a test email from invoiq.io. If you receive this, your Resend integration is working correctly!</p>',
+      subject: 'Test Email - invoiq.de',
+      html: '<p>This is a test email from invoiq.de. If you receive this, your Resend integration is working correctly!</p>',
     });
 
     return { success: true, emailId: data.id };
@@ -253,7 +253,7 @@ function invoiceEmailTemplate(invoice) {
           Ihr invoiq Team</p>
         </div>
         <div class="footer">
-          <p>© 2026 invoiq.io - E-Rechnungslösung</p>
+          <p>© 2026 invoiq.de - E-Rechnungslösung</p>
         </div>
       </div>
     </body>

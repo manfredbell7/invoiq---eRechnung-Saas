@@ -51,7 +51,7 @@ export async function authRoutes(fastify) {
     if (existing) return reply.code(409).send({ error: 'E-Mail bereits registriert' });
 
     // Create org — Slug ist Basis der persönlichen e-Rechnungs-Adresse
-    // [slug]@rechnungen.invoiq.io: URL-/E-Mail-sicher (a-z, 0-9, Bindestrich),
+    // [slug]@rechnungen.invoiq.de: URL-/E-Mail-sicher (a-z, 0-9, Bindestrich),
     // Umlaute transliteriert, ohne Randbindestriche; Eindeutigkeit über UUID-Suffix.
     const slug = org_name.toLowerCase()
       .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
@@ -186,7 +186,7 @@ export async function authRoutes(fastify) {
       return reply.send(genericResponse);
     }
 
-    const resetUrl = `${process.env.FRONTEND_URL || 'https://invoiq.io'}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://invoiq.de'}/reset-password?token=${token}`;
     try {
       const { sendPasswordResetEmail } = await import('../../services/email.js');
       await sendPasswordResetEmail({ to: user.email, resetUrl, fullName: user.full_name });

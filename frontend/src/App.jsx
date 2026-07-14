@@ -12,7 +12,7 @@ import { T, F, CSS } from "./theme.js"; class PortalErrorBoundary extends Compon
 
 
 
-const API_BASE=(import.meta?.env?.VITE_API_URL)||"https://api.invoiq.io/v1";
+const API_BASE=(import.meta?.env?.VITE_API_URL)||"https://api.invoiq.de/v1";
 // Feature-Flags: ERP-Module + Vertriebs-Belegfluss sind vollständig implementiert,
 // aber standardmäßig ausgeblendet (Fokus: E-Rechnung Versand/Empfang).
 // Reaktivieren: VITE_ERP_ENABLED=true beim Build ODER im Browser
@@ -281,9 +281,9 @@ function Landing({onEnter,onLegal=()=>{}}){
   ];
 
   const STEPS=[
-    {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Deine persönliche invoiq-Adresse empfängt automatisch alle Eingangsrechnungen — kein ERP, kein IT-Aufwand.',tags:['firma@rechnungen.invoiq.io','XRechnung','ZUGFeRD','PDF'],preview:(
+    {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Deine persönliche invoiq-Adresse empfängt automatisch alle Eingangsrechnungen — kein ERP, kein IT-Aufwand.',tags:['firma@rechnungen.invoiq.de','XRechnung','ZUGFeRD','PDF'],preview:(
       <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-        {[['firma@rechnungen.invoiq.io','Aktiv ✓'],['XRechnung','Automatisch erkannt'],['ZUGFeRD / PDF','Automatisch erkannt']].map(([n,s],i)=>(
+        {[['firma@rechnungen.invoiq.de','Aktiv ✓'],['XRechnung','Automatisch erkannt'],['ZUGFeRD / PDF','Automatisch erkannt']].map(([n,s],i)=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgBorder}`:'none'}}>
             <div style={{width:7,height:7,borderRadius:'50%',background:s==='Connected'?T.green:T.bgBorder,flexShrink:0}}/>
             <span style={{fontSize:12.5,color:T.textPrimary,flex:1}}>{n}</span>
@@ -443,7 +443,7 @@ function Landing({onEnter,onLegal=()=>{}}){
               <div style={{flex:1,height:15,background:T.bgBorder,borderRadius:4,marginLeft:8,maxWidth:200}}/>
               <div style={{display:'flex',gap:5,alignItems:'center'}}>
                 <div style={{width:7,height:7,borderRadius:'50%',background:T.green,animation:'pulse 2s ease-in-out infinite'}}/>
-                <span style={{fontSize:10,color:T.textMuted,fontWeight:500}}>invoiq.io</span>
+                <span style={{fontSize:10,color:T.textMuted,fontWeight:500}}>invoiq.de</span>
               </div>
             </div>
             <div style={{display:'flex',height:420}}>
@@ -538,7 +538,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                         <span style={{fontSize:9.5,fontWeight:600}}>{r.a}</span>
                       </div>
                     ))}
-                    <div style={{marginTop:10,padding:'7px 10px',background:T.blueBg,border:`1px solid ${T.blueBdr}`,borderRadius:6,fontSize:9.5,color:T.blue}}>📧 rechnungen@invoiq.io · Peppol: 0190:DE...</div>
+                    <div style={{marginTop:10,padding:'7px 10px',background:T.blueBg,border:`1px solid ${T.blueBdr}`,borderRadius:6,fontSize:9.5,color:T.blue}}>📧 rechnungen@invoiq.de · Peppol: 0190:DE...</div>
                   </div>}
                   {heroTab===4&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
                     <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
@@ -984,7 +984,7 @@ function Landing({onEnter,onLegal=()=>{}}){
     {/* FOOTER */}
     <footer style={{background:T.bg,borderTop:`1px solid ${T.bgBorder}`,padding:'24px clamp(16px,4vw,56px)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
       <Wordmark size={18}/>
-      <div style={{fontSize:12,color:T.textMuted}}>© 2025 invoiq · invoiq.io · EN 16931 · GoBD · ViDA-ready · DSGVO</div>
+      <div style={{fontSize:12,color:T.textMuted}}>© 2025 invoiq · invoiq.de · EN 16931 · GoBD · ViDA-ready · DSGVO</div>
       <div style={{display:'flex',gap:16}}>{[['Impressum','impressum'],['Datenschutz','datenschutz'],['AGB','agb']].map(([l,s])=><button key={l} onClick={()=>onLegal(s)} style={{fontSize:12,color:T.textMuted,background:'none',border:'none',cursor:'pointer',fontFamily:F.ui}} onMouseEnter={e=>e.target.style.color=T.textPrimary} onMouseLeave={e=>e.target.style.color=T.textMuted}>{l}</button>)}</div>
     </footer>
   </div>);
@@ -1352,10 +1352,10 @@ function Dashboard({user,org,notify,onNav}){
       <div style={{padding:'12px 16px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
         <div>
           <div style={{fontSize:12.5,fontWeight:600,color:T.accent,marginBottom:2}}>Ihre e-Rechnungs-Adresse</div>
-          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{org.inbound_email_slug}@rechnungen.invoiq.io</div>
+          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{org.inbound_email_slug}@rechnungen.invoiq.de</div>
           <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Schicken Sie Rechnungen an diese Adresse — invoiq erfasst sie automatisch.</div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`${org.inbound_email_slug}@rechnungen.invoiq.io`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`${org.inbound_email_slug}@rechnungen.invoiq.de`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
       </div>
     )}
 
@@ -2397,7 +2397,7 @@ function InboundScreen({notify, org}){
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <button className="btn btn-ghost btn-sm" onClick={()=>api.datevExportInbound('',null,null).then(()=>notify('DATEV-Export heruntergeladen ✓','success')).catch(e=>notify(e.message,'error'))}>↓ DATEV-Export</button>
           <button className="btn btn-ghost btn-sm" onClick={()=>{
-            navigator.clipboard.writeText(`${emailSlug}@rechnungen.invoiq.io`);
+            navigator.clipboard.writeText(`${emailSlug}@rechnungen.invoiq.de`);
             notify(`E-Mail-Adresse kopiert ✓`,'success');
           }}>📋 Meine Eingangs-E-Mail</button>
         </div>
@@ -2407,10 +2407,10 @@ function InboundScreen({notify, org}){
       <div style={{padding:'12px 16px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
         <div>
           <div style={{fontSize:12.5,fontWeight:600,color:T.accent,marginBottom:2}}>Ihre Eingangs-E-Mail-Adresse</div>
-          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{emailSlug||'...'}@rechnungen.invoiq.io</div>
+          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{emailSlug||'...'}@rechnungen.invoiq.de</div>
           <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Lieferanten schicken Rechnungen einfach an diese Adresse — invoiq verarbeitet alles automatisch.</div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`${emailSlug}@rechnungen.invoiq.io`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`${emailSlug}@rechnungen.invoiq.de`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
       </div>
 
       {/* Skonto-Alerts */}
@@ -2525,7 +2525,7 @@ function InboundScreen({notify, org}){
                   <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,margin:'0 auto 16px'}}>📬</div>
                   <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>Noch keine Eingangsrechnung</div>
                   <div style={{fontSize:14,marginBottom:6}}>Deine Eingangs-E-Mail-Adresse ist bereit:</div>
-                  <code style={{background:T.accentLight,padding:'4px 10px',borderRadius:5,fontSize:12.5,fontFamily:F.mono,color:T.accent}}>{emailSlug}@rechnungen.invoiq.io</code>
+                  <code style={{background:T.accentLight,padding:'4px 10px',borderRadius:5,fontSize:12.5,fontFamily:F.mono,color:T.accent}}>{emailSlug}@rechnungen.invoiq.de</code>
                   <div style={{fontSize:13,marginTop:14}}>Lieferanten schicken Rechnungen einfach dorthin.</div>
                 </div>
               </td></tr>}
@@ -3931,11 +3931,11 @@ function ApiSettingsTab({org,notify}){
 }
 
 function SettingsScreen({user,org,notify,initialTab}){
-  const inboundAddress = org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.io` : null;
+  const inboundAddress = org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.de` : null;
   const[tab,setTab]   = useState(initialTab||'company');
   useEffect(()=>{if(initialTab)setTab(initialTab);},[initialTab]);
   const[saving,setSaving] = useState(false);
-  // Resend-Domain-Verifikation (Versand invoiq.io / Eingang rechnungen.invoiq.io)
+  // Resend-Domain-Verifikation (Versand invoiq.de / Eingang rechnungen.invoiq.de)
   const[domainStatus,setDomainStatus] = useState(null);
   useEffect(()=>{api.getEmailDomainStatus().then(setDomainStatus).catch(()=>setDomainStatus({error:'Status nicht abrufbar'}));},[]);
   const[form,setForm] = useState({
@@ -4273,7 +4273,8 @@ function Placeholder({title,sub,icon="📋"}){return(<div className="fi"><h1 sty
 
 // ── ADMIN SHELL ───────────────────────────────────────────────
 function AdminShell({user,org,nav,setNav,onBack,children}){
-  const isSuper=user?.email==="demo@invoiq.io"||user?.email==="manfred@invoiq.io";
+  // Bestandskonten können noch auf @invoiq.io registriert sein — beide Domains akzeptieren
+  const isSuper=["demo@invoiq.de","manfred@invoiq.de","demo@invoiq.io","manfred@invoiq.io"].includes(user?.email);
   const items=isSuper?[{section:"Platform"},{key:"overview",icon:"·",label:"Übersicht"},{key:"allinvoices",icon:"·",label:"All Documents"},{key:"users",icon:"·",label:"Users"},{key:"revenue",icon:"·",label:"Revenue"},{section:"System"},{key:"peppol",icon:"·",label:"Peppol"},{key:"apilogs",icon:"·",label:"Audit Logs"}]:[{section:org?.name||"Company"},{key:"overview",icon:"▦",label:"Übersicht"},{key:"myinvoices",icon:"·",label:"Documents"},{key:"myusers",icon:"·",label:"Team"},{key:"billing",icon:"·",label:"Billing"}];
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
     <aside className="sidebar" style={{background:T.brand}}>
@@ -4325,7 +4326,7 @@ function AdminOverview({notify,isSuper}){
   const openErrors = adminStats?.open_errors || 0;
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.io · Super-Admin":(orgs[0]?.name||"")}</p></div>
+      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.de · Super-Admin":(orgs[0]?.name||"")}</p></div>
       {isSuper&&<button className="btn btn-ghost btn-sm" onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo (nur Dev)"}</button>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(170px,100%),1fr))",gap:10,marginBottom:16}}>
@@ -4868,11 +4869,11 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
               </div>
             </div>
             <div style={{ padding: '10px 14px', background: T.amberBg, border: `1px solid ${T.amberBdr}`, borderRadius: 7, fontSize: 12.5, color: T.amber, marginBottom: 16 }}>
-              Der automatische Einladungs-Flow ist in Vorbereitung. Bis dahin: Der Mandant registriert sich selbst unter invoiq.io — melden Sie sich beim Support, um die Verknüpfung mit Ihrer Kanzlei einzurichten.
+              Der automatische Einladungs-Flow ist in Vorbereitung. Bis dahin: Der Mandant registriert sich selbst unter invoiq.de — melden Sie sich beim Support, um die Verknüpfung mit Ihrer Kanzlei einzurichten.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setInviteModal(false)}>Schließen</button>
-              <button className="btn btn-primary" onClick={() => { window.location.href = 'mailto:support@invoiq.io?subject=Mandanten-Verknüpfung Kanzlei-Portal'; }}>Support kontaktieren →</button>
+              <button className="btn btn-primary" onClick={() => { window.location.href = 'mailto:support@invoiq.de?subject=Mandanten-Verknüpfung Kanzlei-Portal'; }}>Support kontaktieren →</button>
             </div>
           </div>
         </div>
@@ -4889,7 +4890,7 @@ function LegalPage({ title, onBack, children }) {
   return (
     <div style={{ minHeight:'100vh', background:T.bgSubtle }}>
       <header style={{ height:58, background:T.bg, borderBottom:`1px solid ${T.bgBorder}`, display:'flex', alignItems:'center', padding:'0 clamp(16px,4vw,56px)', gap:16 }}>
-        <button onClick={onBack} className="btn btn-ghost btn-sm">← invoiq.io</button>
+        <button onClick={onBack} className="btn btn-ghost btn-sm">← invoiq.de</button>
         <Wordmark size={20}/>
       </header>
       <div style={{ maxWidth:760, margin:'0 auto', padding:'48px clamp(16px,4vw,40px) 80px' }}>
@@ -4916,8 +4917,8 @@ function Impressum({ onBack }) {
       <P>Manfred Bell, Geschäftsführer</P>
 
       <H>Kontakt</H>
-      <P>E-Mail: <a href="mailto:manfred@invoiq.io" style={{ color:T.accent }}>manfred@invoiq.io</a><br/>
-      Web: <a href="https://invoiq.io" style={{ color:T.accent }}>https://invoiq.io</a></P>
+      <P>E-Mail: <a href="mailto:manfred@invoiq.de" style={{ color:T.accent }}>manfred@invoiq.de</a><br/>
+      Web: <a href="https://invoiq.de" style={{ color:T.accent }}>https://invoiq.de</a></P>
 
       <H>Registereintrag</H>
       <P>Registrierung beim Amtsgericht Dresden wird beantragt.<br/>
@@ -4947,7 +4948,7 @@ function Datenschutz({ onBack }) {
 
       <H>1. Verantwortlicher</H>
       <P>invoiq UG (haftungsbeschränkt) (i.G.), Manfred Bell, Musterstraße 1, 01234 Dresden<br/>
-      E-Mail: <a href="mailto:datenschutz@invoiq.io" style={{ color:T.accent }}>datenschutz@invoiq.io</a></P>
+      E-Mail: <a href="mailto:datenschutz@invoiq.de" style={{ color:T.accent }}>datenschutz@invoiq.de</a></P>
 
       <H>2. Verarbeitete Daten & Zwecke</H>
       <P><strong>Kontodaten:</strong> Name, E-Mail-Adresse, Unternehmensname, USt-IdNr. — zur Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO)</P>
@@ -4977,11 +4978,11 @@ function Datenschutz({ onBack }) {
       ]}/>
 
       <H>6. Ihre Rechte</H>
-      <P>Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Wenden Sie sich an: <a href="mailto:datenschutz@invoiq.io" style={{ color:T.accent }}>datenschutz@invoiq.io</a></P>
+      <P>Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Wenden Sie sich an: <a href="mailto:datenschutz@invoiq.de" style={{ color:T.accent }}>datenschutz@invoiq.de</a></P>
       <P>Sie haben zudem das Recht, Beschwerde bei einer Aufsichtsbehörde einzulegen. Zuständig: Sächsischer Datenschutzbeauftragter, <a href="https://www.saechsdsb.de" style={{ color:T.accent }}>www.saechsdsb.de</a></P>
 
       <H>7. Cookies</H>
-      <P>invoiq.io verwendet ausschließlich technisch notwendige Cookies (Session-Token). Keine Tracking- oder Marketing-Cookies. Keine Cookie-Banner erforderlich.</P>
+      <P>invoiq.de verwendet ausschließlich technisch notwendige Cookies (Session-Token). Keine Tracking- oder Marketing-Cookies. Keine Cookie-Banner erforderlich.</P>
 
       <H>8. Datensicherheit</H>
       <P>Alle Datenübertragungen erfolgen verschlüsselt über TLS 1.3. Zugang zur Plattform ist passwortgeschützt mit bcrypt-Hashing. API-Keys werden nur gehashed gespeichert.</P>
@@ -4995,7 +4996,7 @@ function AGB({ onBack }) {
       <P><strong>invoiq UG (haftungsbeschränkt) (i.G.)</strong> — Stand: Mai 2025</P>
 
       <H>§ 1 Geltungsbereich</H>
-      <P>Diese AGB gelten für alle Verträge zwischen invoiq UG (haftungsbeschränkt) i.G. (nachfolgend "invoiq") und Unternehmern (§ 14 BGB) über die Nutzung der SaaS-Plattform invoiq.io.</P>
+      <P>Diese AGB gelten für alle Verträge zwischen invoiq UG (haftungsbeschränkt) i.G. (nachfolgend "invoiq") und Unternehmern (§ 14 BGB) über die Nutzung der SaaS-Plattform invoiq.de.</P>
 
       <H>§ 2 Vertragsgegenstand</H>
       <P>invoiq stellt eine cloudbasierte Software-as-a-Service-Plattform zur Erstellung, Versendung, Validierung und Archivierung von elektronischen Rechnungen gemäß EN 16931 bereit. Der Funktionsumfang richtet sich nach dem gebuchten Tarif.</P>
@@ -5011,7 +5012,7 @@ function AGB({ onBack }) {
       <P>Überschreitungen werden mit 0,50 € je zusätzlichem Dokument berechnet.</P>
 
       <H>§ 4 Laufzeit & Kündigung</H>
-      <P>Monatliche Tarife können monatlich, jährliche Tarife zum Ende der Laufzeit gekündigt werden. Kündigung jederzeit im Kundenkonto unter Einstellungen → Abrechnung oder per E-Mail an <a href="mailto:kuendigung@invoiq.io" style={{ color:T.accent }}>kuendigung@invoiq.io</a>.</P>
+      <P>Monatliche Tarife können monatlich, jährliche Tarife zum Ende der Laufzeit gekündigt werden. Kündigung jederzeit im Kundenkonto unter Einstellungen → Abrechnung oder per E-Mail an <a href="mailto:kuendigung@invoiq.de" style={{ color:T.accent }}>kuendigung@invoiq.de</a>.</P>
       <P>Nach Kündigung bleiben Daten 90 Tage abrufbar, danach werden sie gelöscht (ausgenommen GoBD-archivierte Dokumente, die gesetzlich 10 Jahre aufbewahrt werden müssen).</P>
 
       <H>§ 5 Preise & Zahlung</H>
@@ -5029,7 +5030,7 @@ function AGB({ onBack }) {
       ]}/>
 
       <H>§ 8 Datenschutz & Auftragsverarbeitung</H>
-      <P>invoiq verarbeitet Rechnungsdaten als Auftragsverarbeiter im Sinne des Art. 28 DSGVO. Der Abschluss eines Auftragsverarbeitungsvertrags (AVV) ist auf Anfrage möglich: <a href="mailto:datenschutz@invoiq.io" style={{ color:T.accent }}>datenschutz@invoiq.io</a></P>
+      <P>invoiq verarbeitet Rechnungsdaten als Auftragsverarbeiter im Sinne des Art. 28 DSGVO. Der Abschluss eines Auftragsverarbeitungsvertrags (AVV) ist auf Anfrage möglich: <a href="mailto:datenschutz@invoiq.de" style={{ color:T.accent }}>datenschutz@invoiq.de</a></P>
 
       <H>§ 9 Haftung</H>
       <P>invoiq haftet unbeschränkt für Vorsatz und grobe Fahrlässigkeit sowie für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit. Bei leichter Fahrlässigkeit haftet invoiq nur bei Verletzung wesentlicher Vertragspflichten, begrenzt auf den vorhersehbaren, vertragstypischen Schaden, maximal auf die in den letzten 12 Monaten gezahlten Entgelte.</P>

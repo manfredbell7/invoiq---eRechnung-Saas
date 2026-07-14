@@ -95,7 +95,7 @@ async function deliverViaEmail(invoice, xml, org) {
         <p style="color: #6B7280; font-size: 13px;">Die strukturierte XML-Rechnung ist als Anhang beigefügt. Diese Rechnung entspricht der EN 16931 und ist GoBD-konform.</p>
         <hr style="border: 1px solid #E5E7EB; margin: 20px 0;">
         <p style="color: #9CA3AF; font-size: 12px; text-align: center;">
-          Verarbeitet durch <strong>invoiq</strong> — E-Invoice Platform · invoiq.io
+          Verarbeitet durch <strong>invoiq</strong> — E-Invoice Platform · invoiq.de
         </p>
       </div>
     </div>`;
