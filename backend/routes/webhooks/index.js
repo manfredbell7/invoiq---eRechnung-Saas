@@ -2,6 +2,8 @@
 import { randomBytes } from 'crypto';
 import { db } from '../../config/db.js';
 import { authMiddleware } from '../../middleware/auth.js';
+import { verifySvixSignature } from '../../lib/svixAuth.js';
+import { processInboundEmail, resolveOrgByRecipient } from '../../services/inboundProcessor.js';
 
 // HINWEIS: Es gab zwei konkurrierende Stripe-Webhook-Implementierungen
 // (routes/payments/index.js und routes/webhooks/stripe.js). Letztere war
@@ -9,6 +11,60 @@ import { authMiddleware } from '../../middleware/auth.js';
 // vollständige Implementierung lebt unter POST /v1/payments/webhook.
 
 export async function webhookRoutes(fastify) {
+
+  // JSON-Parser nur in diesem Plugin-Scope überschreiben: Svix signiert den
+  // ROHEN Body — wir bewahren ihn als req.rawBody auf und parsen selbst.
+  fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
+    req.rawBody = body;
+    try {
+      done(null, body.length ? JSON.parse(body.toString('utf-8')) : {});
+    } catch (err) {
+      err.statusCode = 400;
+      done(err);
+    }
+  });
+
+  // ── RESEND INBOUND — [slug]@rechnungen.invoiq.io ─────────────
+  // Resend Inbound-Route (catch-all *@rechnungen.invoiq.io) sendet das Event
+  // "email.received" hierher; Signatur nach Svix-Schema.
+  fastify.post('/email-inbound', async (req, reply) => {
+    const check = verifySvixSignature({
+      id:        req.headers['svix-id'],
+      timestamp: req.headers['svix-timestamp'],
+      signature: req.headers['svix-signature'],
+      rawBody:   req.rawBody,
+      secret:    process.env.RESEND_WEBHOOK_SECRET,
+    });
+    if (!check.ok) {
+      fastify.log.warn({ reason: check.reason }, 'webhooks/email-inbound: Signatur abgelehnt');
+      return reply.code(check.reason?.includes('konfiguriert') ? 503 : 403)
+        .send({ error: `Webhook abgelehnt: ${check.reason}` });
+    }
+
+    const event = req.body || {};
+    // Nur eingehende Mails verarbeiten — Versand-Events (email.sent etc.) bestätigen
+    if (event.type && event.type !== 'email.received' && event.type !== 'inbound.email.received') {
+      return { received: true, ignored: event.type };
+    }
+    const data = event.data || event;
+
+    const recipients = [].concat(data.to || [], data.cc || [], data.recipient || []);
+    const org = await resolveOrgByRecipient(recipients);
+    // 200 auch bei unbekanntem Empfänger — sonst retried Resend endlos
+    if (!org) return { received: true, matched: false };
+
+    const sender  = typeof data.from === 'object' ? (data.from?.email || data.from?.address || '') : (data.from || '');
+    const subject = data.subject || '';
+    const attachments = await loadResendAttachments(data, fastify.log);
+
+    try {
+      const { processed } = await processInboundEmail({ org, sender, subject, attachments, source: 'resend' });
+      return { received: true, processed };
+    } catch (err) {
+      fastify.log.error(err, 'webhooks/email-inbound: Verarbeitung fehlgeschlagen');
+      return { received: true, processed: 0 };
+    }
+  });
 
   fastify.get('/', { preHandler: authMiddleware }, async (req) => {
     const whs = await db.findWebhooks(req.org.id);
@@ -36,6 +92,39 @@ export async function webhookRoutes(fastify) {
     if (!ok) return reply.code(404).send({ error: 'Webhook nicht gefunden' });
     return { message: 'Webhook gelöscht' };
   });
+}
+
+// Anhänge aus dem Resend-Event laden. Resend liefert Inhalte je nach
+// API-Version inline (base64 in content) oder als Download-URL — beide
+// Varianten werden unterstützt; nicht ladbare Anhänge werden übersprungen.
+async function loadResendAttachments(data, log) {
+  const out = [];
+  for (const att of data.attachments || []) {
+    const filename = att.filename || att.name || 'anhang';
+    try {
+      if (att.content) {
+        const buffer = Buffer.isBuffer(att.content)
+          ? att.content
+          : Buffer.from(String(att.content), 'base64');
+        out.push({ filename, buffer });
+        continue;
+      }
+      const url = att.download_url || att.url;
+      if (url && /^https:\/\//.test(url)) {
+        const headers = url.includes('resend.com')
+          ? { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } : {};
+        const res = await fetch(url, { headers });
+        if (res.ok) {
+          out.push({ filename, buffer: Buffer.from(await res.arrayBuffer()) });
+          continue;
+        }
+        log?.warn({ filename, status: res.status }, 'Resend-Anhang nicht ladbar');
+      }
+    } catch (err) {
+      log?.warn({ filename, err: err.message }, 'Resend-Anhang übersprungen');
+    }
+  }
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────

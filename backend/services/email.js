@@ -3,11 +3,95 @@
 
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-Init: der Resend-Konstruktor wirft ohne API-Key — ohne Lazy-Init
+// würde allein der Import dieses Moduls den Serverstart verhindern.
+let _resend = null;
+function getResend() {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 
-// Email configuration
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@invoiq.io';
-const FROM_NAME = 'invoiq E-Rechnung';
+// Absender-Konfiguration — .env.example nutzt EMAIL_FROM/EMAIL_FROM_NAME;
+// FROM_EMAIL bleibt als Alt-Alias, damit bestehende Deployments nicht brechen.
+// WICHTIG: Die Domain der Absenderadresse MUSS bei Resend verifiziert sein
+// (resend.com/domains), sonst lehnt Resend jeden Versand ab.
+const FROM_EMAIL = process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'rechnungen@invoiq.io';
+const FROM_NAME = process.env.EMAIL_FROM_NAME || 'invoiq E-Rechnung';
+
+// Zentraler Versand: einheitlicher Absender + verständliche Fehlermeldungen.
+// Resend liefert bei unverifizierter Domain einen kryptischen 403 — wir
+// übersetzen das in eine Meldung, mit der der Betreiber etwas anfangen kann.
+async function sendMail(payload) {
+  if (!process.env.RESEND_API_KEY) {
+    const e = new Error('E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY fehlt).');
+    e.statusCode = 503; throw e;
+  }
+  const { data, error } = await getResend().emails.send({
+    from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    ...payload,
+  });
+  if (error) {
+    const msg = String(error.message || error.name || error);
+    if (/not verified|verify your domain|domain/i.test(msg)) {
+      const domain = FROM_EMAIL.split('@')[1] || 'invoiq.io';
+      const e = new Error(
+        `E-Mail-Versand blockiert: Die Absender-Domain „${domain}" ist bei Resend nicht verifiziert. `
+        + `Bitte auf resend.com/domains die Domain anlegen und die angezeigten DNS-Einträge (DKIM, SPF) `
+        + `beim DNS-Provider setzen. Bis dahin ist kein E-Mail-Versand möglich.`);
+      e.statusCode = 503; throw e;
+    }
+    if (/api key|unauthorized|invalid/i.test(msg) && /key/i.test(msg)) {
+      const e = new Error('E-Mail-Versand nicht möglich: RESEND_API_KEY ist ungültig.');
+      e.statusCode = 503; throw e;
+    }
+    const e = new Error(`E-Mail-Versand fehlgeschlagen: ${msg}`);
+    e.statusCode = 502; throw e;
+  }
+  return data;
+}
+
+// Inbound-Domain für die persönlichen e-Rechnungs-Adressen ([slug]@…)
+export const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || 'rechnungen.invoiq.io';
+
+/**
+ * Verifikationsstatus der Absender- und Eingangs-Domain bei Resend.
+ * Wirft nicht — liefert immer ein Status-Objekt, damit die Einstellungen-
+ * Seite grün/rot anzeigen kann statt mit einem Fehler zu brechen.
+ */
+export async function getEmailDomainStatus() {
+  const outboundDomain = FROM_EMAIL.split('@')[1] || 'invoiq.io';
+  const base = {
+    from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    outbound: { domain: outboundDomain, status: 'unknown', verified: false },
+    inbound:  { domain: INBOUND_DOMAIN, status: 'unknown', verified: false },
+  };
+  if (!process.env.RESEND_API_KEY) {
+    base.outbound.status = base.inbound.status = 'unconfigured';
+    base.error = 'RESEND_API_KEY ist nicht gesetzt — E-Mail-Versand und -Empfang sind deaktiviert.';
+    return base;
+  }
+  try {
+    const { data, error } = await getResend().domains.list();
+    if (error) {
+      base.outbound.status = base.inbound.status = 'error';
+      base.error = `Resend-Abfrage fehlgeschlagen: ${error.message || error.name || error}`;
+      return base;
+    }
+    const domains = data?.data || (Array.isArray(data) ? data : []);
+    for (const key of ['outbound', 'inbound']) {
+      const entry = domains.find(d => d.name === base[key].domain);
+      if (!entry) { base[key].status = 'missing'; continue; }
+      base[key].status = entry.status || 'pending';   // verified | pending | failed | …
+      base[key].verified = entry.status === 'verified';
+      if (entry.region) base[key].region = entry.region;
+    }
+    return base;
+  } catch (err) {
+    base.outbound.status = base.inbound.status = 'error';
+    base.error = `Resend-Abfrage fehlgeschlagen: ${err.message}`;
+    return base;
+  }
+}
 
 /**
  * Send invoice email with XRechnung XML attachment
@@ -18,9 +102,6 @@ const FROM_NAME = 'invoiq E-Rechnung';
  * @param {Buffer} params.pdfBuffer - Optional PDF attachment
  */
 export async function sendInvoiceEmail({ to, invoice, xmlBuffer, pdfBuffer }) {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY fehlt).');
-  }
   try {
     const attachments = [
       {
@@ -36,18 +117,12 @@ export async function sendInvoiceEmail({ to, invoice, xmlBuffer, pdfBuffer }) {
       });
     }
 
-    const { data, error } = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    const data = await sendMail({
       to,
       subject: `Rechnung ${invoice.invoice_number} - ${invoice.customer_name}`,
       html: invoiceEmailTemplate(invoice),
       attachments,
     });
-
-    if (error) {
-      console.error('[Email Service] Error sending invoice:', error);
-      throw error;
-    }
 
     console.log('[Email Service] Invoice sent successfully:', data.id);
     return { success: true, emailId: data.id };
@@ -62,14 +137,11 @@ export async function sendInvoiceEmail({ to, invoice, xmlBuffer, pdfBuffer }) {
  */
 export async function sendPaymentSuccessEmail({ to, invoice, paymentDetails }) {
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    const data = await sendMail({
       to,
       subject: `Zahlungsbestätigung - Rechnung ${invoice.invoice_number}`,
       html: paymentSuccessTemplate(invoice, paymentDetails),
     });
-
-    if (error) throw error;
 
     console.log('[Email Service] Payment confirmation sent:', data.id);
     return { success: true, emailId: data.id };
@@ -84,14 +156,11 @@ export async function sendPaymentSuccessEmail({ to, invoice, paymentDetails }) {
  */
 export async function sendPaymentFailedEmail({ to, invoice, errorReason }) {
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    const data = await sendMail({
       to,
       subject: `Zahlungsfehler - Rechnung ${invoice.invoice_number}`,
       html: paymentFailedTemplate(invoice, errorReason),
     });
-
-    if (error) throw error;
 
     console.log('[Email Service] Payment failed notification sent:', data.id);
     return { success: true, emailId: data.id };
@@ -105,11 +174,7 @@ export async function sendPaymentFailedEmail({ to, invoice, errorReason }) {
  * Send password reset email
  */
 export async function sendPasswordResetEmail({ to, resetUrl, fullName }) {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY fehlt).');
-  }
-  const { data, error } = await resend.emails.send({
-    from: `${FROM_NAME} <${FROM_EMAIL}>`,
+  const data = await sendMail({
     to,
     subject: 'invoiq — Passwort zurücksetzen',
     html: `
@@ -125,7 +190,6 @@ export async function sendPasswordResetEmail({ to, resetUrl, fullName }) {
       </div>
     `,
   });
-  if (error) throw error;
   return { success: true, emailId: data.id };
 }
 
@@ -134,14 +198,11 @@ export async function sendPasswordResetEmail({ to, resetUrl, fullName }) {
  */
 export async function sendTestEmail({ to }) {
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    const data = await sendMail({
       to,
       subject: 'Test Email - invoiq.io',
       html: '<p>This is a test email from invoiq.io. If you receive this, your Resend integration is working correctly!</p>',
     });
-
-    if (error) throw error;
 
     return { success: true, emailId: data.id };
   } catch (error) {

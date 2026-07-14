@@ -13,6 +13,13 @@ import { T, F, CSS } from "./theme.js"; class PortalErrorBoundary extends Compon
 
 
 const API_BASE=(import.meta?.env?.VITE_API_URL)||"https://api.invoiq.io/v1";
+// Feature-Flags: ERP-Module + Vertriebs-Belegfluss sind vollständig implementiert,
+// aber standardmäßig ausgeblendet (Fokus: E-Rechnung Versand/Empfang).
+// Reaktivieren: VITE_ERP_ENABLED=true beim Build ODER im Browser
+// localStorage.setItem('invoiq_feature_erp','1') — kein Code-Rückbau nötig.
+const FEATURES={
+  erp:(import.meta?.env?.VITE_ERP_ENABLED==="true")||(typeof localStorage!=="undefined"&&localStorage.getItem("invoiq_feature_erp")==="1"),
+};
 const api={
   _token:(typeof localStorage!=='undefined'&&localStorage.getItem("invoiq_token"))||null,
   setToken(t){this._token=t;if(typeof localStorage!=='undefined'){if(t)localStorage.setItem("invoiq_token",t);else localStorage.removeItem("invoiq_token");}},
@@ -68,6 +75,7 @@ const api={
   // Einstellungen
   saveSettings:(b)=>api.post('/auth/settings',b),
   getOrgSettings:()=>api.get('/auth/settings'),
+  getEmailDomainStatus:()=>api.get('/auth/email-domain-status'),
   // Kundenstammdaten
   listCustomers:(search='')=>api.get(`/customers${search?`?search=${encodeURIComponent(search)}`:''}`),
   // Belegfluss (SAP-nah): Anfrage/Angebot/Auftrag/Lieferung
@@ -1125,6 +1133,7 @@ NAV_ICONS["erp-mm"]=NAV_ICONS.artikel; NAV_ICONS["erp-pp"]=NAV_ICONS.settings;
 NAV_ICONS["erp-co"]=NAV_ICONS.invoices; NAV_ICONS["erp-hcm"]=NAV_ICONS.kunden;
 NAV_ICONS["erp-crm"]=NAV_ICONS.kunden; NAV_ICONS["erp-pm"]=NAV_ICONS.belege;
 NAV_ICONS["erp-qm"]=NAV_ICONS.scanner; NAV_ICONS["erp-dms"]=NAV_ICONS.archive;
+NAV_ICONS["drafts"]=NAV_ICONS.invoices; NAV_ICONS["settings-team"]=NAV_ICONS.kunden;
 
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
   // Kanzlei-Portal ab Business-Plan (siehe Pricing: Business/Pro/Enterprise enthalten es)
@@ -1138,31 +1147,37 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
   const toggleCollapse=()=>{setCollapsed(c=>{const n=!c;if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_sidebar_collapsed",n?"1":"0");return n;});};
 
   const sections=[
-    {title:"Rechnungen",items:[
+    {title:"E-Rechnung",items:[
       {key:"dashboard",   label:"Übersicht"},
       {key:"invoices",    label:"Ausgang"},
       {key:"inbound",     label:"Eingang"},
-      {key:"scanner",     label:"Scan & Import"},
+      {key:"drafts",      label:"Entwürfe"},
       {key:"archive",     label:"Archiv"},
     ]},
-    {title:"Vertrieb",items:[
-      {key:"belege",      label:"Belege & Aufträge"},
-      {key:"artikel",     label:"Artikel & Leistungen"},
-      {key:"kunden",      label:"Kunden"},
+    {title:"Import",items:[
+      {key:"scanner",     label:"Scan & Import"},
     ]},
     {title:"KI",items:[
       {key:"ki",          label:"KI-Berater"},
     ]},
-    {title:"ERP-Module",items:[
-      {key:"erp-mm",  label:"Materialwirtschaft"},
-      {key:"erp-pp",  label:"Produktion"},
-      {key:"erp-co",  label:"Controlling"},
-      {key:"erp-hcm", label:"Personal"},
-      {key:"erp-crm", label:"CRM"},
-      {key:"erp-pm",  label:"Projekte"},
-      {key:"erp-qm",  label:"Qualität"},
-      {key:"erp-dms", label:"Dokumente"},
-    ]},
+    // Vertrieb + ERP-Module: implementiert, per Feature-Flag ausgeblendet
+    ...(FEATURES.erp?[
+      {title:"Vertrieb",items:[
+        {key:"belege",      label:"Belege & Aufträge"},
+        {key:"artikel",     label:"Artikel & Leistungen"},
+        {key:"kunden",      label:"Kunden"},
+      ]},
+      {title:"ERP-Module",items:[
+        {key:"erp-mm",  label:"Materialwirtschaft"},
+        {key:"erp-pp",  label:"Produktion"},
+        {key:"erp-co",  label:"Controlling"},
+        {key:"erp-hcm", label:"Personal"},
+        {key:"erp-crm", label:"CRM"},
+        {key:"erp-pm",  label:"Projekte"},
+        {key:"erp-qm",  label:"Qualität"},
+        {key:"erp-dms", label:"Dokumente"},
+      ]},
+    ]:[]),
   ];
 
   const pct=Math.min(100,((org?.plan_doc_used||0)/(org?.plan_doc_limit||100))*100);
@@ -1188,8 +1203,9 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
           <div className="nav-section">{sec.title}</div>
           {sec.items.map(({key,label})=><NavBtn key={key} k={key} label={label}/>)}
         </div>))}
-        <div className="nav-section" style={{marginTop:6}}>Konto</div>
-        <NavBtn k="settings" label="Einstellungen"/>
+        <div className="nav-section" style={{marginTop:6}}>Einstellungen</div>
+        <NavBtn k="settings" label="Unternehmen"/>
+        <NavBtn k="settings-team" label="Benutzer"/>
         <NavBtn k="steuerberater" label="Kanzlei-Portal"/>
         {isAdmin&&<><div className="nav-section" style={{marginTop:6}}>Admin</div>
           <button className="nav-item" onClick={onAdmin} style={{color:"#FCA5A5"}} title={collapsed?"Admin Panel":undefined}>
@@ -1224,7 +1240,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
         <button className="mobile-menu-btn" onClick={()=>setMobileNav(true)} aria-label="Menü öffnen">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke={T.textSecondary} strokeWidth="1.6" strokeLinecap="round"/></svg>
         </button>
-        <div style={{fontSize:14,fontWeight:700,color:T.textPrimary,letterSpacing:"-.01em",whiteSpace:"nowrap"}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen","ki":"KI-Berater","erp-mm":"ERP · Materialwirtschaft","erp-pp":"ERP · Produktion","erp-co":"ERP · Controlling","erp-hcm":"ERP · Personal","erp-crm":"ERP · CRM","erp-pm":"ERP · Projekte","erp-qm":"ERP · Qualität","erp-dms":"ERP · Dokumente"}[nav]||nav}</div>
+        <div style={{fontSize:14,fontWeight:700,color:T.textPrimary,letterSpacing:"-.01em",whiteSpace:"nowrap"}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen","ki":"KI-Berater","drafts":"Entwürfe","settings-team":"Benutzer","erp-mm":"ERP · Materialwirtschaft","erp-pp":"ERP · Produktion","erp-co":"ERP · Controlling","erp-hcm":"ERP · Personal","erp-crm":"ERP · CRM","erp-pm":"ERP · Projekte","erp-qm":"ERP · Qualität","erp-dms":"ERP · Dokumente"}[nav]||nav}</div>
         <div style={{flex:1,maxWidth:340}}>
           <div style={{position:"relative"}}>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}><circle cx="7" cy="7" r="4.5" stroke={T.textMuted} strokeWidth="1.5"/><path d="M10.5 10.5L14 14" stroke={T.textMuted} strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -1274,9 +1290,9 @@ function Dashboard({user,org,notify,onNav}){
   useEffect(()=>{
     Promise.all([
       api.getStats(),
-      api.listInvoices('?limit=5'),
+      api.listInvoices('?limit=100'),
       api.getCashflowStats(),
-      api.listBusinessDocs('?limit=100').catch(()=>({documents:[]})),
+      FEATURES.erp?api.listBusinessDocs('?limit=100').catch(()=>({documents:[]})):Promise.resolve({documents:[]}),
     ]).then(([s,i,cf,bd])=>{
       setStats(s);
       setInvoices(i.invoices||[]);
@@ -1292,6 +1308,8 @@ function Dashboard({user,org,notify,onNav}){
 
   const weekData = stats?.week_data || [0,0,0,0,0,0,0];
   const forecast = cashflow?.forecast || [];
+  // Überfällig: Ausgangsrechnungen mit abgeleitetem Status "overdue"
+  const overdueCount = invoices.filter(inv=>(inv.effective_status||inv.status)==='overdue').length;
 
   // Cashflow-Prognose: 30-Tage Balkendiagramm
   const CashflowChart = ()=>{
@@ -1341,8 +1359,8 @@ function Dashboard({user,org,notify,onNav}){
       </div>
     )}
 
-    {/* ERP-Modul-Kacheln (SAP-nah) */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:16}}>
+    {/* ERP-Modul-Kacheln (SAP-nah) — nur bei aktiviertem ERP-Feature-Flag */}
+    {FEATURES.erp&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:16}}>
       {ERP_MODULES.map(m=>(
         <div key={m.key} className="card" style={{padding:'14px 14px 12px',cursor:'pointer',borderTop:`3px solid ${m.color}`,transition:'box-shadow .15s'}}
           onClick={()=>onNav(`erp-${m.key}`)}
@@ -1355,16 +1373,16 @@ function Dashboard({user,org,notify,onNav}){
           <div style={{fontSize:11,color:T.textMuted,lineHeight:1.45}}>{m.desc}</div>
         </div>
       ))}
-    </div>
+    </div>}
 
     {/* KPIs — klickbar */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:16}}>
       {loading?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:96}}><div className="skeleton" style={{height:'100%'}}/></div>)
       :[
-        {label:'Versandt',   value:stats?.outbound_total||0, delta:'Ausgangsrechnungen', color:T.textPrimary, chart:weekData,                          nav:'invoices'},
-        {label:'Empfangen',  value:stats?.inbound_total||0,  delta:'Eingangsrechnungen', color:T.textPrimary, chart:weekData.map(v=>Math.floor(v*.7)), nav:'inbound'},
-        {label:'Fehler',     value:stats?.errors_total||0,   delta:stats?.errors_total>0?'⚠ Offen':'✓ Alles OK', color:stats?.errors_total>0?T.red:T.green, nav:'invoices'},
-        {label:'Compliance', value:`${stats?.compliance_score||100}%`, delta:'EN 16931 ✓', color:T.green,     nav:'archive'},
+        {label:'Gesendet',   value:stats?.outbound_total||0, delta:'Ausgangsrechnungen', color:T.textPrimary, chart:weekData, nav:'invoices'},
+        {label:'Empfangen',  value:stats?.inbound_total||0,  delta:'Eingangsrechnungen', color:T.textPrimary, nav:'inbound'},
+        {label:'Offen',      value:fmtEUR(cashflow?.open_receivables||0), delta:'Noch nicht bezahlt', color:T.textPrimary, nav:'invoices'},
+        {label:'Überfällig', value:overdueCount, delta:overdueCount>0?'⚠ Zahlung überfällig':'✓ Nichts überfällig', color:overdueCount>0?T.red:T.green, nav:'invoices'},
       ].map((s,i)=>(
         <div key={i} className="card" style={{padding:18,cursor:'pointer',transition:'box-shadow .15s'}}
           onClick={()=>onNav(s.nav)}
@@ -1425,8 +1443,8 @@ function Dashboard({user,org,notify,onNav}){
       </div>
     </div>
 
-    {/* Belegfluss — offene Vorgänge im Vertrieb */}
-    {bizDocs.length>0&&(()=>{
+    {/* Belegfluss — offene Vorgänge im Vertrieb (nur bei aktiviertem ERP-Flag) */}
+    {FEATURES.erp&&bizDocs.length>0&&(()=>{
       const openOf=(t)=>bizDocs.filter(d=>d.doc_type===t&&!["storniert","fakturiert","abgelehnt","abgelaufen"].includes(d.status));
       const stages=[["request","Anfragen"],["quote","Angebote"],["order","Aufträge"],["delivery","Lieferungen"]];
       return(
@@ -1506,7 +1524,7 @@ function Dashboard({user,org,notify,onNav}){
           {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14,margin:'6px 0'}}/></td></tr>)
           :invoices.length===0
             ?<tr><td colSpan={6} style={{textAlign:'center',padding:28,color:T.textMuted,fontSize:13}}>Noch keine Rechnungen — <button className="btn btn-ghost btn-sm" onClick={()=>onNav('invoices')}>Erste Rechnung erstellen →</button></td></tr>
-            :invoices.map(inv=><tr key={inv.id} className="tr-hover" style={{cursor:'pointer'}}>
+            :invoices.slice(0,5).map(inv=><tr key={inv.id} className="tr-hover" style={{cursor:'pointer'}}>
               <td style={{fontWeight:600,color:T.textPrimary,fontFamily:F.mono,fontSize:12.5}}>{inv.invoice_number}</td>
               <td style={{color:T.textPrimary}}>{inv.buyer_name||'—'}</td>
               <td style={{fontWeight:600,color:T.textPrimary}}>{fmtEUR(inv.amount_gross)}</td>
@@ -1522,7 +1540,7 @@ function Dashboard({user,org,notify,onNav}){
 }
 
 // ── DOCUMENTS ─────────────────────────────────────────────────
-function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onClearSearch=null}){
+function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onClearSearch=null,initialFilter=null}){
   const [emailModal,setEmailModal] = useState(false);
   const [senderCopy,setSenderCopy] = useState(true);
   const [emailTo,setEmailTo]       = useState('');
@@ -1554,7 +1572,7 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
     setSending(false);
   };
 
-  const[view,setView]=useState(initialView||"list");const[filter,setFilter]=useState("all");
+  const[view,setView]=useState(initialView||"list");const[filter,setFilter]=useState(initialFilter||"all");
   const[sort,setSort]=useState({key:"created_at",dir:"desc"});
   useEffect(()=>{if(initialView){setView(initialView);onNavDone&&onNavDone();}},[]);
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
@@ -3912,10 +3930,14 @@ function ApiSettingsTab({org,notify}){
   );
 }
 
-function SettingsScreen({user,org,notify}){
+function SettingsScreen({user,org,notify,initialTab}){
   const inboundAddress = org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.io` : null;
-  const[tab,setTab]   = useState('company');
+  const[tab,setTab]   = useState(initialTab||'company');
+  useEffect(()=>{if(initialTab)setTab(initialTab);},[initialTab]);
   const[saving,setSaving] = useState(false);
+  // Resend-Domain-Verifikation (Versand invoiq.io / Eingang rechnungen.invoiq.io)
+  const[domainStatus,setDomainStatus] = useState(null);
+  useEffect(()=>{api.getEmailDomainStatus().then(setDomainStatus).catch(()=>setDomainStatus({error:'Status nicht abrufbar'}));},[]);
   const[form,setForm] = useState({
     name:             org?.name||'',
     vat_id:           org?.vat_id||'',
@@ -4073,6 +4095,41 @@ function SettingsScreen({user,org,notify}){
                     </div>
                   ):(
                     <div style={{fontSize:12.5,color:T.textMuted}}>Wird geladen…</div>
+                  )}
+                </div>
+
+                {/* E-Mail-Domain-Status (Resend-Verifikation) */}
+                <div style={{background:T.bgSubtle,borderRadius:8,padding:'14px 16px',border:`1px solid ${T.bgBorder}`}}>
+                  <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:10,letterSpacing:.4,textTransform:'uppercase'}}>E-Mail-Domain-Status</div>
+                  {!domainStatus?(
+                    <div style={{fontSize:12.5,color:T.textMuted}}>Wird geprüft…</div>
+                  ):(
+                    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                      {['outbound','inbound'].map(k=>{
+                        const d=domainStatus[k];
+                        if(!d)return null;
+                        const ok=d.verified;
+                        const label=k==='outbound'?'Versand':'Empfang';
+                        const statusText=ok?'Verifiziert':d.status==='missing'?'Nicht bei Resend angelegt':d.status==='pending'?'DNS-Prüfung ausstehend':d.status==='unconfigured'?'Nicht konfiguriert':d.status==='error'?'Status nicht abrufbar':`Nicht verifiziert (${d.status})`;
+                        return(
+                          <div key={k} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:8}}>
+                              <span style={{width:10,height:10,borderRadius:'50%',background:ok?T.green:T.red,display:'inline-block',flexShrink:0}}/>
+                              <span style={{fontSize:12.5,color:T.textSecondary,minWidth:64}}>{label}</span>
+                              <span style={{fontSize:12.5,fontFamily:F.mono,color:T.textPrimary}}>{d.domain}</span>
+                            </div>
+                            <span style={{fontSize:11.5,fontWeight:600,color:ok?T.green:T.red}}>{statusText}</span>
+                          </div>
+                        );
+                      })}
+                      {!domainStatus?.outbound?.verified&&(
+                        <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>
+                          Solange die Versand-Domain nicht verifiziert ist, kann invoiq keine E-Mails senden.
+                          DNS-Einträge unter <a href="https://resend.com/domains" target="_blank" rel="noreferrer" style={{color:T.accent}}>resend.com/domains</a> — Anleitung siehe README (DNS-Setup).
+                        </div>
+                      )}
+                      {domainStatus?.error&&<div style={{fontSize:11.5,color:T.red}}>{domainStatus.error}</div>}
+                    </div>
                   )}
                 </div>
 
@@ -5107,6 +5164,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
     {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onSearch={(q)=>{setGlobalSearch(q);setNav("invoices");window.scrollTo(0,0);}} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
       {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={onNav}/>}
       {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)} searchQuery={globalSearch} onClearSearch={()=>setGlobalSearch(null)}/>}
+      {nav==="drafts"&&<Invoices notify={notify} initialFilter="draft"/>}
           {nav==="scanner"&&<DokumentenScanner notify={notify}/>}
           {nav==="inbound"&&<InboundScreen notify={notify} org={org}/>}
           {nav==="belege"&&<BusinessScreen notify={notify} onOpenInvoice={()=>onNav("invoices")}/>}
@@ -5129,6 +5187,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
       {nav==="archive"&&<ArchiveScreen notify={notify}/>}
       {nav==="webhooks"&&<Placeholder title="Webhooks" sub="invoice.created · invoice.sent · invoice.delivered" icon="⚡"/>}
       {nav==="settings"&&<SettingsScreen user={user} org={org} notify={notify}/>}
+      {nav==="settings-team"&&<SettingsScreen user={user} org={org} notify={notify} initialTab="team"/>}
     </AppShell>}
     {screen==="admin"&&<AdminShell user={user} org={org} nav={adminNav} setNav={setAdminNav} onBack={()=>setScreen("app")}>
       {adminNav==="overview"&&<AdminOverview notify={notify} isSuper={isSuper}/>}

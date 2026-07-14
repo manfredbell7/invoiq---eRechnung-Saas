@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../config/db.js';
 import { supabase } from '../../config/database.js';
 import { authMiddleware } from '../../middleware/auth.js';
+import { getEmailDomainStatus } from '../../services/email.js';
 
 
 
@@ -49,8 +50,14 @@ export async function authRoutes(fastify) {
     const existing = await db.findUserByEmail(email);
     if (existing) return reply.code(409).send({ error: 'E-Mail bereits registriert' });
 
-    // Create org
-    const slug = org_name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    // Create org — Slug ist Basis der persönlichen e-Rechnungs-Adresse
+    // [slug]@rechnungen.invoiq.io: URL-/E-Mail-sicher (a-z, 0-9, Bindestrich),
+    // Umlaute transliteriert, ohne Randbindestriche; Eindeutigkeit über UUID-Suffix.
+    const slug = org_name.toLowerCase()
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 30).replace(/-+$/, '') || 'firma';
     const apiKey = `iq_live_${randomBytes(20).toString('hex')}`;
 
     const org = await db.createOrg({
@@ -333,6 +340,11 @@ export async function authRoutes(fastify) {
       peppol_enabled:   org.peppol_enabled   || false,
       vida_reporting:   org.vida_reporting   || false,
     };
+  });
+
+  // ── E-MAIL-DOMAIN-STATUS (Resend-Verifikation, grün/rot in Einstellungen) ──
+  fastify.get('/email-domain-status', { preHandler: authMiddleware }, async () => {
+    return getEmailDomainStatus();
   });
 
   // ── SETTINGS POST ────────────────────────────────────────────
