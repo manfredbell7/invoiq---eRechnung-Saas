@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, Component } from "react";
 import OnboardingWizard from "./OnboardingWizard.jsx";
+import LandingPage from './LandingPage.jsx';
 import { T, F, CSS } from "./theme.js"; class PortalErrorBoundary extends Component{constructor(p){super(p);this.state={err:false};}static getDerivedStateFromError(){return{err:true};}componentDidCatch(e,i){console.error('Portal crash:',e,i);}render(){if(this.state.err)return(<div style={{padding:40,textAlign:'center',color:'#697386'}}><div style={{fontSize:40}}>⚠️</div><h3 style={{color:'#0A2540',marginTop:8}}>Kanzlei-Portal nicht verfügbar</h3><p>Ein Fehler ist aufgetreten. Bitte laden Sie die Seite neu.</p><button onClick={()=>this.setState({err:false})} style={{marginTop:16,padding:'10px 20px',background:'#635BFF',color:'#fff',border:'none',borderRadius:8,cursor:'pointer'}}>Erneut versuchen</button></div>);return this.props.children;}}
 
 /* ═══════════════════════════════════════════════════════════════
