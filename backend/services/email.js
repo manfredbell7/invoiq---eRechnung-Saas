@@ -1,5 +1,5 @@
 // src/services/email.js
-// Resend Email Service for invoiq.io
+// Resend Email Service for invoiq.de
 
 import { Resend } from 'resend';
 
@@ -14,8 +14,8 @@ function getResend() {
 // Absender-Konfiguration — .env.example nutzt EMAIL_FROM/EMAIL_FROM_NAME;
 // FROM_EMAIL bleibt als Alt-Alias, damit bestehende Deployments nicht brechen.
 // WICHTIG: Die Domain der Absenderadresse MUSS bei Resend verifiziert sein
-// (resend.com/domains), sonst lehnt Resend jeden Versand ab.
-const FROM_EMAIL = process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'rechnungen@invoiq.io';
+const FROM_EMAIL = process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'rechnungen@invoiq.de';
+
 const FROM_NAME = process.env.EMAIL_FROM_NAME || 'invoiq E-Rechnung';
 
 // Zentraler Versand: einheitlicher Absender + verständliche Fehlermeldungen.
