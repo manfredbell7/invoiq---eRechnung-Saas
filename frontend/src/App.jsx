@@ -282,9 +282,9 @@ function Landing({onEnter,onLegal=()=>{}}){
   ];
 
   const STEPS=[
-    {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Deine persönliche invoiq-Adresse empfängt automatisch alle Eingangsrechnungen — kein ERP, kein IT-Aufwand.',tags:['firma@rechnungen.invoiq.io','XRechnung','ZUGFeRD','PDF'],preview:(
+    {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Bei der Registrierung bekommt jeder Kunde automatisch seine eigene, personalisierte E-Mail-Adresse — einzigartig für dein Unternehmen (z.B. deine-firma-a1b2c3@rechnungen.invoiq.io). Über sie empfängst und versendest du deine E-Rechnungen — kein ERP, kein IT-Aufwand.',tags:['deine-firma-a1b2c3@rechnungen.invoiq.io','XRechnung','ZUGFeRD','PDF'],preview:(
       <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-        {[['firma@rechnungen.invoiq.io','Aktiv ✓'],['XRechnung','Automatisch erkannt'],['ZUGFeRD / PDF','Automatisch erkannt']].map(([n,s],i)=>(
+        {[['deine-firma-a1b2c3@rechnungen.invoiq.io','Persönlich & Aktiv ✓'],['XRechnung','Automatisch erkannt'],['ZUGFeRD / PDF','Automatisch erkannt']].map(([n,s],i)=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgBorder}`:'none'}}>
             <div style={{width:7,height:7,borderRadius:'50%',background:s==='Connected'?T.green:T.bgBorder,flexShrink:0}}/>
             <span style={{fontSize:12.5,color:T.textPrimary,flex:1}}>{n}</span>
@@ -1348,17 +1348,20 @@ function Dashboard({user,org,notify,onNav}){
       <button className="btn btn-primary btn-sm" onClick={()=>onNav('invoices','create')}>+ Neue Rechnung</button>
     </div>
 
-    {/* Eingangs-E-Mail-Adresse — zentral sichtbar, auch auf dem Dashboard */}
-    {org?.inbound_email_slug&&(
-      <div style={{padding:'12px 16px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
-        <div>
-          <div style={{fontSize:12.5,fontWeight:600,color:T.accent,marginBottom:2}}>Ihre e-Rechnungs-Adresse</div>
-          <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{org.inbound_email_slug}@rechnungen.invoiq.io</div>
-          <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Schicken Sie Rechnungen an diese Adresse — invoiq erfasst sie automatisch.</div>
+    {/* Personalisierte Eingangs-E-Mail-Adresse — prominent auf dem Dashboard */}
+    {(()=>{
+      const addr = org?.inbound_email || (org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.io` : null);
+      return (
+        <div style={{padding:'14px 18px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:T.accent,marginBottom:3}}>Ihre e-Rechnungs-Adresse</div>
+            <div style={{fontSize:15,fontWeight:600,fontFamily:F.mono,color:T.textPrimary}}>{addr||'Wird eingerichtet…'}</div>
+            <div style={{fontSize:11.5,color:T.textMuted,marginTop:3}}>Ihre persönliche, einzigartige Adresse für den Empfang und Versand von E-Rechnungen — invoiq erfasst alles automatisch.</div>
+          </div>
+          {addr&&<button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(addr); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>}
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`${org.inbound_email_slug}@rechnungen.invoiq.io`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
-      </div>
-    )}
+      );
+    })()}
 
     {/* ERP-Modul-Kacheln (SAP-nah) — nur bei aktiviertem ERP-Feature-Flag */}
     {FEATURES.erp&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:16}}>
@@ -2407,9 +2410,9 @@ function InboundScreen({notify, org}){
       {/* E-Mail Adresse Banner */}
       <div style={{padding:'12px 16px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
         <div>
-          <div style={{fontSize:12.5,fontWeight:600,color:T.accent,marginBottom:2}}>Ihre Eingangs-E-Mail-Adresse</div>
+          <div style={{fontSize:12.5,fontWeight:600,color:T.accent,marginBottom:2}}>Ihre persönliche Eingangs-E-Mail-Adresse</div>
           <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{emailSlug||'...'}@rechnungen.invoiq.io</div>
-          <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Lieferanten schicken Rechnungen einfach an diese Adresse — invoiq verarbeitet alles automatisch.</div>
+          <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Einzigartig für Ihr Unternehmen — Lieferanten schicken Rechnungen einfach an diese Adresse, invoiq verarbeitet alles automatisch.</div>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(`${emailSlug}@rechnungen.invoiq.io`); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
       </div>
@@ -3932,7 +3935,7 @@ function ApiSettingsTab({org,notify}){
 }
 
 function SettingsScreen({user,org,notify,initialTab}){
-  const inboundAddress = org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.io` : null;
+  const inboundAddress = org?.inbound_email || (org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.io` : null);
   const[tab,setTab]   = useState(initialTab||'company');
   useEffect(()=>{if(initialTab)setTab(initialTab);},[initialTab]);
   const[saving,setSaving] = useState(false);
@@ -4090,7 +4093,7 @@ function SettingsScreen({user,org,notify,initialTab}){
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
                       <div>
                         <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{inboundAddress}</div>
-                        <div style={{fontSize:11.5,color:T.textMuted,marginTop:3}}>Senden Sie Rechnungen an diese Adresse, um sie automatisch zu erfassen.</div>
+                        <div style={{fontSize:11.5,color:T.textMuted,marginTop:3}}>Ihre persönliche, einzigartige Adresse — senden Sie Rechnungen dorthin, um sie automatisch zu erfassen.</div>
                       </div>
                       <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(inboundAddress); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
                     </div>

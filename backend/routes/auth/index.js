@@ -8,6 +8,7 @@ import { db } from '../../config/db.js';
 import { supabase } from '../../config/database.js';
 import { authMiddleware } from '../../middleware/auth.js';
 import { getEmailDomainStatus } from '../../services/email.js';
+import { slugifyCompanyName, generateInboundEmailSlug, buildInboundAddress, ensureInboundEmailSlug, isUniqueViolation } from '../../lib/inboundAddress.js';
 
 
 
@@ -50,34 +51,40 @@ export async function authRoutes(fastify) {
     const existing = await db.findUserByEmail(email);
     if (existing) return reply.code(409).send({ error: 'E-Mail bereits registriert' });
 
-    // Create org — Slug ist Basis der persönlichen e-Rechnungs-Adresse
-    // [slug]@rechnungen.invoiq.de: URL-/E-Mail-sicher (a-z, 0-9, Bindestrich),
-    // Umlaute transliteriert, ohne Randbindestriche; Eindeutigkeit über UUID-Suffix.
-    const slug = org_name.toLowerCase()
-      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 30).replace(/-+$/, '') || 'firma';
+    // Create org — jeder neue Kunde bekommt seine personalisierte, einzigartige
+    // e-Rechnungs-Adresse [firmenname]-[uniqueID]@rechnungen.invoiq.io:
+    // E-Mail-sicher normalisiert (a-z, 0-9, Bindestrich, Umlaute transliteriert),
+    // Eindeutigkeit über zufälliges Suffix + Unique-Index in der DB.
+    const slug = slugifyCompanyName(org_name);
     const apiKey = `iq_live_${randomBytes(20).toString('hex')}`;
 
-    const org = await db.createOrg({
-      name: org_name,
-      slug: `${slug}-${uuidv4().substr(0, 6)}`,
-      vat_id: vat_id || '',
-      // Adresse optional — kann leer bleiben und später in den Einstellungen ergänzt werden
-      address: address || '',
-      city: city || '',
-      zip: zip || '',
-      country: country || 'DE',
-      // Neue Konten starten auf Free — bezahlte Pläne werden ausschließlich
-      // über den Stripe-Checkout (mit 14-Tage-Trial) aktiviert. Vorher bekam
-      // jede Registrierung den bezahlten Starter-Plan geschenkt.
-      plan: 'free',
-      plan_doc_limit: 10,
-      inbound_email_slug: slug + '-' + uuidv4().substr(0, 6),
-      api_key: apiKey,
-      api_key_created_at: new Date().toISOString(),
-    });
+    let org;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        org = await db.createOrg({
+          name: org_name,
+          slug: `${slug}-${uuidv4().substr(0, 6)}`,
+          vat_id: vat_id || '',
+          // Adresse optional — kann leer bleiben und später in den Einstellungen ergänzt werden
+          address: address || '',
+          city: city || '',
+          zip: zip || '',
+          country: country || 'DE',
+          // Neue Konten starten auf Free — bezahlte Pläne werden ausschließlich
+          // über den Stripe-Checkout (mit 14-Tage-Trial) aktiviert. Vorher bekam
+          // jede Registrierung den bezahlten Starter-Plan geschenkt.
+          plan: 'free',
+          plan_doc_limit: 10,
+          inbound_email_slug: generateInboundEmailSlug(org_name),
+          api_key: apiKey,
+          api_key_created_at: new Date().toISOString(),
+        });
+        break;
+      } catch (err) {
+        // Unique-Kollision von slug/inbound_email_slug → mit frischem Suffix erneut
+        if (attempt >= 2 || !isUniqueViolation(err)) throw err;
+      }
+    }
 
     // Create user
     const passwordHash = await bcrypt.hash(password, 12);
@@ -103,7 +110,7 @@ export async function authRoutes(fastify) {
       expires_in: 3600,
       token_type: 'Bearer',
       user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role },
-      org: { id: org.id, name: org.name, slug: org.slug, plan: org.plan, inbound_email_slug: org.inbound_email_slug, api_key: apiKey },
+      org: { id: org.id, name: org.name, slug: org.slug, plan: org.plan, inbound_email_slug: org.inbound_email_slug, inbound_email: buildInboundAddress(org.inbound_email_slug), api_key: apiKey },
     });
   });
 
@@ -132,6 +139,11 @@ export async function authRoutes(fastify) {
     const org = await db.findOrgById(user.org_id);
     if (!org) return reply.code(401).send({ error: 'Organisation nicht gefunden' });
 
+    // Bestandskunden ohne personalisierte e-Rechnungs-Adresse bekommen sie
+    // beim Login nachgezogen — best effort, ein Fehler blockiert den Login nicht.
+    try { await ensureInboundEmailSlug(org); }
+    catch (err) { fastify.log.warn(err, 'inbound_email_slug Backfill beim Login fehlgeschlagen'); }
+
     await db.updateUser(user.id, { last_login_at: new Date().toISOString() });
 
     const { accessToken, refreshToken } = signTokens(user.id, org.id, user.role);
@@ -147,7 +159,7 @@ export async function authRoutes(fastify) {
       expires_in: 3600,
       token_type: 'Bearer',
       user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role },
-      org: { id: org.id, name: org.name, slug: org.slug, plan: org.plan, inbound_email_slug: org.inbound_email_slug },
+      org: { id: org.id, name: org.name, slug: org.slug, plan: org.plan, inbound_email_slug: org.inbound_email_slug, inbound_email: buildInboundAddress(org.inbound_email_slug) },
     };
   });
 
@@ -288,6 +300,10 @@ export async function authRoutes(fastify) {
     const { user, org } = req;
     // API-Key nur an Owner/Admin herausgeben — Member/Viewer brauchen ihn nicht.
     const canSeeApiKey = ['owner', 'admin', 'super_admin'].includes(user?.role);
+    // Statt eines nicht-persistierten (und nicht einzigartigen) Fallbacks wird
+    // fehlenden Orgs hier eine personalisierte Adresse generiert und gespeichert.
+    try { await ensureInboundEmailSlug(org); }
+    catch (err) { fastify.log.warn(err, 'inbound_email_slug Backfill in /me fehlgeschlagen'); }
     return {
       user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role, last_login_at: user.last_login_at },
       org: {
@@ -295,7 +311,8 @@ export async function authRoutes(fastify) {
         plan_doc_limit: org.plan_doc_limit, plan_doc_used: org.plan_doc_used,
         stripe_customer_id: org.stripe_customer_id ? true : false,
         ...(canSeeApiKey ? { api_key: org.api_key } : {}),
-        inbound_email_slug: org.inbound_email_slug || (org.slug ? org.slug : org.name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').substring(0,30)),
+        inbound_email_slug: org.inbound_email_slug,
+        inbound_email: buildInboundAddress(org.inbound_email_slug),
       },
     };
   });

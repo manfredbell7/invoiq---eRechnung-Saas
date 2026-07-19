@@ -51,6 +51,38 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* E-Mail-Adresse einrichten */}
+      <section id="features" className="email-section">
+        <div className="container">
+          <div className="section-header">
+            <span className="section-badge">E-Mail-Adresse einrichten</span>
+            <h2 className="section-title">
+              Ihre eigene, personalisierte E-Rechnungs-Adresse
+            </h2>
+            <p className="section-description">
+              Jeder Kunde erhält bei der Registrierung automatisch eine
+              persönliche, einzigartige E-Mail-Adresse für den Empfang und
+              Versand von E-Rechnungen — generiert aus Ihrem Firmennamen,
+              exklusiv für Ihr Unternehmen.
+            </p>
+          </div>
+
+          <div className="email-demo">
+            <div className="email-address-card">
+              <span className="email-label">Ihre e-Rechnungs-Adresse</span>
+              <code className="email-address">ihre-firma-a1b2c3@rechnungen.invoiq.io</code>
+              <span className="email-status">✓ Sofort aktiv nach der Registrierung</span>
+            </div>
+            <ul className="email-benefits">
+              <li>✓ Einzigartig — keine geteilte Adresse, nur für Ihr Unternehmen</li>
+              <li>✓ Empfängt XRechnung, ZUGFeRD und PDF automatisch</li>
+              <li>✓ Versendet Ihre E-Rechnungen direkt aus invoiq</li>
+              <li>✓ In 2 Minuten startklar — kein ERP, kein IT-Aufwand</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Section */}
       <section id="pricing" className="pricing-section">
         <div className="container">
@@ -358,6 +390,65 @@ const LandingPage = () => {
           margin: 0 auto;
           line-height: 1.6;
         }
+        .email-section {
+          padding: 80px 0;
+          background: #ffffff;
+        }
+        .email-demo {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 48px;
+          align-items: center;
+          max-width: 960px;
+          margin: 0 auto;
+        }
+        .email-address-card {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          background: linear-gradient(135deg, #EBF4FF 0%, #E0F2FE 100%);
+          border: 1px solid #BAE6FD;
+          border-radius: 16px;
+          padding: 32px;
+          text-align: center;
+        }
+        .email-label {
+          font-size: 13px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #0369A1;
+        }
+        .email-address {
+          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-size: 17px;
+          font-weight: 600;
+          color: #0F172A;
+          background: white;
+          border: 1px solid #BAE6FD;
+          border-radius: 8px;
+          padding: 12px 16px;
+          overflow-wrap: anywhere;
+        }
+        .email-status {
+          font-size: 14px;
+          font-weight: 600;
+          color: #10B981;
+        }
+        .email-benefits {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        .email-benefits li {
+          padding: 12px 0;
+          font-size: 16px;
+          color: #475569;
+          border-bottom: 1px solid #F1F5F9;
+        }
+        .email-benefits li:last-child {
+          border-bottom: none;
+        }
         .pricing-section {
           padding: 80px 0;
           background: linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 100%);
@@ -498,6 +589,7 @@ const LandingPage = () => {
           .hero-title { font-size: 40px; }
           .section-title { font-size: 32px; }
           .pricing-grid { grid-template-columns: 1fr; }
+          .email-demo { grid-template-columns: 1fr; gap: 32px; }
           .footer-grid { grid-template-columns: 1fr; gap: 32px; }
           .hero-cta { flex-direction: column; }
           .btn-lg { width: 100%; }
