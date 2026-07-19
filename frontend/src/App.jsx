@@ -12,7 +12,7 @@ import { T, F, CSS } from "./theme.js"; class PortalErrorBoundary extends Compon
 
 
 
-const API_BASE=(import.meta?.env?.VITE_API_URL)||"https://api.invoiq.io/v1";
+const API_BASE=(import.meta?.env?.VITE_API_URL)||"https://api.invoiq.de/v1";
 // Feature-Flags: ERP-Module + Vertriebs-Belegfluss sind vollständig implementiert,
 // aber standardmäßig ausgeblendet (Fokus: E-Rechnung Versand/Empfang).
 // Reaktivieren: VITE_ERP_ENABLED=true beim Build ODER im Browser
