@@ -1,6 +1,6 @@
 // invoiq Service Worker — Network-First (verhindert veraltete Bundles)
 // Cache-Name mit Datum: ändert sich bei jedem Deploy, alte Caches werden gelöscht.
-const CACHE = 'invoiq-' + '2026-06-13-v2';
+const CACHE = 'invoiq-2026-07-19-v3';
 
 // Install: sofort aktivieren, nicht auf alten SW warten
 self.addEventListener('install', (e) => {
@@ -20,7 +20,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
   // API-Calls + Nicht-GET: immer Netzwerk, nie cachen
-  if (url.pathname.startsWith('/v1/') || url.hostname.includes('api.invoiq.io') || e.request.method !== 'GET') {
+      if (url.pathname.startsWith('/v1/') || url.hostname.includes('api.invoiq.de') || e.request.method !== 'GET') {
     return; // Browser-Standard
   }
 
