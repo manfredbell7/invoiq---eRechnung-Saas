@@ -84,9 +84,20 @@ function normalize(invoice, org = {}) {
     },
     logo: org.logo_data || null,
     color: invoice.brand_color || org.brand_color || '#635BFF',
+    template: TEMPLATES[invoice.invoice_template || org.invoice_template] ? (invoice.invoice_template || org.invoice_template) : 'classic',
     items, net, vatGroups, vatTotal, gross,
   };
 }
+
+// Drei wählbare Vorlagen — gleiche Inhalte/Flusslogik, andere Optik.
+// classic: Farbband + gefüllte Tabellenkopfzeile + Zebra (bisheriges Layout)
+// modern:  großer farbiger Briefkopf, luftige Tabelle mit farbiger Kopfzeile als Linie
+// compact: reduziert, ohne Farbflächen — für dezente/klassische Korrespondenz
+export const TEMPLATES = {
+  classic: { band: true,  bigHeader: false, tableFill: true,  zebra: true,  totalFill: true,  label: 'Klassisch' },
+  modern:  { band: false, bigHeader: true,  tableFill: false, zebra: false, totalFill: true,  label: 'Modern' },
+  compact: { band: false, bigHeader: false, tableFill: false, zebra: false, totalFill: false, label: 'Kompakt' },
+};
 
 export async function renderInvoicePDF(invoice, org = {}) {
   try {
@@ -122,6 +133,7 @@ async function renderProfessional(invoice, org, embedFile) {
     if (embedFile) { const { data, ...opts } = embedFile; doc.file(data, opts); }
 
     const C = d.color;
+    const TPL = TEMPLATES[d.template] || TEMPLATES.classic;
     const bottomLimit = PAGE_H - FOOTER_H - 20;
     let logoImg = null;
     if (d.logo) {
@@ -131,17 +143,33 @@ async function renderProfessional(invoice, org, embedFile) {
     // ── Briefkopf (nur Seite 1 groß, Folgeseiten schmal) ─────
     const header = (first) => {
       if (first) {
-        doc.rect(0, 0, PAGE_W, 8).fill(C);                       // Farbband
+        if (TPL.bigHeader) {                                     // modern: farbige Kopffläche
+          doc.rect(0, 0, PAGE_W, 88).fill(C);
+          let x = M;
+          if (logoImg) {
+            try {
+              doc.rect(M - 6, 20, 132, 48).fill('#FFFFFF');
+              doc.image(logoImg, M, 24, { fit: [120, 40] });
+              x = M + 142;
+            } catch { /* defekt → nur Text */ }
+          }
+          doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(18).text(d.seller.name, x, 28, { width: PAGE_W - x - M });
+          const contact = [d.seller.email, d.seller.phone, d.seller.website].filter(Boolean).join('  ·  ');
+          if (contact) doc.font('Helvetica').fontSize(8.5).fillColor('#FFFFFF').fillOpacity(0.75).text(contact, x, 52, { width: PAGE_W - x - M }).fillOpacity(1);
+          return 112;
+        }
+        if (TPL.band) doc.rect(0, 0, PAGE_W, 8).fill(C);         // classic: Farbband
         let x = M;
         if (logoImg) {
           try { doc.image(logoImg, M, 26, { fit: [120, 44] }); x = M + 134; } catch { /* defekt → nur Text */ }
         }
-        doc.fillColor(DARK).font('Helvetica-Bold').fontSize(17).text(d.seller.name, x, 32, { width: 300 });
+        doc.fillColor(DARK).font('Helvetica-Bold').fontSize(TPL.band ? 17 : 14).text(d.seller.name, x, 32, { width: 300 });
         const contact = [d.seller.email, d.seller.phone, d.seller.website].filter(Boolean).join('  ·  ');
-        if (contact) doc.font('Helvetica').fontSize(8.5).fillColor(GRAY).text(contact, x, 54, { width: 340 });
+        if (contact) doc.font('Helvetica').fontSize(8.5).fillColor(GRAY).text(contact, x, TPL.band ? 54 : 50, { width: 340 });
+        if (!TPL.band) doc.moveTo(M, 74).lineTo(PAGE_W - M, 74).strokeColor(LIGHT).lineWidth(0.75).stroke(); // compact: Haarlinie
         return 96;
       }
-      doc.rect(0, 0, PAGE_W, 6).fill(C);
+      if (TPL.band || TPL.bigHeader) doc.rect(0, 0, PAGE_W, 6).fill(C);
       doc.fillColor(GRAY).font('Helvetica').fontSize(8)
         .text(`${d.title} ${d.number} · ${d.seller.name}`, M, 22);
       return 48;
@@ -182,7 +210,7 @@ async function renderProfessional(invoice, org, embedFile) {
 
     // ── Titel ────────────────────────────────────────────────
     y = Math.max(doc.y + 30, iy + 26, 268);
-    doc.fillColor(C).font('Helvetica-Bold').fontSize(19).text(d.title + (d.kind === 'standard' ? ` ${d.number}` : ''), M, y);
+    doc.fillColor(TPL.totalFill ? C : DARK).font('Helvetica-Bold').fontSize(19).text(d.title + (d.kind === 'standard' ? ` ${d.number}` : ''), M, y);
     y += 30;
 
     // ── Positionstabelle ─────────────────────────────────────
@@ -195,10 +223,19 @@ async function renderProfessional(invoice, org, embedFile) {
       { key: 'total', label: 'Betrag',      x: M + 424, w: PAGE_W - 2 * M - 424, align: 'right' },
     ];
     const tableHead = () => {
-      doc.rect(M, y, PAGE_W - 2 * M, 20).fill(C);
-      doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(8.5);
-      for (const c of cols) doc.text(c.label, c.x + 4, y + 6, { width: c.w - 8, align: c.align });
-      y += 20;
+      if (TPL.tableFill) {
+        doc.rect(M, y, PAGE_W - 2 * M, 20).fill(C);
+        doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(8.5);
+        for (const c of cols) doc.text(c.label, c.x + 4, y + 6, { width: c.w - 8, align: c.align });
+        y += 20;
+        return;
+      }
+      // modern/compact: Textkopf mit farbiger bzw. dunkler Unterstreichung
+      const headColor = TPL.bigHeader ? C : DARK;
+      doc.fillColor(headColor).font('Helvetica-Bold').fontSize(8.5);
+      for (const c of cols) doc.text(c.label, c.x + 4, y + 5, { width: c.w - 8, align: c.align });
+      doc.moveTo(M, y + 19).lineTo(PAGE_W - M, y + 19).strokeColor(headColor).lineWidth(TPL.bigHeader ? 1.5 : 1).stroke();
+      y += 22;
     };
     tableHead();
 
@@ -212,7 +249,8 @@ async function renderProfessional(invoice, org, embedFile) {
         tableHead();
         doc.font('Helvetica').fontSize(9);
       }
-      if (idx % 2 === 1) doc.rect(M, y, PAGE_W - 2 * M, rowH).fill('#F8F9FB');
+      if (TPL.zebra && idx % 2 === 1) doc.rect(M, y, PAGE_W - 2 * M, rowH).fill('#F8F9FB');
+      if (!TPL.zebra && idx > 0) doc.moveTo(M, y).lineTo(PAGE_W - M, y).strokeColor(LIGHT).lineWidth(0.4).stroke();
       doc.fillColor(DARK);
       const vals = {
         pos: String(idx + 1),
@@ -242,10 +280,19 @@ async function renderProfessional(invoice, org, embedFile) {
       doc.fillColor(DARK).text(v, sx + sw - 88, y, { width: 88, align: 'right' });
       y += 17;
     }
-    doc.rect(sx, y, sw, 24).fill(C);
-    doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10.5)
-      .text('Gesamtbetrag', sx + 8, y + 6, { width: sw - 100 })
-      .text(eur(d.gross), sx + sw - 96, y + 6, { width: 88, align: 'right' });
+    if (TPL.totalFill) {
+      doc.rect(sx, y, sw, 24).fill(C);
+      doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10.5)
+        .text('Gesamtbetrag', sx + 8, y + 6, { width: sw - 100 })
+        .text(eur(d.gross), sx + sw - 96, y + 6, { width: 88, align: 'right' });
+    } else {
+      // compact: Doppellinie statt Farbfläche
+      doc.moveTo(sx, y).lineTo(sx + sw, y).strokeColor(DARK).lineWidth(0.8).stroke();
+      doc.moveTo(sx, y + 2).lineTo(sx + sw, y + 2).strokeColor(DARK).lineWidth(0.8).stroke();
+      doc.fillColor(DARK).font('Helvetica-Bold').fontSize(10.5)
+        .text('Gesamtbetrag', sx, y + 9, { width: sw - 90 })
+        .text(eur(d.gross), sx + sw - 88, y + 9, { width: 88, align: 'right' });
+    }
     y += 40;
 
     // ── Zahlungsblock ────────────────────────────────────────
@@ -262,7 +309,7 @@ async function renderProfessional(invoice, org, embedFile) {
       const payH = payLines.length * 13 + 24;
       if (y + payH > bottomLimit) { doc.addPage(); y = header(false); }
       doc.rect(M, y, PAGE_W - 2 * M, payH).fill('#F8F9FB');
-      doc.rect(M, y, 3, payH).fill(C);
+      doc.rect(M, y, 3, payH).fill(TPL.totalFill ? C : DARK);
       let py = y + 12;
       doc.fontSize(9);
       payLines.forEach((line, i) => {

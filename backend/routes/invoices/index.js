@@ -149,7 +149,9 @@ export async function invoiceRoutes(fastify) {
           },
           notes: { type: 'string' },
           reference: { type: 'string' },
+          leitweg_id: { type: 'string' },
           brand_color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
+          invoice_template: { type: 'string', enum: ['classic', 'modern', 'compact'] },
           status: { type: 'string', enum: ['draft'] },
         }
       }
@@ -185,6 +187,19 @@ export async function invoiceRoutes(fastify) {
       return reply.code(400).send({ error: 'Betrag muss größer als 0 sein.' });
     }
 
+    // Pflichtfeld-Automatik aus den Org-Einstellungen:
+    // Fälligkeit (BT-9) aus dem Standard-Zahlungsziel, Leitweg-ID (BT-10) aus
+    // dem Mandanten-Default — beides überschreibbar pro Rechnung.
+    let due_date = body.due_date || null;
+    if (!due_date && body.invoice_date && Number.isFinite(parseInt(org.default_due_days))) {
+      const dt = new Date(body.invoice_date);
+      if (!isNaN(dt)) {
+        dt.setDate(dt.getDate() + parseInt(org.default_due_days));
+        due_date = dt.toISOString().slice(0, 10);
+      }
+    }
+    const leitweg_id = body.leitweg_id || org.leitweg_id || null;
+
     const invoiceData = {
       ...body,
       seller_name,
@@ -192,6 +207,8 @@ export async function invoiceRoutes(fastify) {
       seller_address,
       seller_city,
       seller_iban,
+      due_date,
+      leitweg_id,
       org_id:       org.id,
       amount_net:   parseFloat(net.toFixed(2)),
       amount_vat:   parseFloat(vatAmt.toFixed(2)),
@@ -256,6 +273,7 @@ export async function invoiceRoutes(fastify) {
       notes: invoiceData.notes || null,
       reference: invoiceData.reference || null,
       brand_color: invoiceData.brand_color || null,
+      invoice_template: invoiceData.invoice_template || null,
       xml_content: invoiceData.xml_content || null,
       xml_hash: invoiceData.xml_hash || null,
       validation_result: validation,
@@ -690,6 +708,7 @@ function sanitizeInvoice(inv) {
       line_items: items,
       reference: original.invoice_number,
       brand_color: original.brand_color || null,
+      invoice_template: original.invoice_template || null,
       notes: `Storno zu Rechnung ${original.invoice_number} vom ${original.invoice_date}.`,
       created_by: req.user?.id || null,
     });
@@ -744,6 +763,7 @@ function sanitizeInvoice(inv) {
       line_items: items,
       reference: original.invoice_number,
       brand_color: original.brand_color || null,
+      invoice_template: original.invoice_template || null,
       notes: `Korrekturrechnung zu ${original.invoice_number} vom ${original.invoice_date}.`,
       created_by: req.user?.id || null,
     });

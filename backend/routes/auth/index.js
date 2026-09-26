@@ -356,6 +356,9 @@ export async function authRoutes(fastify) {
       en16931_strict:   org.en16931_strict   !== false,
       peppol_enabled:   org.peppol_enabled   || false,
       vida_reporting:   org.vida_reporting   || false,
+      invoice_template: org.invoice_template || 'classic',
+      leitweg_id:       org.leitweg_id       || '',
+      default_due_days: org.default_due_days ?? 14,
     };
   });
 
@@ -370,7 +373,8 @@ export async function authRoutes(fastify) {
                      'bank_name','tax_number','register_number','register_court',
                      'managing_director','logo_data','brand_color','email','website',
                      'default_format','default_delivery','auto_archive','en16931_strict',
-                     'peppol_enabled','vida_reporting'];
+                     'peppol_enabled','vida_reporting',
+                     'invoice_template','leitweg_id','default_due_days'];
     const updates = {};
     for(const key of allowed){
       if(req.body[key] !== undefined) updates[key] = req.body[key];
@@ -387,6 +391,17 @@ export async function authRoutes(fastify) {
       if (updates.logo_data.length > 400_000) {
         return reply.code(400).send({ error: 'Logo zu groß — bitte maximal 300 KB verwenden.' });
       }
+    }
+    if (updates.invoice_template !== undefined &&
+        !['classic', 'modern', 'compact'].includes(updates.invoice_template)) {
+      return reply.code(400).send({ error: 'Unbekannte Rechnungsvorlage.' });
+    }
+    if (updates.default_due_days !== undefined) {
+      const n = parseInt(updates.default_due_days);
+      if (!Number.isFinite(n) || n < 0 || n > 365) {
+        return reply.code(400).send({ error: 'Zahlungsziel muss zwischen 0 und 365 Tagen liegen.' });
+      }
+      updates.default_due_days = n;
     }
     updates.updated_at = new Date().toISOString();
 
