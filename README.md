@@ -34,6 +34,23 @@ npm run dev          # http://localhost:5173 (VITE_API_URL auf lokales Backend s
 Migrationen: `backend/migrations/*.sql` der Reihe nach im Supabase SQL Editor
 ausführen — **005 ist Pflicht** (fehlende Spalten für Settings/KI-Review/vendors).
 
+## Preismodell
+
+Free (0 €, 10 Rechnungen/Monat) · Basis 15 € · Plus 23 € · Premium 30 € — jeweils
+zzgl. USt., jährlich 12/19/25 €. Interne Plan-Keys bleiben `starter`/`business`/
+`enterprise` (Stripe, DB, Checkout). **Nach dem Deploy im Stripe-Dashboard neue
+Preise (15/23/30 € bzw. Jahrespreise) anlegen und die `STRIPE_PRICE_*`-Variablen
+in Railway auf die neuen Price-IDs umstellen — sonst zahlt der Checkout die alten
+Beträge (29/99/299 €), während die Website die neuen bewirbt.**
+
+## Rechnungsdesign & Pflichtfelder
+
+Einstellungen → Unternehmen: Rechnungsdesign (Klassisch/Modern/Kompakt, Migration
+014), Logo + Markenfarbe, Leitweg-ID (BT-10) und Standard-Zahlungsziel. Beides
+wird automatisch in neue Rechnungen übernommen (Fälligkeit = Rechnungsdatum +
+Zahlungsziel; Leitweg-ID als BuyerReference, wenn keine Referenz gesetzt ist) und
+vor dem Generieren gegen EN 16931 geprüft. Design pro Rechnung übersteuerbar.
+
 ## Feature-Flag: ERP-Module
 
 Die Navigation ist auf E-Rechnung fokussiert. Die ERP-Module

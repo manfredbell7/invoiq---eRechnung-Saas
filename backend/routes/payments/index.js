@@ -16,11 +16,14 @@ import { authMiddleware } from '../../middleware/auth.js';
 import { supabase } from '../../config/database.js';
 import { db } from '../../config/db.js';
 
+// Preismodell nach Informer-Vorbild: gratis starten, ehrliche Pakete bis 30 €.
+// Die internen Plan-Keys (starter/business/enterprise) bleiben stabil, weil
+// Stripe-Price-IDs, DB-Werte und Checkout daran hängen — nur Name/Preis ändern sich.
 export const PLANS = {
-  free:       { docs_limit: 10,    name: 'Free'       },
-  starter:    { docs_limit: 100,   name: 'Starter'    },
-  business:   { docs_limit: 500,   name: 'Business'   },
-  enterprise: { docs_limit: 99999, name: 'Enterprise' },
+  free:       { docs_limit: 10,    name: 'Free'    },
+  starter:    { docs_limit: 100,   name: 'Basis'   },
+  business:   { docs_limit: 500,   name: 'Plus'    },
+  enterprise: { docs_limit: 99999, name: 'Premium' },
 };
 
 export async function paymentRoutes(fastify) {
@@ -48,10 +51,10 @@ export async function paymentRoutes(fastify) {
   fastify.get('/payments/plans', async (req, reply) => {
     return reply.send({
       plans: [
-        { id:'free',       name:'Free',       price_monthly:0,   price_yearly:0,   docs_limit:10,    features:['XRechnung Basic','Inbound-Empfang','PDF Download','1 Nutzer'] },
-        { id:'starter',    name:'Starter',    price_monthly:29,  price_yearly:25,  docs_limit:100,   features:['Alle Formate','Automatischer Inbound','API Basic','GoBD-Archiv 10J','3 Nutzer'] },
-        { id:'business',   name:'Business',   price_monthly:99,  price_yearly:85,  docs_limit:500,   features:['ERP-Integration','Workflow-Automatisierung','Batch-Verarbeitung','10 Nutzer'] },
-        { id:'enterprise', name:'Enterprise', price_monthly:299, price_yearly:250, docs_limit:99999,features:['Alles','Multi-Mandanten','Account Manager','SLA','Telefon-Support'] },
+        { id:'free',       name:'Free',    price_monthly:0,  price_yearly:0,  docs_limit:10,    features:['10 Rechnungen/Monat','E-Rechnungen erstellen (XRechnung, ZUGFeRD)','Eigene Empfangsadresse inklusive','3 Rechnungsdesigns','1 Benutzer'] },
+        { id:'starter',    name:'Basis',   price_monthly:15, price_yearly:12, docs_limit:100,   features:['100 Rechnungen/Monat','E-Mail-Versand direkt aus invoiq','Scan & Import mit KI-Erkennung','GoBD-Archiv 10 Jahre','Pflichtfeld-Automatik (Leitweg-ID, Zahlungsziel)'] },
+        { id:'business',   name:'Plus',    price_monthly:23, price_yearly:19, docs_limit:500,   features:['500 Rechnungen/Monat','DATEV-Export (EXTF-Buchungsstapel)','Integrierte Buchhaltung (SKR03/04, Bilanz & GuV)','KI-Berater mit echten Zahlen','API-Zugang'] },
+        { id:'enterprise', name:'Premium', price_monthly:30, price_yearly:25, docs_limit:99999, features:['Unbegrenzte Rechnungen','Alle Plus-Funktionen','Webhooks & Integrationen','Bevorzugter Support'] },
       ],
       overage_price: 0.50,
     });

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, Component } from "react";
 import OnboardingWizard from "./OnboardingWizard.jsx";
-import LandingPage from './LandingPage.jsx';
 import { T, F, CSS } from "./theme.js"; class PortalErrorBoundary extends Component{constructor(p){super(p);this.state={err:false};}static getDerivedStateFromError(){return{err:true};}componentDidCatch(e,i){console.error('Portal crash:',e,i);}render(){if(this.state.err)return(<div style={{padding:40,textAlign:'center',color:'#697386'}}><div style={{fontSize:40}}>⚠️</div><h3 style={{color:'#0A2540',marginTop:8}}>Kanzlei-Portal nicht verfügbar</h3><p>Ein Fehler ist aufgetreten. Bitte laden Sie die Seite neu.</p><button onClick={()=>this.setState({err:false})} style={{marginTop:16,padding:'10px 20px',background:'#635BFF',color:'#fff',border:'none',borderRadius:8,cursor:'pointer'}}>Erneut versuchen</button></div>);return this.props.children;}}
 
 /* ═══════════════════════════════════════════════════════════════
@@ -122,7 +121,7 @@ function Wordmark({size=22,inverted=false,iconOnly=false}){
 }
 
 function StatusBadge({status}){
-  const m={delivered:["badge-green","Zugestellt"],validated:["badge-blue","Validiert"],sent:["badge-blue","Gesendet"],error:["badge-red","Fehler"],pending:["badge-amber","Ausstehend"],archived:["badge-gray","Archiviert"],draft:["badge-gray","Entwurf"],paid:["badge-green","Bezahlt"],overdue:["badge-red","Überfällig"],cancelled:["badge-red","Storniert"],active:["badge-green","Aktiv"],trial:["badge-purple","Trial"],suspended:["badge-red","Gesperrt"],free:["badge-gray","Free"],starter:["badge-gray","Starter"],business:["badge-blue","Business"],enterprise:["badge-purple","Enterprise"],pro:["badge-amber","Pro"],super_admin:["badge-red","Super Admin"],owner:["badge-gray","Owner"],admin:["badge-blue","Admin"],member:["badge-gray","Member"],
+  const m={delivered:["badge-green","Zugestellt"],validated:["badge-blue","Validiert"],sent:["badge-blue","Gesendet"],error:["badge-red","Fehler"],pending:["badge-amber","Ausstehend"],archived:["badge-gray","Archiviert"],draft:["badge-gray","Entwurf"],paid:["badge-green","Bezahlt"],overdue:["badge-red","Überfällig"],cancelled:["badge-red","Storniert"],active:["badge-green","Aktiv"],trial:["badge-purple","Trial"],suspended:["badge-red","Gesperrt"],free:["badge-gray","Free"],starter:["badge-gray","Basis"],business:["badge-blue","Plus"],enterprise:["badge-purple","Premium"],pro:["badge-amber","Pro"],super_admin:["badge-red","Super Admin"],owner:["badge-gray","Owner"],admin:["badge-blue","Admin"],member:["badge-gray","Member"],
   // Belegfluss-Status (SAP-nah)
   offen:["badge-amber","Offen"],beantwortet:["badge-blue","Beantwortet"],entwurf:["badge-gray","Entwurf"],gesendet:["badge-blue","Gesendet"],angenommen:["badge-green","Angenommen"],abgelehnt:["badge-red","Abgelehnt"],abgelaufen:["badge-gray","Abgelaufen"],bestaetigt:["badge-blue","Bestätigt"],geliefert:["badge-purple","Geliefert"],fakturiert:["badge-green","Fakturiert"],storniert:["badge-red","Storniert"]};
   const[cls,lbl]=m[status]||["badge-gray",status];
@@ -187,7 +186,7 @@ function Landing({onEnter,onLegal=()=>{}}){
     return()=>clearInterval(id);
   },[]);
   useEffect(()=>{
-    const id=setInterval(()=>setHeroTab(t=>(t+1)%7),3200);
+    const id=setInterval(()=>setHeroTab(t=>(t+1)%6),3200);
     return()=>clearInterval(id);
   },[]);
   useEffect(()=>{
@@ -216,70 +215,14 @@ function Landing({onEnter,onLegal=()=>{}}){
     {num:'INV-2025-037',co:'Nord Express',amt:'8.440 €',st:'delivered'},
   ];
   const visibleRows=liveRows.slice(tick%5,(tick%5)+3).concat(liveRows).slice(0,3);
-  const integrations=['DATEV','Lexware','lexoffice','sevDesk','SAP S/4HANA','SAP ECC','Weclapp','MS Dynamics 365','Odoo','REST API','Xero','QuickBooks'];
+  // Nur was heute wirklich funktioniert — Formate, Exporte, Schnittstellen
+  const integrations=['XRechnung 3.0','ZUGFeRD 2.3','Peppol BIS 3.0','Factur-X','DATEV EXTF-Export','DATEV LODAS','PDF/A-3','SEPA XML','REST API','Webhooks','E-Mail-Versand (Resend)','KI-Beleg-Erkennung'];
 
   const stBadge=(s)=>{
     const m={delivered:[T.green,'#ECFDF5','#A7F3D0','Delivered'],validated:[T.accent,'#EEF2FF','#C7D2FE','Validated'],error:[T.red,'#FEF2F2','#FECACA','Error'],pending:[T.amber,'#FFFBEB','#FDE68A','Pending']};
     const[c,bg,bd,lbl]=m[s]||[T.textMuted,T.bgMuted,T.bgBorder,s];
     return <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:4,background:bg,color:c,border:`1px solid ${bd}`}}>{lbl}</span>;
   };
-
-  const heroTabs=[
-    {label:'Overview',content:(
-      <div style={{padding:16}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:8,marginBottom:12}}>
-          {[['41','Versendet','▲ +8%',T.green],['28','Empfangen','Diese Woche',T.accent],['1','Fehler','Prüfen',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
-            <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'9px 10px',border:`1px solid ${T.bgBorder}`}}>
-              <div style={{fontSize:10,color:T.textMuted,marginBottom:4}}>{l}</div>
-              <div style={{fontSize:20,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1}}>{v}</div>
-              <div style={{fontSize:9.5,color:c,marginTop:3,fontWeight:600}}>{s}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{display:'flex',alignItems:'flex-end',gap:3,height:44,padding:'0 2px',marginBottom:10}}>
-          {[22,28,24,36,31,40,41].map((v,i)=>(
-            <div key={i} style={{flex:1,background:i===6?T.accent:`${T.accent}28`,borderRadius:'2px 2px 0 0',height:`${(v/41)*100}%`,minHeight:3}}/>
-          ))}
-        </div>
-        {visibleRows.map((r,i)=>(
-          <div key={r.num+i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:i<2?`1px solid ${T.bgSubtle}`:'none'}}>
-            <span style={{fontFamily:F.mono,fontSize:10,color:T.textPrimary,flex:'0 0 90px'}}>{r.num}</span>
-            <span style={{fontSize:10.5,color:T.textSecondary,flex:1}}>{r.co}</span>
-            <span style={{fontSize:10.5,fontWeight:600,color:T.textPrimary}}>{r.amt}</span>
-            <div style={{flexShrink:0}}>{stBadge(r.st)}</div>
-          </div>
-        ))}
-      </div>
-    )},
-    {label:'Documents',content:(
-      <div style={{padding:16}}>
-        <div style={{display:'flex',gap:6,marginBottom:12}}>
-          {['All','Delivered','Errors'].map((t,i)=>(
-            <span key={t} style={{fontSize:10.5,fontWeight:i===0?700:500,color:i===0?T.accent:T.textMuted,padding:'3px 8px',borderRadius:4,background:i===0?T.accentLight:'transparent',border:`1px solid ${i===0?T.accentPale:T.bgBorder}`,cursor:'default'}}>{t}</span>
-          ))}
-        </div>
-        {liveRows.map((r,i)=>(
-          <div key={r.num} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:i<4?`1px solid ${T.bgSubtle}`:'none'}}>
-            <span style={{fontFamily:F.mono,fontSize:10,color:T.textPrimary,flex:'0 0 90px'}}>{r.num}</span>
-            <span style={{fontSize:10.5,color:T.textSecondary,flex:1}}>{r.co}</span>
-            <span style={{fontSize:10,fontWeight:600,color:T.textPrimary,flex:'0 0 56px',textAlign:'right'}}>{r.amt}</span>
-            <div style={{flexShrink:0}}>{stBadge(r.st)}</div>
-          </div>
-        ))}
-      </div>
-    )},
-    {label:'Connectors',content:(
-      <div style={{padding:16,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-        {[['SAP S/4HANA','RFC / IDoc',true],['DATEV','Connect Online',true],['Lexware','XML / SFTP',true],['MS Dynamics','Dataverse API',false],['Odoo','JSON-RPC',false],['REST API','HTTP',true]].map(([n,m,c])=>(
-          <div key={n} style={{background:c?T.bgSubtle:T.bg,border:`1px solid ${c?T.greenBdr:T.bgBorder}`,borderRadius:5,padding:'9px 10px'}}>
-            <div style={{fontWeight:600,fontSize:11.5,color:T.textPrimary,marginBottom:2}}>{n}</div>
-            <div style={{fontSize:10,color:T.textMuted,marginBottom:6}}>{m}</div>
-            <span style={{fontSize:9.5,fontWeight:700,padding:'2px 6px',borderRadius:3,background:c?'#ECFDF5':'#F1F5F9',color:c?T.green:T.textMuted,border:`1px solid ${c?T.greenBdr:T.bgBorder}`}}>{c?'Connected':'Available'}</span>
-          </div>
-        ))}
-      </div>
-    )},
-  ];
 
   const STEPS=[
     {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Bei der Registrierung bekommt jeder Kunde automatisch seine eigene, personalisierte E-Mail-Adresse — einzigartig für dein Unternehmen (z.B. deine-firma-a1b2c3@rechnungen.invoiq.de). Über sie empfängst und versendest du deine E-Rechnungen — kein ERP, kein IT-Aufwand.',tags:['deine-firma-a1b2c3@rechnungen.invoiq.de','XRechnung','ZUGFeRD','PDF'],preview:(
@@ -353,38 +296,6 @@ function Landing({onEnter,onLegal=()=>{}}){
     )},
   ];
 
-  // Pricing plans — new structure with Freemium
-  const PLANS=[
-    {
-      name:'Free',price:0,yearlyPrice:0,docs:'10 Dok./Monat',
-      sub:'Kein Kreditkarte nötig',
-      badge:null,
-      features:['XRechnung-Generator','Inbound-Empfang','PDF-Download','1 Nutzer'],
-      cta:'Kostenlos starten',ctaStyle:'outline',
-    },
-    {
-      name:'Starter',price:29,yearlyPrice:25,docs:'100 Dok./Monat',
-      sub:'Pro Monat, jederzeit kündbar',
-      badge:null,
-      features:['XRechnung + ZUGFeRD','Inbound-Empfang + Parsing','E-Mail-Versand','GoBD-Archiv','API Basic'],
-      cta:'14 Tage gratis testen',ctaStyle:'outline',
-    },
-    {
-      name:'Business',price:99,yearlyPrice:85,docs:'500 Dok./Monat',
-      sub:'Pro Monat, jederzeit kündbar',
-      badge:'EMPFOHLEN',
-      features:['Alles in Starter','Peppol BIS 3.0 Versand','KI-Rechnungserkennung (Scanner)','DATEV-Export inklusive','Kanzlei-Portal Zugang','ViDA-Reporting ready'],
-      cta:'Jetzt starten',ctaStyle:'primary',
-    },
-    {
-      name:'Enterprise',price:299,yearlyPrice:250,docs:'Unbegrenzt',
-      sub:'Pro Monat, jederzeit kündbar',
-      badge:null,
-      features:['Alles in Business','Multi-Mandanten','Public REST API + Webhooks','GoBD-Archiv 10 Jahre','Account Manager','SLA & Telefon-Support'],
-      cta:'Demo buchen',ctaStyle:'outline',
-    },
-  ];
-
   return(<div style={{background:T.bg,minHeight:'100vh',overflowX:'hidden'}}>
 
     {/* NAV */}
@@ -425,7 +336,7 @@ function Landing({onEnter,onLegal=()=>{}}){
             <button className="btn btn-ghost btn-lg" onClick={onEnter}>Demo ansehen</button>
           </div>
           <div className="fu5" style={{display:'flex',gap:24,paddingTop:20,borderTop:`1px solid ${T.bgBorder}`}}>
-            {[['48h','bis Go-Live'],['Inbound','seit Jan 2025'],['ViDA','ready 2028']].map(([v,l])=>(
+            {[['2 Min.','bis zur eigenen Adresse'],['Inbound','Pflicht seit Jan 2025'],['0 €','Einstieg — dauerhaft']].map(([v,l])=>(
               <div key={l}>
                 <div style={{fontSize:18,fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em'}}>{v}</div>
                 <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{l}</div>
@@ -454,14 +365,14 @@ function Landing({onEnter,onLegal=()=>{}}){
                   <div style={{width:18,height:18,borderRadius:4,background:T.brand,flexShrink:0}}/>
                   <span style={{fontSize:11,fontWeight:700,color:T.textPrimary}}>invoiq</span>
                 </div>
-                {[['Übersicht',0],['Ausgang',1],['Scan & Import',2],['Eingang',3],['Archiv',4],['Einstellungen',5],['Kanzlei-Portal',6]].map(([label,idx])=>(
+                {[['Übersicht',0],['Ausgang',1],['Scan & Import',2],['Eingang',3],['Archiv',4],['Einstellungen',5]].map(([label,idx])=>(
                   <div key={label} onClick={()=>setHeroTab(idx)} style={{padding:'5px 7px',borderRadius:5,fontSize:10.5,fontWeight:heroTab===idx?700:400,color:heroTab===idx?T.textPrimary:T.textMuted,background:heroTab===idx?T.bgMuted:'transparent',cursor:'pointer',transition:'all .15s',whiteSpace:'nowrap'}}>{label}</div>
                 ))}
               </div>
               {/* Content */}
               <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
                 <div style={{height:36,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px',flexShrink:0}}>
-                  <span style={{fontSize:11.5,fontWeight:600,color:T.textPrimary}}>{['Übersicht','Ausgang','Scan & Import','Eingang','Archiv','Einstellungen','Kanzlei-Portal'][heroTab]}</span>
+                  <span style={{fontSize:11.5,fontWeight:600,color:T.textPrimary}}>{['Übersicht','Ausgang','Scan & Import','Eingang','Archiv','Einstellungen'][heroTab]}</span>
                   <div style={{width:7,height:7,borderRadius:'50%',background:T.green,animation:'pulse 2s ease-in-out infinite'}}/>
                 </div>
                 <div style={{flex:1,overflow:'hidden'}}>
@@ -542,31 +453,6 @@ function Landing({onEnter,onLegal=()=>{}}){
                     <div style={{marginTop:10,padding:'7px 10px',background:T.blueBg,border:`1px solid ${T.blueBdr}`,borderRadius:6,fontSize:9.5,color:T.blue}}>📧 rechnungen@invoiq.de · Peppol: 0190:DE...</div>
                   </div>}
                   {heroTab===4&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
-                      <span style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>Kanzlei-Portal</span>
-                      <span style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:4,background:T.purpleBg,color:T.purple,border:`1px solid ${T.purpleBdr}`}}>6 Mandanten</span>
-                    </div>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
-                      {[['6','Mandanten',T.textPrimary],['423','Dok. Mai',T.accent],['98%','Compliance',T.green]].map(([v,l,c])=>(
-                        <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'7px 8px',border:`1px solid ${T.bgBorder}`,textAlign:'center'}}>
-                          <div style={{fontSize:18,fontWeight:800,color:c,letterSpacing:'-.03em'}}>{v}</div>
-                          <div style={{fontSize:9.5,color:T.textMuted,marginTop:2}}>{l}</div>
-                        </div>
-                      ))}
-                    </div>
-                    {[{n:'Müller Bäckerei GmbH',p:14,l:100,e:0},{n:'TechVision AG',p:284,l:1000,e:0},{n:'Stadtwerke Süd',p:67,l:100,e:1}].map((m,i)=>(
-                      <div key={m.n} style={{padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgSubtle}`:'none'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:3,fontSize:10}}>
-                          <span style={{fontWeight:600,color:T.textPrimary,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:100}}>{m.n}</span>
-                          <span style={{color:m.e>0?T.red:T.textMuted,fontWeight:m.e>0?700:400}}>{m.e>0?'⚠ Fehler':`${m.p}/${m.l}`}</span>
-                        </div>
-                        <div style={{height:3,background:T.bgBorder,borderRadius:2,overflow:'hidden'}}>
-                          <div style={{height:'100%',width:`${Math.min(100,(m.p/m.l)*100)}%`,background:m.e>0?T.red:T.accent,borderRadius:2}}/>
-                        </div>
-                      </div>
-                    ))}
-                  </div>}
-                  {heroTab===4&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
                     <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:10}}>GoBD-Archiv</div>
                     <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6,marginBottom:10}}>
                       {[['12.441','Archiviert'],['10 Jahre','Retention']].map(([v,l])=>(
@@ -589,7 +475,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                   </div>}
                   {heroTab===5&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
                     <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:12}}>Einstellungen</div>
-                    {[{l:'Standard-Format',v:'XRechnung 3.0',t:'s'},{l:'GoBD-Archivierung',v:true,t:'t'},{l:'ViDA-Reporting (Beta)',v:false,t:'t'},{l:'Peppol aktiviert',v:true,t:'t'},{l:'Zustellweg',v:'E-Mail',t:'s'}].map((s,i)=>(
+                    {[{l:'Standard-Format',v:'XRechnung 3.0',t:'s'},{l:'Rechnungsdesign',v:'Modern',t:'s'},{l:'Zahlungsziel',v:'14 Tage',t:'s'},{l:'Leitweg-ID (B2G)',v:'04011000-…',t:'s'},{l:'GoBD-Archivierung',v:true,t:'t'}].map((s,i)=>(
                       <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:T.bgSubtle,borderRadius:6,border:`1px solid ${T.bgBorder}`,marginBottom:6}}>
                         <span style={{fontSize:10.5,color:T.textPrimary,fontWeight:500}}>{s.l}</span>
                         {s.t==='t'
@@ -604,7 +490,7 @@ function Landing({onEnter,onLegal=()=>{}}){
               </div>
             </div>
           </div>
-          {heroTab===6&&<div style={{padding:14,animation:'fadeIn .3s ease',textAlign:'center'}}><div style={{fontSize:40,marginBottom:12}}>🏛️</div><div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:8}}>Kanzlei-Portal</div><div style={{fontSize:10.5,color:T.textMuted}}>Alle Mandanten zentral verwalten — enthalten ab dem Business-Plan.</div></div>}{/* Floating notification */}
+          {/* Floating notification */}
           <div style={{position:'absolute',bottom:-18,right:-14,background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:9,padding:'10px 14px',boxShadow:T.shadow3,display:'flex',alignItems:'center',gap:10,zIndex:2}}>
             <div style={{width:28,height:28,borderRadius:6,background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -622,8 +508,7 @@ function Landing({onEnter,onLegal=()=>{}}){
     <section style={{padding:'48px 0',borderTop:`1px solid rgba(99,91,255,.12)`,borderBottom:`1px solid rgba(99,91,255,.12)`,background:'#07102A',overflow:'hidden',position:'relative'}}>
       <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(99,91,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(99,91,255,.07) 1px,transparent 1px)',backgroundSize:'40px 40px',pointerEvents:'none'}}/>
       {/* Coming Soon Badge */}
-      <div style={{position:'absolute',top:12,right:20,zIndex:10,background:'rgba(245,158,11,.15)',border:'1px solid rgba(245,158,11,.4)',borderRadius:6,padding:'4px 12px',fontSize:11,fontWeight:700,color:'#f59e0b',letterSpacing:.5}}>⚙ ERP-Konnektoren — In Entwicklung</div>
-      <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Kompatibel mit führenden ERP-Systemen <span style={{fontSize:10,color:'#f59e0b',marginLeft:6}}>— demnächst verfügbar</span></p>
+      <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Unterstützte Standards, Formate & Exporte — heute, nicht irgendwann</p>
       <div className="marquee-wrap" style={{position:'relative'}}>
         <div className="marquee-track">
           {[...integrations,...integrations].map((n,i)=>(
@@ -652,7 +537,7 @@ function Landing({onEnter,onLegal=()=>{}}){
           <div className="reveal" style={{display:'flex',flexDirection:'column',gap:10,marginBottom:24}}>
             {[
               ['Automatisches Parsing','XRechnung, ZUGFeRD und Peppol werden sofort strukturiert ausgelesen'],
-              ['ERP-Buchung ohne Medienbruch','Direkte Verbuchung in SAP FI, DATEV oder Lexware — kein manueller Schritt'],
+              ['Buchhaltung ohne Medienbruch','Automatische Verbuchung in der integrierten Buchhaltung (SKR03/04) + DATEV-Export für die Kanzlei'],
               ['Validierung & Fehler-Alerts','Defekte Rechnungen werden erkannt und mit Klartexthinweis zurückgemeldet'],
               ['Alle Tarife inklusive','Inbound-Empfang ist kein Premium-Feature — es ist Pflicht für alle'],
             ].map(([t,d])=>(
@@ -676,7 +561,7 @@ function Landing({onEnter,onLegal=()=>{}}){
               {icon:'📥',step:'Empfang',detail:'XRechnung von Lieferant ABC',status:'done',time:'09:14:03'},
               {icon:'🔍',step:'Parsing & Validierung',detail:'EN 16931 ✓ · Alle Pflichtfelder vorhanden',status:'done',time:'09:14:03'},
               {icon:'📊',step:'DATEV-Export bereit',detail:'CSV für Steuerberater · 1-Klick',status:'done',time:'09:14:04'},
-              {icon:'📒',step:'SAP FI Buchung',detail:'Beleg 1800023847 erstellt',status:'done',time:'09:14:04'},
+              {icon:'📒',step:'FI-Buchung',detail:'Debitor an Erlös + USt (SKR03) — automatisch',status:'done',time:'09:14:04'},
               {icon:'🔒',step:'GoBD-Archivierung',detail:'SHA-256 · 10 Jahre gesichert',status:'done',time:'09:14:05'},
             ].map((s,i)=>(
               <div key={i} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'10px 0',borderBottom:i<4?`1px solid ${T.bgSubtle}`:'none',position:'relative'}}>
@@ -763,15 +648,15 @@ function Landing({onEnter,onLegal=()=>{}}){
           </div>
           {/* Bento 3 — Kanzlei */}
           <div className="bento-card reveal" style={{transitionDelay:'.14s'}}>
-            <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.accent+'15',color:T.accent,border:`1px solid ${T.accent}30`}}>Business-Plan</span>
-            <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>Kanzlei-Portal</h3>
-            <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Ein Login, alle Mandanten — zentral verwalten und als DATEV-Export weitergeben.</p>
+            <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.accent+'15',color:T.accent,border:`1px solid ${T.accent}30`}}>Neu</span>
+            <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>Ihr Rechnungsdesign</h3>
+            <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Drei Vorlagen (Klassisch, Modern, Kompakt), eigenes Logo und Markenfarbe — mit Live-Vorschau, pro Rechnung wählbar.</p>
           </div>
           {/* Bento 4 */}
           <div className="bento-card reveal" style={{transitionDelay:'.21s'}}>
             <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.amber+'15',color:T.amber,border:`1px solid ${T.amber}30`}}>2028 ready</span>
             <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>ViDA Reporting</h3>
-            <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Die EU-Meldepflicht kommt 2028 — invoiq baut die Schnittstellen jetzt schon mit ein.</p>
+            <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Die EU-Meldepflicht kommt 2028 — invoiq ist darauf ausgerichtet: strukturierte EN-16931-Daten von Tag eins.</p>
           </div>
           {/* Bento 5 — WIDE: GoBD-Archiv mit Daten-Strip */}
           <div className="bento-card bento-wide reveal" style={{transitionDelay:'.28s'}}>
@@ -801,7 +686,7 @@ function Landing({onEnter,onLegal=()=>{}}){
         <div className="zg-grid">
           {[
             {num:'01',target:'Einzelunternehmer & KMU',sub:'Handwerker · Freelancer · kleine Firmen · ohne IT-Aufwand',points:['XRechnung per E-Mail empfangen & senden','Foto/PDF → XRechnung per KI-Scanner','GoBD-Archivierung automatisch','Kein ERP · kein IT-Wissen nötig'],cta:'Kostenlos starten →',color:T.accent},
-            {num:'02',target:'Steuerberater & Kanzleien',sub:'Ein Portal · alle Mandanten · zentrale E-Rechnungs-Verwaltung',points:['Kanzlei-Portal: alle Mandanten auf einen Blick','Eingangsrechnungen pro Mandant empfangen','DATEV-Export für jeden Mandanten','Dokumenten-Archiv GoBD-konform'],cta:'Kanzlei-Portal testen →',color:T.purple},
+            {num:'02',target:'Zusammenarbeit mit dem Steuerberater',sub:'DATEV-ready · ein Klick statt Pendelordner',points:['DATEV-EXTF-Buchungsstapel exportieren','Belege per E-Mail an die Kanzlei weiterleiten','Integrierte Buchhaltung: SKR03/04, Bilanz & GuV','Dokumenten-Archiv GoBD-konform'],cta:'Jetzt testen',color:T.purple},
             {num:'03',target:'Kleinunternehmen',sub:'Alle müssen empfangen können',points:['Kostenloser Einstieg (10 Dok.)','Inbound-Empfang inklusive','Kein ERP nötig','XRechnung-Generator gratis'],cta:'Kostenlos starten',color:T.green},
           ].map((g,i)=>(
             <div key={i} className="card reveal" style={{padding:24,transitionDelay:`${i*.08}s`}}>
@@ -842,10 +727,10 @@ function Landing({onEnter,onLegal=()=>{}}){
           </div>
         </div>
         <div className="reveal" style={{background:T.brand,borderRadius:8,padding:28,color:'#fff'}}>
-          {[['Compliance Score','98%',T.green],['Archivierte Dok.','12.441','rgba(255,255,255,.85)'],['Ø Verarbeitungszeit','< 1.2s','rgba(255,255,255,.6)'],['Verfügbarkeit','99.98%','#86EFAC'],['ViDA-Status','Ready 2028','#A5B4FC']].map(([l,v,c])=>(
+          {[['Validierung','EN 16931 bei jeder Rechnung',T.green],['Integrität','SHA-256 je Dokument','rgba(255,255,255,.85)'],['Aufbewahrung','10 Jahre (§ 147 AO)','rgba(255,255,255,.6)'],['Hosting','EU — Frankfurt','#86EFAC'],['Zugriff','Mandantengetrennt (RLS)','#A5B4FC']].map(([l,v,c])=>(
             <div key={l} style={{padding:'12px 0',borderBottom:'1px solid rgba(255,255,255,.07)'}}>
               <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:600,letterSpacing:.5,marginBottom:3,textTransform:'uppercase'}}>{l}</div>
-              <div style={{fontSize:22,fontWeight:800,color:c,lineHeight:1,letterSpacing:'-.03em'}}>{v}</div>
+              <div style={{fontSize:16,fontWeight:800,color:c,lineHeight:1.2,letterSpacing:'-.02em'}}>{v}</div>
             </div>
           ))}
         </div>
@@ -857,8 +742,8 @@ function Landing({onEnter,onLegal=()=>{}}){
       <div style={{maxWidth:1100,margin:'0 auto'}}>
         <div style={{textAlign:'center',marginBottom:48}}>
           <span className="reveal badge badge-gray" style={{marginBottom:14,fontSize:11}}>Preise</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em'}}>Transparent. Kein usage-based Billing.</h2>
-          <p className="reveal" style={{fontSize:14,color:T.textSecondary,marginTop:10,marginBottom:24}}>Fester Monatspreis — keine Überraschungen. Jederzeit kündbar, keine Mindestlaufzeit.</p>
+          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em'}}>Ehrliche Preise. Ohne Kleingedrucktes.</h2>
+          <p className="reveal" style={{fontSize:14,color:T.textSecondary,marginTop:10,marginBottom:24}}>Gratis starten — E-Rechnungen schreiben und empfangen kostet nichts. Bezahlt wird erst, wenn invoiq mehr für dich übernimmt. Maximal 30 € im Monat, zzgl. USt., jederzeit kündbar.</p>
 
           {/* Billing toggle — default yearly */}
           <div className="reveal" style={{display:'inline-flex',alignItems:'center',gap:8,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'5px 6px'}}>
@@ -874,35 +759,35 @@ function Landing({onEnter,onLegal=()=>{}}){
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:20}}>
           {[
             {
-              name:'FREE',price:0,yearly:0,docs:'10 Rechnungen/Monat',
+              name:'FREE',key:'free',price:0,yearly:0,docs:'10 Rechnungen/Monat',
               tag:null,tagColor:null,
-              sub:'Kein Login, keine Kreditkarte',
-              features:['XRechnung & ZUGFeRD Basic','Manueller Generator','Inbound-Empfang','1 Jahr Archiv','1 Benutzer'],
-              cta:'Kostenlos starten',ctaPrimary:false,
+              sub:'Dauerhaft gratis — keine Kreditkarte',
+              features:['E-Rechnungen erstellen (XRechnung, ZUGFeRD)','Eigene Empfangsadresse inklusive','3 Rechnungsdesigns + Markenfarbe','PDF- & XML-Download','1 Benutzer'],
+              cta:'Gratis starten',ctaPrimary:false,
               roi:null,
             },
             {
-              name:'STARTER',price:29,yearly:25,docs:'100 Rechnungen/Monat',
-              tag:'AM BELIEBTESTEN',tagColor:T.accent,
-              sub:'300€/Jahr bei Jahreszahlung',
-              features:['Alle Formate (XR, ZUGFeRD, Peppol)','Automatischer Inbound','API-Zugang Basic','10 Jahre GoBD-Archiv','3 Benutzer','E-Mail-Support'],
-              cta:'Jetzt starten',ctaPrimary:true,
-              roi:'Spart Ø 15 Std./Monat Verwaltung',
-            },
-            {
-              name:'BUSINESS',price:99,yearly:85,docs:'500 Rechnungen/Monat',
+              name:'BASIS',key:'starter',price:15,yearly:12,docs:'100 Rechnungen/Monat',
               tag:null,tagColor:null,
-              sub:'1.020€/Jahr bei Jahreszahlung',
-              features:['Alles in STARTER','ERP-Integration (SAP, DATEV)','Workflow-Automatisierung','Batch-Verarbeitung','10 Benutzer','Priorisierter Support'],
+              sub:'Für Gründer & Einzelunternehmer',
+              features:['Alles aus Free','E-Mail-Versand direkt aus invoiq','Scan & Import mit KI-Erkennung','GoBD-Archiv 10 Jahre','Pflichtfeld-Automatik (Leitweg-ID, Zahlungsziel)'],
               cta:'Jetzt starten',ctaPrimary:false,
-              roi:'Verhindert Ø 2.400€/Jahr Bußgelder',
+              roi:null,
             },
             {
-              name:'ENTERPRISE',price:299,yearly:250,docs:'Unbegrenzte Rechnungen',
+              name:'PLUS',key:'business',price:23,yearly:19,docs:'500 Rechnungen/Monat',
+              tag:'EMPFOHLEN',tagColor:T.accent,
+              sub:'Buchhaltung gleich mit erledigt',
+              features:['Alles aus Basis','DATEV-Export (EXTF-Buchungsstapel)','Integrierte Buchhaltung: SKR03/04, Bilanz & GuV','KI-Berater mit deinen echten Zahlen','API-Zugang'],
+              cta:'Jetzt starten',ctaPrimary:true,
+              roi:'Spart den Pendelordner zur Kanzlei',
+            },
+            {
+              name:'PREMIUM',key:'enterprise',price:30,yearly:25,docs:'Unbegrenzte Rechnungen',
               tag:null,tagColor:null,
-              sub:'3.000€/Jahr bei Jahreszahlung',
-              features:['Alles in BUSINESS','Multi-Mandanten-Portal','Dedizierter Account Manager','SLA-Garantie','Telefon-Support','Onboarding-Service'],
-              cta:'Kontakt aufnehmen',ctaPrimary:false,
+              sub:'Alles drin — mehr gibt es nicht',
+              features:['Alles aus Plus','Unbegrenzte Rechnungen','Webhooks & Integrationen','Bevorzugter Support'],
+              cta:'Jetzt starten',ctaPrimary:false,
               roi:null,
             },
           ].map((p,i)=>{
@@ -946,7 +831,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                 </div>
 
                 {/* CTA */}
-                <button onClick={()=>onEnter(p.name.toLowerCase())} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',gap:5,background:isFeatured?'rgba(255,255,255,.12)':'transparent',color:isFeatured?'#fff':'#635BFF',border:isFeatured?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:12.5,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.opacity='.8';}} onMouseLeave={e=>{e.currentTarget.style.opacity='1';}}>
+                <button onClick={()=>onEnter(p.key)} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',gap:5,background:isFeatured?'rgba(255,255,255,.12)':'transparent',color:isFeatured?'#fff':'#635BFF',border:isFeatured?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:12.5,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.opacity='.8';}} onMouseLeave={e=>{e.currentTarget.style.opacity='1';}}>
                   {p.cta} →
                 </button>
               </div>
@@ -1672,6 +1557,14 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
               <input type="color" value={form.brand_color||"#635BFF"} onChange={e=>upd("brand_color",e.target.value)} style={{width:38,height:32,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:2,cursor:"pointer",background:"#fff"}}/>
               {form.brand_color&&<button className="btn btn-ghost btn-sm" style={{fontSize:11}} onClick={()=>upd("brand_color",undefined)}>zurücksetzen</button>}
             </div>
+          </div>
+          <div><label className="label">Design <span style={{fontWeight:400,color:T.textMuted}}>(Standard: aus Einstellungen)</span></label>
+            <select className="select" value={form.invoice_template||""} onChange={e=>upd("invoice_template",e.target.value||undefined)}>
+              <option value="">Firmen-Standard</option>
+              <option value="classic">Klassisch</option>
+              <option value="modern">Modern</option>
+              <option value="compact">Kompakt</option>
+            </select>
           </div>
           <div><label className="label">Rechnungsdatum</label><input className="input" type="date" value={form.invoice_date} onChange={e=>upd("invoice_date",e.target.value)}/></div>
           <div><label className="label">Fälligkeitsdatum</label><input className="input" type="date" value={form.due_date} onChange={e=>upd("due_date",e.target.value)}/></div>
@@ -3967,6 +3860,9 @@ function SettingsScreen({user,org,notify,initialTab}){
     en16931_strict:   org?.en16931_strict!==false,
     peppol_enabled:   org?.peppol_enabled||false,
     vida_reporting:   org?.vida_reporting||false,
+    invoice_template: org?.invoice_template||'classic',
+    leitweg_id:       org?.leitweg_id||'',
+    default_due_days: org?.default_due_days??14,
   });
 
   const onLogoFile=(file)=>{
@@ -4077,6 +3973,27 @@ function SettingsScreen({user,org,notify,initialTab}){
                     </div>
                   </div>
                 </div>
+                <div>
+                  <label className="label">Rechnungsdesign <span style={{fontWeight:400,color:T.textMuted}}>— Standard für alle PDFs, pro Rechnung änderbar</span></label>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:6}}>
+                    {[['classic','Klassisch','Farbband, farbige Tabelle — der bewährte Look'],['modern','Modern','Großer farbiger Briefkopf, luftige Tabelle'],['compact','Kompakt','Reduziert, ohne Farbflächen — dezent & klassisch']].map(([key,label,desc])=>{
+                      const active=form.invoice_template===key;
+                      const c=form.brand_color||'#635BFF';
+                      return(
+                        <div key={key} onClick={()=>upd('invoice_template',key)} style={{border:`2px solid ${active?T.accent:T.bgBorder}`,borderRadius:10,padding:10,cursor:'pointer',background:active?T.accentLight:T.bg,transition:'all .15s'}}>
+                          {/* Mini-Vorschau */}
+                          <div style={{background:'#fff',border:`1px solid ${T.bgBorder}`,borderRadius:6,height:74,overflow:'hidden',marginBottom:8,position:'relative'}}>
+                            {key==='classic'&&<><div style={{height:5,background:c}}/><div style={{margin:'8px 10px 4px',height:6,width:'45%',background:'#111827',borderRadius:2}}/><div style={{margin:'10px 10px 0',height:8,background:c,borderRadius:2}}/><div style={{margin:'4px 10px 0',height:5,background:'#F1F5F9',borderRadius:2}}/><div style={{margin:'3px 10px 0',height:5,background:'#fff',border:'1px solid #F1F5F9',borderRadius:2}}/></>}
+                            {key==='modern'&&<><div style={{height:24,background:c,display:'flex',alignItems:'center',paddingLeft:10}}><div style={{height:6,width:'40%',background:'rgba(255,255,255,.9)',borderRadius:2}}/></div><div style={{margin:'10px 10px 0',height:2,background:c,borderRadius:2}}/><div style={{margin:'5px 10px 0',height:5,background:'#F1F5F9',borderRadius:2}}/><div style={{margin:'3px 10px 0',height:5,background:'#F8FAFC',borderRadius:2}}/></>}
+                            {key==='compact'&&<><div style={{margin:'8px 10px 3px',height:6,width:'40%',background:'#111827',borderRadius:2}}/><div style={{margin:'0 10px',height:1,background:'#E5E7EB'}}/><div style={{margin:'10px 10px 0',height:1.5,background:'#111827'}}/><div style={{margin:'5px 10px 0',height:5,background:'#F8FAFC',borderRadius:2}}/><div style={{margin:'3px 10px 0',height:5,background:'#fff',border:'1px solid #F1F5F9',borderRadius:2}}/></>}
+                          </div>
+                          <div style={{fontSize:12.5,fontWeight:700,color:active?T.accent:T.textPrimary}}>{label}{active&&' ✓'}</div>
+                          <div style={{fontSize:10.5,color:T.textMuted,marginTop:2,lineHeight:1.4}}>{desc}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div><label className="label">Website</label><input className="input" value={form.website} onChange={e=>upd('website',e.target.value)} placeholder="https://ihre-firma.de"/></div>
                 <div style={{background:T.bgSubtle,borderRadius:8,padding:'14px 16px',border:`1px solid ${T.bgBorder}`,marginTop:4}}>
                   <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:12,letterSpacing:.4,textTransform:'uppercase'}}>Bankverbindung (für SEPA-Zahlungen) — optional</div>
@@ -4100,6 +4017,47 @@ function SettingsScreen({user,org,notify,initialTab}){
                   ):(
                     <div style={{fontSize:12.5,color:T.textMuted}}>Wird geladen…</div>
                   )}
+                </div>
+
+                {/* E-Rechnung: Pflichtfelder & Automatik */}
+                <div style={{background:T.bgSubtle,borderRadius:8,padding:'14px 16px',border:`1px solid ${T.bgBorder}`}}>
+                  <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:4,letterSpacing:.4,textTransform:'uppercase'}}>E-Rechnung — Pflichtfelder & Automatik</div>
+                  <div style={{fontSize:11.5,color:T.textMuted,marginBottom:12,lineHeight:1.5}}>Diese Werte werden automatisch in jede neue Rechnung übernommen und vor dem Versand gegen EN 16931 geprüft — du musst nichts mehr daran denken.</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+                    <div>
+                      <label className="label">Leitweg-ID (BT-10, für Behörden-Rechnungen)</label>
+                      <input className="input" value={form.leitweg_id} onChange={e=>upd('leitweg_id',e.target.value)} placeholder="z. B. 04011000-1234512345-06" style={{fontFamily:F.mono}}/>
+                      <div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Wird als BuyerReference in die XRechnung geschrieben, wenn die Rechnung keine eigene Referenz hat.</div>
+                    </div>
+                    <div>
+                      <label className="label">Standard-Zahlungsziel (Tage)</label>
+                      <input className="input" type="number" min="0" max="365" value={form.default_due_days} onChange={e=>upd('default_due_days',e.target.value)} style={{width:120}}/>
+                      <div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Fälligkeitsdatum (BT-9) wird automatisch gesetzt: Rechnungsdatum + {form.default_due_days||0} Tage.</div>
+                    </div>
+                  </div>
+                  {(()=>{
+                    const checks=[
+                      ['Firmenname (BT-27)',!!form.name],
+                      ['Anschrift (BG-5)',!!(form.address&&form.city&&form.zip)],
+                      ['USt-IdNr. oder Steuernummer (BT-31/32)',!!(form.vat_id||form.tax_number)],
+                      ['IBAN für den Zahlungsblock (BG-17)',!!form.iban],
+                      ['E-Mail-Adresse (BT-43)',!!form.email],
+                    ];
+                    const missing=checks.filter(([,ok])=>!ok).length;
+                    return(
+                      <div>
+                        <div style={{fontSize:11.5,fontWeight:700,color:missing?T.amber:T.green,marginBottom:8}}>{missing?`Stammdaten-Check: ${missing} Angabe${missing>1?'n':''} fehlt noch`:'Stammdaten-Check: vollständig ✓ — jede Rechnung erfüllt die Verkäufer-Pflichtfelder'}</div>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:6}}>
+                          {checks.map(([label,ok])=>(
+                            <div key={label} style={{display:'flex',alignItems:'center',gap:7,fontSize:12,color:ok?T.textSecondary:T.amber}}>
+                              <span style={{width:14,height:14,borderRadius:'50%',flexShrink:0,background:ok?T.greenBg:'#FFFBEB',border:`1px solid ${ok?T.greenBdr:'#FDE68A'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:ok?T.green:T.amber}}>{ok?'✓':'!'}</span>
+                              {label}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* E-Mail-Domain-Status (Resend-Verifikation) */}
@@ -5008,9 +4966,9 @@ function AGB({ onBack }) {
       <P>Der Vertrag kommt durch Registrierung und Buchung eines Tarifs zustande. Verfügbare Tarife:</P>
       <Li items={[
         'Free: 0 €/Monat, 10 Dokumente/Monat — kostenlos, keine Kündigung erforderlich',
-        'Starter: 29 €/Monat (25 € bei jährlicher Zahlung), 100 Dokumente/Monat',
-        'Business: 99 €/Monat (85 € jährlich), 500 Dokumente/Monat',
-        'Enterprise: 299 €/Monat (250 € jährlich), unbegrenzte Dokumente',
+        'Basis: 15 €/Monat (12 € bei jährlicher Zahlung), 100 Dokumente/Monat',
+        'Plus: 23 €/Monat (19 € jährlich), 500 Dokumente/Monat',
+        'Premium: 30 €/Monat (25 € jährlich), unbegrenzte Dokumente',
       ]}/>
       <P>Überschreitungen werden mit 0,50 € je zusätzlichem Dokument berechnet.</P>
 
