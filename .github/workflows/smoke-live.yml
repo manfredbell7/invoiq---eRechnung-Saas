@@ -9,7 +9,7 @@ on:
       base_url:
         description: 'API-Basis-URL'
         required: false
-        default: 'https://api.invoiq.io'
+        default: 'https://api.invoiq.de'
 
 jobs:
   smoke:

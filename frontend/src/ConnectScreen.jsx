@@ -204,7 +204,7 @@ export function ConnectScreen({ notify }) {
             {/* Certification warning */}
             {modal.certification && (
               <div style={{ background:C.amberBg, border:`1px solid ${C.amberBdr}`, borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:13, color:C.amber }}>
-                ⚠️ {modal.name} erfordert eine offizielle Zertifizierung. Kontaktiere uns unter <strong>manfred@invoiq.io</strong> für den Prozess.
+                ⚠️ {modal.name} erfordert eine offizielle Zertifizierung. Kontaktiere uns unter <strong>manfred@invoiq.de</strong> für den Prozess.
               </div>
             )}
 
@@ -228,7 +228,7 @@ export function ConnectScreen({ notify }) {
 
             {/* Docs link */}
             <div style={{ background:C.bg, borderRadius:8, padding:"8px 12px", marginBottom:16, fontSize:12, color:C.textMuted }}>
-              📚 Dokumentation: <span style={{ color:C.navyLite }}>{modal.type}.invoiq.io/docs</span>
+              📚 Dokumentation: <span style={{ color:C.navyLite }}>{modal.type}.invoiq.de/docs</span>
             </div>
 
             {/* Actions */}

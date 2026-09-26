@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // Gleiche API-Basis wie App.jsx — inkl. /v1-Prefix
-const API_BASE = (import.meta?.env?.VITE_API_URL) || "https://api.invoiq.io/v1";
+const API_BASE = (import.meta?.env?.VITE_API_URL) || "https://api.invoiq.de/v1";
 
 /* ═══════════════════════════════════════════════════════════════
    invoiq — Onboarding Wizard

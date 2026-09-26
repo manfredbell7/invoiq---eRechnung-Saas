@@ -20,7 +20,7 @@ backend/   Node 22 + Fastify 5, ESM
              customers, scanner (Claude-Vision-Extraktion), payments (Stripe),
              peppol, idoc, webhooks, archive, admin
   migrations/ 001–010 (angewendet auf Supabase eu-central-1, RLS deny-all + Service-Role)
-Deploy:    Vercel (Frontend, invoiq.io) · Railway (Backend, api.invoiq.io) · Supabase (DB)
+Deploy:    Vercel (Frontend, invoiq.de) · Railway (Backend, api.invoiq.de) · Supabase (DB)
 ```
 
 **Stärken:** Mandantentrennung konsequent in der App-Schicht; Belegfluss mit

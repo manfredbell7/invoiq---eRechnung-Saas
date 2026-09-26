@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // scripts/smoke-live.mjs — End-to-End-Smoke-Test gegen die LIVE-API.
 //
-//   BASE_URL=https://api.invoiq.io node scripts/smoke-live.mjs
+//   BASE_URL=https://api.invoiq.de node scripts/smoke-live.mjs
 //
 // Legt einen frischen Test-Mandanten an (Registrierung) und fährt darin den
 // kompletten Kernfluss: Auth, Passwort-Reset-Anstoß, Kunde, Artikel,
 // Belegkette Anfrage→Angebot→Auftrag→Lieferung→Rechnung, XRechnung-XML,
 // FI-Auto-Kontierung + Bilanz, KI-Berater. Exit-Code 0 nur wenn alles grün.
 
-const BASE = process.env.BASE_URL || 'https://api.invoiq.io';
+const BASE = process.env.BASE_URL || 'https://api.invoiq.de';
 const V = `${BASE}/v1`;
 const ts = Date.now();
 const EMAIL = `smoke-${ts}@invoiq-smoketest.de`;
@@ -66,7 +66,7 @@ await step('Health-Check', async () => {
 });
 
 // CORS: jede Produktions-Domain muss die API aus dem Browser erreichen dürfen
-for (const domain of ['https://invoiq.io', 'https://invoiq.de', 'https://www.invoiq.de', 'https://invoiq.fr']) {
+for (const domain of ['https://invoiq.de', 'https://www.invoiq.de', 'https://invoiq.io', 'https://invoiq.fr']) {
   await step(`CORS-Preflight erlaubt ${domain}`, async () => {
     const res = await fetch(`${V}/auth/login`, {
       method: 'OPTIONS',
@@ -283,7 +283,7 @@ await step('Mailgun: Inbound-Webhook lehnt ungültige Signatur ab (403)', async 
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      recipient: 'test@rechnungen.invoiq.io', sender: 'x@example.com', subject: 'Smoke',
+      recipient: 'test@rechnungen.invoiq.de', sender: 'x@example.com', subject: 'Smoke',
       timestamp: String(Math.floor(Date.now() / 1000)), token: 'smoketoken', signature: 'ungueltig',
     }),
   });
@@ -295,7 +295,7 @@ await step('Mailgun: Replay-Schutz — alter Timestamp wird abgelehnt (403)', as
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      recipient: 'test@rechnungen.invoiq.io', sender: 'x@example.com', subject: 'Smoke',
+      recipient: 'test@rechnungen.invoiq.de', sender: 'x@example.com', subject: 'Smoke',
       timestamp: '1600000000', token: 'smoketoken', signature: 'ungueltig',
     }),
   });
@@ -306,7 +306,7 @@ await step('Resend-Inbound: Webhook lehnt unsignierte Zustellung ab (403/503)', 
   const res = await fetch(`${V}/webhooks/email-inbound`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ type: 'email.received', data: { to: ['test@rechnungen.invoiq.io'], from: 'x@example.com', subject: 'Smoke' } }),
+    body: JSON.stringify({ type: 'email.received', data: { to: ['test@rechnungen.invoiq.de'], from: 'x@example.com', subject: 'Smoke' } }),
   });
   // 403 = Secret gesetzt, Signatur fehlt · 503 = RESEND_WEBHOOK_SECRET noch nicht konfiguriert
   assert([403, 503].includes(res.status), `HTTP ${res.status} statt 403/503 — Signaturprüfung nicht aktiv?`);
