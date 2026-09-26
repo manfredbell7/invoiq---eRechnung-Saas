@@ -70,7 +70,7 @@ const LandingPage = () => {
           <div className="email-demo">
             <div className="email-address-card">
               <span className="email-label">Ihre e-Rechnungs-Adresse</span>
-              <code className="email-address">ihre-firma-a1b2c3@rechnungen.invoiq.io</code>
+              <code className="email-address">ihre-firma-a1b2c3@rechnungen.invoiq.de</code>
               <span className="email-status">✓ Sofort aktiv nach der Registrierung</span>
             </div>
             <ul className="email-benefits">

@@ -126,7 +126,7 @@ export async function paymentRoutes(fastify) {
     try {
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        return_url: `${process.env.FRONTEND_URL || 'https://invoiq.io'}/settings`,
+        return_url: `${process.env.FRONTEND_URL || 'https://invoiq.de'}/settings`,
       });
       return reply.send({ portal_url: session.url });
     } catch (err) {

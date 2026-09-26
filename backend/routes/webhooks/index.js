@@ -24,8 +24,8 @@ export async function webhookRoutes(fastify) {
     }
   });
 
-  // ── RESEND INBOUND — [slug]@rechnungen.invoiq.io ─────────────
-  // Resend Inbound-Route (catch-all *@rechnungen.invoiq.io) sendet das Event
+  // ── RESEND INBOUND — [slug]@rechnungen.invoiq.de ─────────────
+  // Resend Inbound-Route (catch-all *@rechnungen.invoiq.de) sendet das Event
   // "email.received" hierher; Signatur nach Svix-Schema.
   fastify.post('/email-inbound', async (req, reply) => {
     const check = verifySvixSignature({

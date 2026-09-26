@@ -52,7 +52,7 @@ export async function authRoutes(fastify) {
     if (existing) return reply.code(409).send({ error: 'E-Mail bereits registriert' });
 
     // Create org — jeder neue Kunde bekommt seine personalisierte, einzigartige
-    // e-Rechnungs-Adresse [firmenname]-[uniqueID]@rechnungen.invoiq.io:
+    // e-Rechnungs-Adresse [firmenname]-[uniqueID]@rechnungen.invoiq.de:
     // E-Mail-sicher normalisiert (a-z, 0-9, Bindestrich, Umlaute transliteriert),
     // Eindeutigkeit über zufälliges Suffix + Unique-Index in der DB.
     const slug = slugifyCompanyName(org_name);

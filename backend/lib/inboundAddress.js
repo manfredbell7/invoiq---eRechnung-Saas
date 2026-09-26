@@ -1,7 +1,7 @@
 // lib/inboundAddress.js — Personalisierte e-Rechnungs-Adressen
 //
 // Jeder Kunde bekommt bei der Registrierung eine eigene, einzigartige Adresse
-// im Format [firmenname]-[uniqueID]@rechnungen.invoiq.io. Der Firmenname wird
+// im Format [firmenname]-[uniqueID]@rechnungen.invoiq.de. Der Firmenname wird
 // E-Mail-/URL-sicher normalisiert (a-z, 0-9, Bindestrich, Umlaute
 // transliteriert), das zufällige Suffix garantiert Einzigartigkeit auch bei
 // gleichnamigen Firmen.
@@ -9,7 +9,7 @@ import { randomBytes } from 'crypto';
 
 // Default identisch zu services/email.js — hier dupliziert statt importiert,
 // damit dieses Modul (und seine Unit-Tests) ohne Supabase-/Resend-Setup lädt.
-export const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || 'rechnungen.invoiq.io';
+export const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || 'rechnungen.invoiq.de';
 
 export function slugifyCompanyName(name) {
   return String(name || '')

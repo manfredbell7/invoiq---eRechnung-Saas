@@ -87,7 +87,7 @@ export async function buildServer() {
     name: 'invoiq API',
     version: 'v1',
     description: 'E-Invoice Platform — XRechnung · ZUGFeRD · Peppol',
-    docs: 'https://docs.invoiq.io',
+    docs: 'https://docs.invoiq.de',
     endpoints: {
       auth:     `${API}/auth`,
       invoices: `${API}/invoices`,
