@@ -4010,7 +4010,7 @@ function SettingsScreen({user,org,notify,initialTab}){
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
                       <div>
                         <div style={{fontSize:13,fontFamily:F.mono,color:T.textPrimary}}>{inboundAddress}</div>
-                        <div style={{fontSize:11.5,color:T.textMuted,marginTop:3}}>Ihre persönliche, einzigartige Adresse — senden Sie Rechnungen dorthin, um sie automatisch zu erfassen.</div>
+                        <div style={{fontSize:11.5,color:T.textMuted,marginTop:3}}>Ihre persönliche, einzigartige Adresse — Lieferanten senden Rechnungen dorthin, und Ihre eigenen Rechnungen gehen mit dieser Adresse als Absender raus (Antworten landen automatisch hier).</div>
                       </div>
                       <button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(inboundAddress); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>
                     </div>
@@ -4071,7 +4071,7 @@ function SettingsScreen({user,org,notify,initialTab}){
                         const d=domainStatus[k];
                         if(!d)return null;
                         const ok=d.verified;
-                        const label=k==='outbound'?'Versand':'Empfang';
+                        const label=k==='outbound'?'Versand (Plattform)':'Ihre Kunden-Adressen (Empfang & Versand)';
                         const statusText=ok?'Verifiziert':d.status==='missing'?'Nicht bei Resend angelegt':d.status==='pending'?'DNS-Prüfung ausstehend':d.status==='unconfigured'?'Nicht konfiguriert':d.status==='error'?'Status nicht abrufbar':`Nicht verifiziert (${d.status})`;
                         return(
                           <div key={k} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>

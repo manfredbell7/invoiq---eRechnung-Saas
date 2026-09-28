@@ -106,29 +106,21 @@ async function deliverViaEmail(invoice, xml, org) {
     return { success: true, method: 'email', message_id: `mock-${Date.now()}`, simulated: true };
   }
 
-  // Production: Resend API
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: `${process.env.EMAIL_FROM_NAME || 'invoiq'} <${process.env.EMAIL_FROM}>`,
-      to: [invoice.buyer_email],
-      subject,
-      html: htmlBody,
-      attachments: [{
-        filename: `${invoice.invoice_number}.xml`,
-        content: Buffer.from(xml).toString('base64'),
-        content_type: 'application/xml',
-      }]
-    })
-  });
-
-  if (!res.ok) throw new Error(`E-Mail-Versand fehlgeschlagen: ${await res.text()}`);
-  const data = await res.json();
-  return { success: true, method: 'email', message_id: data.id };
+  // Production: Versand über den zentralen Wrapper — mit persönlichem
+  // Mandanten-Absender ([slug]@rechnungen.invoiq.de) und automatischem
+  // Fallback auf die Plattform-Adresse, solange die Domain nicht versandfähig ist.
+  const { sendRawMail } = await import('./email.js');
+  const data = await sendRawMail({
+    to: [invoice.buyer_email],
+    subject,
+    html: htmlBody,
+    attachments: [{
+      filename: `${invoice.invoice_number}.xml`,
+      content: Buffer.from(xml).toString('base64'),
+      content_type: 'application/xml',
+    }],
+  }, { org });
+  return { success: true, method: 'email', message_id: data.id, from: data._from };
 }
 
 // ── MAIN DELIVER FUNCTION ─────────────────────────────────────
