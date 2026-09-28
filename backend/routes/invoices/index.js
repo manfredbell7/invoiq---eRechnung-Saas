@@ -548,6 +548,7 @@ export async function invoiceRoutes(fastify) {
       },
       xmlBuffer,
       pdfBuffer,
+      org: req.org,
     });
 
     // Kopie an Absender (Org-E-Mail)
@@ -568,6 +569,7 @@ export async function invoiceRoutes(fastify) {
           },
           xmlBuffer,
           pdfBuffer,
+          org: req.org,
         });
       }
     }

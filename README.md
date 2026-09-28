@@ -84,11 +84,19 @@ Domain nicht verifiziert ist, lehnt Resend jeden Versand ab — die App zeigt da
 eine klare Fehlermeldung, und der Status ist in **Einstellungen → Unternehmen →
 E-Mail-Domain-Status** (grün/rot) sichtbar.
 
-### 2. Eingang (Inbound) — Domain `rechnungen.invoiq.de` bei Resend anlegen
+### 2. Kunden-Adressen `[slug]@rechnungen.invoiq.de` — Empfang UND Versand
+
+Die Domain `rechnungen.invoiq.de` bei Resend anlegen. Sie trägt beides: den
+Empfang (MX) und den persönlichen Versand jedes Mandanten (SPF/DKIM). Solange
+sie nicht versand-verifiziert ist, fällt der Versand automatisch auf
+`rechnungen@invoiq.de` zurück — mit der persönlichen Adresse als Reply-To.
 
 | Typ | Name/Host | Wert | Priorität | Zweck |
 |---|---|---|---|---|
 | MX | `rechnungen` | `<Inbound-MX-Host aus dem Resend-Dashboard>` | 10 | Mailzustellung an Resend |
+| TXT | `send.rechnungen` | `v=spf1 include:amazonses.com ~all` | — | SPF (Versand) |
+| MX | `send.rechnungen` | `feedback-smtp.<region>.amazonses.com` | 10 | Bounce-Feedback |
+| TXT | `resend._domainkey.rechnungen` | `p=<DKIM-Key aus dem Resend-Dashboard>` | — | DKIM (Versand) |
 
 Danach in Resend:
 1. **Inbound-Route** als Catch-all `*@rechnungen.invoiq.de` anlegen.

@@ -18,16 +18,49 @@ const FROM_EMAIL = process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'rechnung
 
 const FROM_NAME = process.env.EMAIL_FROM_NAME || 'invoiq E-Rechnung';
 
+// Persönlicher Absender eines Mandanten: [slug]@rechnungen.invoiq.de.
+// Voraussetzung ist, dass die Inbound-Domain bei Resend auch für den VERSAND
+// verifiziert ist (SPF+DKIM der Subdomain) — sonst greift der Fallback unten.
+export function personalSender(org) {
+  const slug = org?.inbound_email_slug;
+  if (!slug) return null;
+  const name = String(org.name || 'invoiq').replace(/["<>]/g, '').trim() || 'invoiq';
+  return { name, email: `${slug}@${INBOUND_DOMAIN}` };
+}
+
 // Zentraler Versand: einheitlicher Absender + verständliche Fehlermeldungen.
+// Mit `org` wird die persönliche Mandanten-Adresse als Absender versucht;
+// ist deren Domain (noch) nicht für den Versand verifiziert, fällt der
+// Versand automatisch auf die Plattform-Adresse zurück — die persönliche
+// Adresse bleibt dann als Reply-To erhalten, Antworten landen also trotzdem
+// in der Inbox des Mandanten.
 // Resend liefert bei unverifizierter Domain einen kryptischen 403 — wir
 // übersetzen das in eine Meldung, mit der der Betreiber etwas anfangen kann.
-async function sendMail(payload) {
+export async function sendRawMail(payload, opts = {}) { return sendMail(payload, opts); }
+
+async function sendMail(payload, { org } = {}) {
   if (!process.env.RESEND_API_KEY) {
     const e = new Error('E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY fehlt).');
     e.statusCode = 503; throw e;
   }
+  const personal = personalSender(org);
+  if (personal) {
+    const { data, error } = await getResend().emails.send({
+      from: `${personal.name} <${personal.email}>`,
+      reply_to: personal.email,
+      ...payload,
+    });
+    if (!error) return data;
+    const msg = String(error.message || error.name || error);
+    if (!/not verified|verify your domain|domain/i.test(msg)) {
+      const e = new Error(`E-Mail-Versand fehlgeschlagen: ${msg}`);
+      e.statusCode = 502; throw e;
+    }
+    // Domain (noch) nicht versandfähig → Plattform-Absender, Reply-To bleibt persönlich
+  }
   const { data, error } = await getResend().emails.send({
-    from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    from: personal ? `${personal.name} via invoiq <${FROM_EMAIL}>` : `${FROM_NAME} <${FROM_EMAIL}>`,
+    ...(personal ? { reply_to: personal.email } : {}),
     ...payload,
   });
   if (error) {
@@ -101,7 +134,7 @@ export async function getEmailDomainStatus() {
  * @param {Buffer} params.xmlBuffer - XRechnung XML as buffer
  * @param {Buffer} params.pdfBuffer - Optional PDF attachment
  */
-export async function sendInvoiceEmail({ to, invoice, xmlBuffer, pdfBuffer }) {
+export async function sendInvoiceEmail({ to, invoice, xmlBuffer, pdfBuffer, org }) {
   try {
     const attachments = [
       {
@@ -122,7 +155,7 @@ export async function sendInvoiceEmail({ to, invoice, xmlBuffer, pdfBuffer }) {
       subject: `Rechnung ${invoice.invoice_number} - ${invoice.customer_name}`,
       html: invoiceEmailTemplate(invoice),
       attachments,
-    });
+    }, { org });
 
     console.log('[Email Service] Invoice sent successfully:', data.id);
     return { success: true, emailId: data.id };
