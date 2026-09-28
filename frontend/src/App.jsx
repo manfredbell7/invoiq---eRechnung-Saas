@@ -225,9 +225,9 @@ function Landing({onEnter,onLegal=()=>{}}){
   };
 
   const STEPS=[
-    {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Bei der Registrierung bekommt jeder Kunde automatisch seine eigene, personalisierte E-Mail-Adresse — einzigartig für dein Unternehmen (z.B. deine-firma-a1b2c3@rechnungen.invoiq.de). Über sie empfängst und versendest du deine E-Rechnungen — kein ERP, kein IT-Aufwand.',tags:['deine-firma-a1b2c3@rechnungen.invoiq.de','XRechnung','ZUGFeRD','PDF'],preview:(
+    {n:1,title:'E-Mail-Adresse einrichten',desc:'In 2 Minuten startklar. Bei der Registrierung bekommt jeder Kunde automatisch seine eigene, personalisierte E-Mail-Adresse — einzigartig für dein Unternehmen (z.B. deine-firma@rechnungen.invoiq.de). Über sie empfängst und versendest du deine E-Rechnungen — kein ERP, kein IT-Aufwand.',tags:['deine-firma@rechnungen.invoiq.de','XRechnung','ZUGFeRD','PDF'],preview:(
       <div style={{marginTop:12,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:6,padding:'12px 14px'}}>
-        {[['deine-firma-a1b2c3@rechnungen.invoiq.de','Persönlich & Aktiv ✓'],['XRechnung','Automatisch erkannt'],['ZUGFeRD / PDF','Automatisch erkannt']].map(([n,s],i)=>(
+        {[['deine-firma@rechnungen.invoiq.de','Persönlich & Aktiv ✓'],['XRechnung','Automatisch erkannt'],['ZUGFeRD / PDF','Automatisch erkannt']].map(([n,s],i)=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:i<2?`1px solid ${T.bgBorder}`:'none'}}>
             <div style={{width:7,height:7,borderRadius:'50%',background:s==='Connected'?T.green:T.bgBorder,flexShrink:0}}/>
             <span style={{fontSize:12.5,color:T.textPrimary,flex:1}}>{n}</span>
