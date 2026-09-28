@@ -75,14 +75,15 @@ export async function authRoutes(fastify) {
           // jede Registrierung den bezahlten Starter-Plan geschenkt.
           plan: 'free',
           plan_doc_limit: 10,
-          inbound_email_slug: generateInboundEmailSlug(org_name),
+          inbound_email_slug: generateInboundEmailSlug(org_name, attempt),
           api_key: apiKey,
           api_key_created_at: new Date().toISOString(),
         });
         break;
       } catch (err) {
-        // Unique-Kollision von slug/inbound_email_slug → mit frischem Suffix erneut
-        if (attempt >= 2 || !isUniqueViolation(err)) throw err;
+        // Unique-Kollision von slug/inbound_email_slug → nächste Variante
+        // (firma → firma-2 → firma-3 …, ab Versuch 9 Zufallssuffix)
+        if (attempt >= 11 || !isUniqueViolation(err)) throw err;
       }
     }
 

@@ -20,12 +20,16 @@ export async function resolveOrgByRecipient(recipients) {
     const match = addr.match(/([a-z0-9\-]+)@rechnungen\.invoiq\.(?:de|io)/i)
                || addr.match(/rechnungen-([a-z0-9\-]+)@invoiq\.(?:de|io)/i);
     if (!match) continue;
-    const { data: org } = await supabase
+    // Aktueller Slug ODER Alt-Slug (Migration 015: Adressen mit Zufalls-
+    // Suffix bleiben als Alias empfangbar). Der Slug ist durch die Regex
+    // auf [a-z0-9-] beschränkt und damit sicher für den or()-Filter.
+    const slug = match[1].toLowerCase();
+    const { data: orgs } = await supabase
       .from('organizations')
       .select('id, name')
-      .eq('inbound_email_slug', match[1].toLowerCase())
-      .single();
-    if (org) return org;
+      .or(`inbound_email_slug.eq.${slug},inbound_email_slug_legacy.eq.${slug}`)
+      .limit(1);
+    if (orgs?.[0]) return orgs[0];
   }
   return null;
 }
