@@ -106,17 +106,14 @@ const fmtAgo=d=>{const s=Date.now()-new Date(d);if(s<3600000)return`vor ${Math.f
 
 
 function Wordmark({size=22,inverted=false,iconOnly=false}){
-  const c=inverted?"#fff":T.textPrimary,a=inverted?"#93C5FD":T.accent;
-  return(<div style={{display:"flex",alignItems:"center",gap:8,userSelect:"none",flexShrink:0}}>
-    <div style={{width:size,height:size,background:inverted?"rgba(255,255,255,.15)":T.brand,borderRadius:Math.round(size*.26),display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <svg width={size*.58} height={size*.58} viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="8" width="3.5" height="9" rx="1.75" fill={inverted?T.brand:"#93C5FD"}/>
-        <rect x="2" y="2" width="3.5" height="4" rx="1.75" fill={inverted?T.brand:"#fff"}/>
-        <circle cx="13.5" cy="12" r="4.5" stroke={inverted?T.brand:"#fff"} strokeWidth="2.2" fill="none"/>
-        <rect x="15.8" y="7" width="2.5" height="10" rx="1.25" fill={inverted?T.brand:"#fff"}/>
+  const c=inverted?"#fff":T.textPrimary;
+  return(<div style={{display:"flex",alignItems:"center",gap:Math.round(size*.42),userSelect:"none",flexShrink:0}}>
+    <div style={{width:size*1.36,height:size*1.36,background:inverted?"#fff":T.brand,color:inverted?T.brand:"#fff",borderRadius:Math.round(size*.4),display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <svg width={size*.74} height={size*.74} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 2.5h5.5L12 5v8.5H4z"/><path d="M6.3 9.2l1.3 1.3 2.4-2.6"/>
       </svg>
     </div>
-    {!iconOnly&&<span style={{fontFamily:F.ui,fontSize:size*.9,fontWeight:400,color:c,letterSpacing:"-.02em"}}>inv<span style={{color:a}}>o</span>iq</span>}
+    {!iconOnly&&<span style={{fontFamily:F.ui,fontSize:size*.86,fontWeight:650,color:c,letterSpacing:"-.02em"}}>invoiq</span>}
   </div>);
 }
 
@@ -168,7 +165,7 @@ function EmptyState({icon="📄",title,text,cta,onCta}){
 
 function MiniChart({data,color=T.accent,height=40}){
   const max=Math.max(...data,1);
-  return(<div style={{display:"flex",alignItems:"flex-end",gap:2,height}}>
+  return(<div style={{display:"flex",alignItems:"flex-end",gap:3,height,width:data.length*9,flexShrink:0}}>
     {data.map((v,i)=><div key={i} style={{flex:1,background:i===data.length-1?color:`${color}35`,borderRadius:"2px 2px 0 0",height:`${(v/max)*100}%`,minHeight:2}}/>)}
   </div>);
 }
@@ -254,11 +251,11 @@ function Landing({onEnter,onLegal=()=>{}}){
     )},
     {n:3,title:'EN 16931 Validierung & XML',desc:'invoiq generiert XRechnung UBL 2.1 oder ZUGFeRD CII und validiert sofort gegen den europäischen Standard.',tags:['XRechnung 3.0','ZUGFeRD 2.4','Peppol BIS 3.0'],preview:(
       <div style={{marginTop:12,background:T.brand,borderRadius:6,padding:'12px 14px',fontFamily:F.mono,fontSize:10.5,lineHeight:1.7,color:'rgba(255,255,255,.5)',overflow:'hidden',maxHeight:110}}>
-        <span style={{color:'#818CF8'}}>&lt;ubl:Invoice&gt;</span><br/>
-        {'  '}<span style={{color:'#818CF8'}}>&lt;cbc:ID&gt;</span><span style={{color:'#6EE7B7'}}>INV-2025-041</span><span style={{color:'#818CF8'}}>&lt;/&gt;</span><br/>
-        {'  '}<span style={{color:'#818CF8'}}>&lt;cbc:IssueDate&gt;</span><span style={{color:'#6EE7B7'}}>2025-05-27</span><span style={{color:'#818CF8'}}>&lt;/&gt;</span><br/>
-        {'  '}<span style={{color:'#818CF8'}}>&lt;cbc:PayableAmount&gt;</span><span style={{color:'#6EE7B7'}}>4284.00</span><span style={{color:'#818CF8'}}>&lt;/&gt;</span><br/>
-        <span style={{color:'#818CF8'}}>&lt;/ubl:Invoice&gt;</span>
+        <span style={{color:'#9FB2F5'}}>&lt;ubl:Invoice&gt;</span><br/>
+        {'  '}<span style={{color:'#9FB2F5'}}>&lt;cbc:ID&gt;</span><span style={{color:'#6EE7B7'}}>INV-2025-041</span><span style={{color:'#9FB2F5'}}>&lt;/&gt;</span><br/>
+        {'  '}<span style={{color:'#9FB2F5'}}>&lt;cbc:IssueDate&gt;</span><span style={{color:'#6EE7B7'}}>2025-05-27</span><span style={{color:'#9FB2F5'}}>&lt;/&gt;</span><br/>
+        {'  '}<span style={{color:'#9FB2F5'}}>&lt;cbc:PayableAmount&gt;</span><span style={{color:'#6EE7B7'}}>4284.00</span><span style={{color:'#9FB2F5'}}>&lt;/&gt;</span><br/>
+        <span style={{color:'#9FB2F5'}}>&lt;/ubl:Invoice&gt;</span>
       </div>
     )},
     {n:4,title:'DATEV-Export & Weiterleitung',desc:'Eingangsrechnungen mit einem Klick als DATEV-CSV exportieren oder per E-Mail an deinen Steuerberater weiterleiten. Kein manuelles Abtippen mehr.',tags:['DATEV-CSV Export','E-Mail Weiterleitung','1-Klick','Steuerberater-ready'],preview:(
@@ -296,58 +293,51 @@ function Landing({onEnter,onLegal=()=>{}}){
     )},
   ];
 
-  return(<div style={{background:T.bg,minHeight:'100vh',overflowX:'hidden'}}>
+  return(<div style={{background:T.bgSubtle,minHeight:'100vh',overflowX:'hidden'}}>
 
     {/* NAV */}
-    <header style={{position:'fixed',top:0,left:0,right:0,zIndex:100,height:58,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 clamp(16px,4vw,56px)',background:scrolled?'rgba(255,255,255,.96)':T.bg,borderBottom:`1px solid ${scrolled?T.bgBorder:'transparent'}`,backdropFilter:scrolled?'blur(12px)':'none',transition:'all .3s'}}>
+    <header style={{position:'fixed',top:0,left:0,right:0,zIndex:100,height:72,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 clamp(16px,5vw,96px)',background:scrolled?'rgba(247,246,242,.92)':T.bgSubtle,borderBottom:`1px solid ${scrolled?T.bgBorder:'transparent'}`,backdropFilter:scrolled?'blur(12px)':'none',transition:'all .3s'}}>
       <Wordmark size={22}/>
       <nav style={{display:'flex',gap:2}}>
-        {['Funktionen','Preise','Sicherheit'].map(l=><a key={l} href={`#${l.toLowerCase()}`} style={{fontSize:13,fontWeight:500,color:T.textMuted,textDecoration:'none',padding:'6px 11px',borderRadius:6,transition:'all .14s'}} onMouseEnter={e=>{e.target.style.color=T.textPrimary;e.target.style.background=T.bgSubtle;}} onMouseLeave={e=>{e.target.style.color=T.textMuted;e.target.style.background='transparent';}}>{l}</a>)}
+        {['Funktionen','Preise','Sicherheit'].map(l=><a key={l} href={`#${l.toLowerCase()}`} style={{fontSize:14,fontWeight:500,color:T.textSecondary,textDecoration:'none',padding:'8px 12px',borderRadius:8,transition:'all .14s'}} onMouseEnter={e=>{e.target.style.color=T.textPrimary;e.target.style.background=T.bgMuted;}} onMouseLeave={e=>{e.target.style.color=T.textSecondary;e.target.style.background='transparent';}}>{l}</a>)}
       </nav>
       <div style={{display:'flex',gap:8}}>
-        <button className="btn btn-ghost btn-sm" onClick={()=>onEnter('login')}>Anmelden</button>
-        <button className="btn btn-primary btn-sm" onClick={onEnter}>Kostenlos starten →</button>
+        <button className="btn btn-sm" style={{background:'transparent',color:T.textPrimary}} onClick={()=>onEnter('login')}>Anmelden</button>
+        <button className="btn btn-dark" onClick={onEnter}>Kostenlos starten</button>
       </div>
     </header>
 
     {/* HERO */}
     <section style={{minHeight:'100vh',display:'flex',alignItems:'center',padding:'80px clamp(16px,4vw,56px) 60px',position:'relative',overflow:'hidden'}}>
-      <div style={{position:'absolute',inset:0,backgroundImage:`linear-gradient(${T.bgBorder} 1px,transparent 1px),linear-gradient(90deg,${T.bgBorder} 1px,transparent 1px)`,backgroundSize:'40px 40px',opacity:.35,pointerEvents:'none'}}/>
-      <div style={{position:'absolute',inset:0,background:`radial-gradient(ellipse 70% 80% at 60% 50%,transparent 30%,${T.bg} 75%)`,pointerEvents:'none'}}/>
       <div style={{maxWidth:1100,margin:'0 auto',width:'100%',display:'grid',gridTemplateColumns:'1fr 1.35fr',gap:48,alignItems:'center',position:'relative'}}>
         <div>
           <div className="fu" style={{marginBottom:20}}>
             <span className="hero-pill">
-              <span style={{width:6,height:6,borderRadius:'50%',background:T.green,animation:'pulse 2s ease-in-out infinite',display:'inline-block'}}/>
-              E-Rechnungspflicht 2025/2027 — Jetzt vorbereiten
+              <span style={{fontSize:11.5,fontWeight:600,color:'#fff',background:T.accent,borderRadius:999,padding:'2px 8px'}}>Pflicht</span>
+              E-Rechnungen empfangen müssen Sie schon seit 2025
             </span>
           </div>
-          <h1 className="fu2" style={{fontFamily:F.ui,fontSize:'clamp(34px,4.8vw,60px)',fontWeight:800,color:T.textPrimary,lineHeight:1.02,letterSpacing:'-.045em',marginBottom:18}}>
-            E-Rechnungen.<br/>Empfangen. Senden.<br/><span style={{color:T.accent}}>Automatisch.</span>
+          <h1 className="fu2 display" style={{fontSize:'clamp(40px,5.4vw,76px)',lineHeight:1,letterSpacing:'-.03em',marginBottom:24}}>
+            E-Rechnungen, die einfach <em style={{fontStyle:'italic',color:T.accent}}>ankommen.</em>
           </h1>
-          <p className="fu3" style={{fontSize:16,color:T.textSecondary,lineHeight:1.7,marginBottom:10,maxWidth:'52ch'}}>
-            Seit <strong>Januar 2025</strong> müssen alle Unternehmen E-Rechnungen empfangen können. Ab <strong>2027</strong> auch versenden.
-          </p>
-          <p className="fu3" style={{fontSize:14,color:T.textMuted,lineHeight:1.65,marginBottom:32,maxWidth:440}}>
-            invoiq deckt beides — E-Rechnungen empfangen, erstellen und per E-Mail versenden. Einfach, compliant, ohne IT-Aufwand.
+          <p className="fu3" style={{fontSize:18,color:T.textSecondary,lineHeight:1.6,marginBottom:32,maxWidth:'34em'}}>
+            invoiq erstellt, prüft und versendet XRechnung und ZUGFeRD – und empfängt Ihre Eingangsrechnungen automatisch über eine eigene Adresse. Revisionssicher archiviert, gehostet in Frankfurt.
           </p>
           <div className="fu4" style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:40}}>
-            <button className="btn btn-primary btn-lg" onClick={onEnter}>Kostenlos starten →</button>
-            <button className="btn btn-ghost btn-lg" onClick={onEnter}>Demo ansehen</button>
+            <button className="btn btn-primary btn-xl" onClick={onEnter}>Kostenlos starten →</button>
+            <button className="btn btn-ghost btn-xl" onClick={()=>onEnter('login')}>Anmelden</button>
           </div>
-          <div className="fu5" style={{display:'flex',gap:24,paddingTop:20,borderTop:`1px solid ${T.bgBorder}`}}>
-            {[['2 Min.','bis zur eigenen Adresse'],['Inbound','Pflicht seit Jan 2025'],['0 €','Einstieg — dauerhaft']].map(([v,l])=>(
-              <div key={l}>
-                <div style={{fontSize:18,fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em'}}>{v}</div>
-                <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{l}</div>
-              </div>
+          <div className="fu5" style={{display:'flex',gap:20,flexWrap:'wrap'}}>
+            {['Ohne Kreditkarte','In 2 Minuten eingerichtet','Server in Deutschland'].map(l=>(
+              <span key={l} style={{display:'flex',alignItems:'center',gap:6,fontSize:13.5,color:T.textSecondary}}>
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5l3 3 6-7" stroke={T.green} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>{l}
+              </span>
             ))}
           </div>
         </div>
 
         {/* Hero Dashboard — 7 screens */}
         <div className="fu3" style={{position:'relative'}}>
-          <div style={{position:'absolute',top:'5%',left:'5%',right:'5%',bottom:'5%',background:`radial-gradient(ellipse,${T.accentPale} 0%,transparent 70%)`,borderRadius:16,filter:'blur(24px)',opacity:.55,pointerEvents:'none'}}/>
           <div style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:12,boxShadow:T.shadowXl,overflow:'hidden',position:'relative'}}>
             {/* Chrome */}
             <div style={{height:36,background:T.bgSubtle,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',padding:'0 14px',gap:7,flexShrink:0}}>
@@ -505,15 +495,14 @@ function Landing({onEnter,onLegal=()=>{}}){
     </section>
 
     {/* INTEGRATIONS MARQUEE — coming soon */}
-    <section style={{padding:'48px 0',borderTop:`1px solid rgba(99,91,255,.12)`,borderBottom:`1px solid rgba(99,91,255,.12)`,background:'#07102A',overflow:'hidden',position:'relative'}}>
-      <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(99,91,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(99,91,255,.07) 1px,transparent 1px)',backgroundSize:'40px 40px',pointerEvents:'none'}}/>
+    <section style={{padding:'48px 0',borderTop:`1px solid rgba(45,79,214,.12)`,borderBottom:`1px solid rgba(45,79,214,.12)`,background:'#07102A',overflow:'hidden',position:'relative'}}>
       {/* Coming Soon Badge */}
       <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Unterstützte Standards, Formate & Exporte — heute, nicht irgendwann</p>
       <div className="marquee-wrap" style={{position:'relative'}}>
         <div className="marquee-track">
           {[...integrations,...integrations].map((n,i)=>(
             <div key={i} className="integration-logo" style={{color:'rgba(255,255,255,.6)',background:'rgba(255,255,255,.05)',borderColor:'rgba(255,255,255,.1)',padding:'10px 20px',fontSize:13.5,fontWeight:600,minWidth:160,justifyContent:'center',gap:10,borderRadius:10}}>
-              <span style={{width:7,height:7,borderRadius:'50%',background:'rgba(99,91,255,.6)',display:'inline-block',flexShrink:0}}/>
+              <span style={{width:7,height:7,borderRadius:'50%',background:'rgba(45,79,214,.6)',display:'inline-block',flexShrink:0}}/>
               {n}
             </div>
           ))}
@@ -528,7 +517,7 @@ function Landing({onEnter,onLegal=()=>{}}){
           <div className="reveal" style={{display:'inline-flex',alignItems:'center',gap:7,background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:6,padding:'4px 12px',fontSize:11.5,fontWeight:700,color:T.red,marginBottom:16}}>
             ⚠ Seit 1. Januar 2025 gesetzlich verpflichtend
           </div>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(24px,3.5vw,40px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1.15,marginBottom:16}}>
+          <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(24px,3.5vw,40px)',fontWeight:400,color:T.textPrimary,letterSpacing:'-.02em',lineHeight:1.08,marginBottom:16}}>
             Inbound-Empfang.<br/><span style={{color:T.accent}}>Für alle Unternehmen.</span>
           </h2>
           <p className="reveal" style={{fontSize:14.5,color:T.textSecondary,lineHeight:1.75,marginBottom:20}}>
@@ -588,7 +577,7 @@ function Landing({onEnter,onLegal=()=>{}}){
       <div style={{maxWidth:960,margin:'0 auto'}}>
         <div style={{textAlign:'center',marginBottom:64}}>
           <span className="reveal badge badge-gray" style={{marginBottom:14,fontSize:11}}>So funktioniert's</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em',lineHeight:1.15,marginBottom:12}}>Von der Faktura zur EN 16931-Rechnung.</h2>
+          <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:400,color:T.textPrimary,letterSpacing:'-.02em',lineHeight:1.08,marginBottom:12}}>Von der Faktura zur EN 16931-Rechnung.</h2>
           <p className="reveal" style={{fontSize:15,color:T.textSecondary,maxWidth:480,margin:'0 auto'}}>Fünf automatische Schritte — bidirektional, ohne manuelle Eingriffe.</p>
         </div>
         <div style={{display:'flex',flexDirection:'column',gap:0}}>
@@ -619,7 +608,7 @@ function Landing({onEnter,onLegal=()=>{}}){
       <div style={{maxWidth:1080,margin:'0 auto'}}>
         <div style={{textAlign:'center',marginBottom:52}}>
           <span className="reveal badge badge-blue" style={{marginBottom:14,fontSize:11}}>Marktführende Funktionen</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em',lineHeight:1.15}}>Alles was Sie brauchen.<br/>Nichts was Sie nicht brauchen.</h2>
+          <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:400,color:T.textPrimary,letterSpacing:'-.02em',lineHeight:1.08}}>Alles was Sie brauchen.<br/>Nichts was Sie nicht brauchen.</h2>
         </div>
         <div className="bento-grid">
           {/* Bento 1 — WIDE: KI-Scanner mit Live-Typewriter-Demo */}
@@ -681,7 +670,7 @@ function Landing({onEnter,onLegal=()=>{}}){
       <div style={{maxWidth:1060,margin:'0 auto'}}>
         <div style={{textAlign:'center',marginBottom:52}}>
           <span className="reveal badge badge-gray" style={{marginBottom:14,fontSize:11}}>Zielgruppen</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em',lineHeight:1.15}}>Die richtige Lösung<br/>für jede Unternehmensgröße.</h2>
+          <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:400,color:T.textPrimary,letterSpacing:'-.02em',lineHeight:1.08}}>Die richtige Lösung<br/>für jede Unternehmensgröße.</h2>
         </div>
         <div className="zg-grid">
           {[
@@ -715,7 +704,7 @@ function Landing({onEnter,onLegal=()=>{}}){
       <div style={{maxWidth:920,margin:'0 auto',display:'grid',gridTemplateColumns:'1fr 1fr',gap:48,alignItems:'center'}}>
         <div>
           <span className="reveal badge badge-green" style={{marginBottom:16,fontSize:11}}>Security & Compliance</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(24px,3vw,40px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',marginBottom:18}}>Revisionssicher. Gerichtsfest.</h2>
+          <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(24px,3vw,40px)',fontWeight:400,color:T.textPrimary,letterSpacing:'-.02em',marginBottom:18}}>Revisionssicher. Gerichtsfest.</h2>
           <p className="reveal" style={{fontSize:14,color:T.textSecondary,lineHeight:1.75,marginBottom:20}}>SHA-256-gesichert, unveränderlich für 10 Jahre nach §147 AO archiviert. Vollständiger Audit-Trail für jede Transaktion.</p>
           <div className="reveal" style={{display:'flex',flexDirection:'column',gap:8}}>
             {['EN 16931 — Europäischer E-Rechnungsstandard','GoBD — Grundsätze ordnungsmäßiger Buchführung','§ 147 AO — 10 Jahre Aufbewahrungspflicht','DSGVO — Datenhaltung in AWS Frankfurt (EU)','ViDA-ready — Transaction Reporting ab 2028','SHA-256 — Kryptographische Integrität'].map(item=>(
@@ -742,7 +731,7 @@ function Landing({onEnter,onLegal=()=>{}}){
       <div style={{maxWidth:1100,margin:'0 auto'}}>
         <div style={{textAlign:'center',marginBottom:48}}>
           <span className="reveal badge badge-gray" style={{marginBottom:14,fontSize:11}}>Preise</span>
-          <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:800,color:T.textPrimary,letterSpacing:'-.04em'}}>Ehrliche Preise. Ohne Kleingedrucktes.</h2>
+          <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:400,color:T.textPrimary,letterSpacing:'-.02em'}}>Ehrliche Preise. Ohne Kleingedrucktes.</h2>
           <p className="reveal" style={{fontSize:14,color:T.textSecondary,marginTop:10,marginBottom:24}}>Gratis starten — E-Rechnungen schreiben und empfangen kostet nichts. Bezahlt wird erst, wenn invoiq mehr für dich übernimmt. Maximal 30 € im Monat, zzgl. USt., jederzeit kündbar.</p>
 
           {/* Billing toggle — default yearly */}
@@ -862,7 +851,7 @@ function Landing({onEnter,onLegal=()=>{}}){
     {/* CTA */}
     <section style={{background:T.brand,padding:'72px clamp(16px,4vw,56px)',textAlign:'center'}}>
       <span className="reveal badge" style={{background:'rgba(255,255,255,.1)',color:'rgba(255,255,255,.6)',borderColor:'rgba(255,255,255,.12)',marginBottom:14,fontSize:11}}>3,5 Mio. Unternehmen betroffen — jetzt</span>
-      <h2 className="reveal" style={{fontFamily:F.ui,fontSize:'clamp(26px,3.5vw,44px)',color:'#fff',fontWeight:800,letterSpacing:'-.04em',marginBottom:10}}>Bereit vor dem Stichtag.</h2>
+      <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(26px,3.5vw,44px)',color:'#fff',fontWeight:400,letterSpacing:'-.02em',marginBottom:10}}>Bereit vor dem Stichtag.</h2>
       <p className="reveal" style={{color:'rgba(255,255,255,.45)',fontSize:15,marginBottom:28}}>Inbound ab sofort · Outbound ab 2027 · ViDA-ready ab 2028.</p>
       <button className="reveal btn btn-xl" onClick={onEnter} style={{background:'#fff',color:T.brand,border:'none',fontWeight:700}}>Kostenlos starten →</button>
     </section>
@@ -1021,7 +1010,7 @@ NAV_ICONS["erp-crm"]=NAV_ICONS.kunden; NAV_ICONS["erp-pm"]=NAV_ICONS.belege;
 NAV_ICONS["erp-qm"]=NAV_ICONS.scanner; NAV_ICONS["erp-dms"]=NAV_ICONS.archive;
 NAV_ICONS["drafts"]=NAV_ICONS.invoices; NAV_ICONS["settings-team"]=NAV_ICONS.kunden;
 
-function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
+function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,onNewInvoice,children}){
   // Kanzlei-Portal ab Business-Plan (siehe Pricing: Business/Pro/Enterprise enthalten es)
   const plan = (org?.plan||'free').toLowerCase();
   const hasKanzlei = plan === 'business' || plan === 'enterprise' || plan === 'pro';
@@ -1071,51 +1060,60 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
   const isAdmin=["owner","admin","super_admin"].includes(user?.role);
 
   const NavBtn=({k,label})=>(
-    <button className={`nav-item ${nav===k?"active":""}`} onClick={()=>go(k)} title={collapsed?label:undefined}>
-      {NAV_ICONS[k]||NAV_ICONS.dashboard}<span className="nav-label">{label}</span>
-      {k==="steuerberater"&&!hasKanzlei&&<span className="nav-label" style={{marginLeft:'auto',fontSize:9,background:'#7c3aed',color:'#fff',borderRadius:3,padding:'1px 5px',fontWeight:700}}>PRO</span>}
+    <button className={`nav-item ${nav===k?"active":""}`} onClick={()=>go(k)} title={collapsed?label:undefined} aria-current={nav===k?"page":undefined}>
+      {NAV_ICONS[k]||NAV_ICONS.dashboard}<span className="nav-label" style={{flex:1}}>{label}</span>
+      {k==="steuerberater"&&!hasKanzlei&&<span className="nav-label" style={{fontSize:10,background:T.brand,color:"#fff",borderRadius:999,padding:"1px 7px",fontWeight:600,letterSpacing:".02em"}}>PRO</span>}
     </button>
   );
+  const orgInitials=(org?.name||"–").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+  const userInitials=(user?.full_name||"U").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+  const pageTitle={"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen","ki":"KI-Berater","drafts":"Entwürfe","settings-team":"Benutzer","erp-mm":"ERP · Materialwirtschaft","erp-pp":"ERP · Produktion","erp-co":"ERP · Controlling","erp-hcm":"ERP · Personal","erp-crm":"ERP · CRM","erp-pm":"ERP · Projekte","erp-qm":"ERP · Qualität","erp-dms":"ERP · Dokumente"}[nav]||nav;
 
   return(<div style={{display:"flex",minHeight:"100vh",background:T.bgSubtle}}>
     {mobileNav&&<div className="mobile-nav-overlay" onClick={()=>setMobileNav(false)}/>}
     <aside className={`sidebar ${mobileNav?"mobile-open":""} ${collapsed&&!mobileNav?"collapsed":""}`}>
-      <div style={{padding:collapsed?"14px 0 10px":"14px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.08)",display:"flex",flexDirection:"column",alignItems:collapsed?"center":"flex-start"}}>
-        <Wordmark size={20} inverted iconOnly={collapsed&&!mobileNav}/>
-        {org&&<div className="sb-hide" style={{fontSize:11,color:"rgba(255,255,255,.45)",marginTop:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500,maxWidth:"100%"}}>{org.name}</div>}
+      <div style={{padding:collapsed?"20px 0 0":"20px 14px 0",display:"flex",flexDirection:"column",alignItems:collapsed?"center":"stretch",gap:18}}>
+        <div style={{padding:collapsed?0:"0 8px"}}><Wordmark size={20} iconOnly={collapsed&&!mobileNav}/></div>
+        {org&&<button className="sb-hide" onClick={()=>go("settings")} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"9px 10px",background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:10,fontFamily:F.ui,textAlign:"left",cursor:"pointer",boxShadow:T.shadow1}}>
+          <span style={{width:28,height:28,borderRadius:7,background:T.accentLight,color:T.accent,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{orgInitials}</span>
+          <span style={{flex:1,minWidth:0}}>
+            <span style={{display:"block",fontSize:13,fontWeight:600,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{org.name}</span>
+            <span style={{display:"block",fontSize:11.5,color:T.textMuted,textTransform:"capitalize"}}>{org.plan||"Free"}-Plan</span>
+          </span>
+        </button>}
       </div>
-      <nav style={{flex:1,padding:"6px 8px 0"}}>
-        {sections.map(sec=>(<div key={sec.title}>
+      <nav style={{flex:1,padding:"4px 14px 0",display:"flex",flexDirection:"column",gap:2}} aria-label="Hauptnavigation">
+        {sections.map(sec=>(<div key={sec.title} style={{display:"flex",flexDirection:"column",gap:2}}>
           <div className="nav-section">{sec.title}</div>
           {sec.items.map(({key,label})=><NavBtn key={key} k={key} label={label}/>)}
         </div>))}
-        <div className="nav-section" style={{marginTop:6}}>Einstellungen</div>
+        <div className="nav-section">Einstellungen</div>
         <NavBtn k="settings" label="Unternehmen"/>
         <NavBtn k="settings-team" label="Benutzer"/>
         <NavBtn k="steuerberater" label="Kanzlei-Portal"/>
-        {isAdmin&&<><div className="nav-section" style={{marginTop:6}}>Admin</div>
-          <button className="nav-item" onClick={onAdmin} style={{color:"#FCA5A5"}} title={collapsed?"Admin Panel":undefined}>
+        {isAdmin&&<><div className="nav-section">Admin</div>
+          <button className="nav-item" onClick={onAdmin} style={{color:T.redText}} title={collapsed?"Admin Panel":undefined}>
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5.5 2.4v3.6c0 3.4-2.3 5.7-5.5 6.6-3.2-.9-5.5-3.2-5.5-6.6V4.2L8 1.8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
             <span className="nav-label">Admin Panel</span>
           </button>
         </>}
       </nav>
-      <div style={{padding:collapsed?"10px 8px 14px":"10px 10px 14px",borderTop:"1px solid rgba(255,255,255,.08)"}}>
-        {org&&<div className="sb-hide" style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"9px 11px",marginBottom:8}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-            <span style={{fontSize:12,fontWeight:600,color:"#fff",textTransform:"capitalize"}}>{org.plan||"Free"}</span>
-            <span style={{fontSize:11,color:"rgba(255,255,255,.5)"}} className="num">{org.plan_doc_used||0}/{org.plan_doc_limit||10}</span>
+      <div style={{padding:collapsed?"12px 10px 16px":"16px 14px"}}>
+        {org&&<div className="sb-hide" style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:12,padding:14,marginBottom:12,display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+            <span style={{fontSize:12.5,fontWeight:600,color:T.textPrimary}}>Belege diesen Monat</span>
+            <span style={{fontSize:12,color:T.textMuted}} className="num">{org.plan_doc_used||0} / {org.plan_doc_limit||10}</span>
           </div>
-          <div className="progress" style={{background:"rgba(255,255,255,.12)"}}><div className="progress-fill" style={{width:`${pct}%`}}/></div>
+          <div className="progress"><div className="progress-fill" style={{width:`${pct}%`,background:pct>=90?T.red:T.accent}}/></div>
         </div>}
-        <div className="sb-hide" style={{display:"flex",alignItems:"center",gap:9,padding:"4px 2px",marginBottom:8}}>
-          <div className="avatar" style={{background:"rgba(109,91,255,.35)",color:"#fff"}}>{(user?.full_name||"U")[0]}</div>
+        <div className="sb-hide" style={{display:"flex",alignItems:"center",gap:10,padding:"2px 4px",marginBottom:6}}>
+          <div className="avatar" style={{width:32,height:32}}>{userInitials}</div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:12.5,fontWeight:600,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.full_name||"—"}</div>
-            <div style={{fontSize:10.5,color:"rgba(255,255,255,.45)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
+            <div style={{fontSize:13,fontWeight:600,color:T.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.full_name||"—"}</div>
+            <div style={{fontSize:11.5,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
           </div>
         </div>
-        <button onClick={toggleCollapse} className="nav-item" style={{justifyContent:collapsed?"center":"flex-start"}} title={collapsed?"Navigation ausklappen":"Navigation einklappen"}>
+        <button onClick={toggleCollapse} className="nav-item" style={{justifyContent:collapsed?"center":"flex-start",color:T.textMuted}} title={collapsed?"Navigation ausklappen":"Navigation einklappen"}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{transform:collapsed?"rotate(180deg)":"none",transition:"transform .2s"}}><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
           <span className="nav-label">Einklappen</span>
         </button>
@@ -1126,32 +1124,35 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
         <button className="mobile-menu-btn" onClick={()=>setMobileNav(true)} aria-label="Menü öffnen">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke={T.textSecondary} strokeWidth="1.6" strokeLinecap="round"/></svg>
         </button>
-        <div style={{fontSize:14,fontWeight:700,color:T.textPrimary,letterSpacing:"-.01em",whiteSpace:"nowrap"}}>{{"dashboard":"Übersicht","invoices":"Ausgang","scanner":"Scan & Import","inbound":"Eingang","belege":"Belege & Aufträge","artikel":"Artikel & Leistungen","kunden":"Kunden","steuerberater":"Kanzlei-Portal","archive":"Archiv","settings":"Einstellungen","ki":"KI-Berater","drafts":"Entwürfe","settings-team":"Benutzer","erp-mm":"ERP · Materialwirtschaft","erp-pp":"ERP · Produktion","erp-co":"ERP · Controlling","erp-hcm":"ERP · Personal","erp-crm":"ERP · CRM","erp-pm":"ERP · Projekte","erp-qm":"ERP · Qualität","erp-dms":"ERP · Dokumente"}[nav]||nav}</div>
-        <div style={{flex:1,maxWidth:340}}>
-          <div style={{position:"relative"}}>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}><circle cx="7" cy="7" r="4.5" stroke={T.textMuted} strokeWidth="1.5"/><path d="M10.5 10.5L14 14" stroke={T.textMuted} strokeWidth="1.5" strokeLinecap="round"/></svg>
-            <input value={searchQ} onChange={e=>setSearchQ(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter"&&searchQ.trim()){onSearch&&onSearch(searchQ.trim());setSearchQ("");}}}
-              style={{width:"100%",background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:"7px 12px 7px 30px",fontSize:13,color:T.textPrimary,outline:"none",fontFamily:F.ui}}
-              placeholder="Rechnungen durchsuchen… (Enter)"/>
-          </div>
+        <div style={{display:"flex",alignItems:"center",gap:8,fontSize:13.5,color:T.textMuted,whiteSpace:"nowrap",minWidth:0}}>
+          {org&&<><span className="sb-hide" style={{overflow:"hidden",textOverflow:"ellipsis",maxWidth:180}}>{org.name}</span>
+          <svg className="sb-hide" width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M6 3.5L10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></>}
+          <span className="sb-hide" style={{color:T.textPrimary,fontWeight:600}}>{pageTitle}</span>
         </div>
+        <div style={{flex:1}}/>
+        <label style={{display:"flex",alignItems:"center",gap:8,width:"100%",maxWidth:340,height:40,padding:"0 12px",background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:10,color:T.textMuted}}>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{flexShrink:0}}><circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} aria-label="Rechnungen durchsuchen"
+            onKeyDown={e=>{if(e.key==="Enter"&&searchQ.trim()){onSearch&&onSearch(searchQ.trim());setSearchQ("");}}}
+            style={{flex:1,minWidth:0,background:"transparent",border:"none",fontSize:13.5,color:T.textPrimary,outline:"none",fontFamily:F.ui}}
+            placeholder="Rechnungen, Kunden, Beträge suchen"/>
+        </label>
         <div style={{display:"flex",gap:10,alignItems:"center",position:"relative"}}>
-          {org&&<button className="sb-hide" onClick={()=>go("settings")} style={{display:"flex",alignItems:"center",gap:6,background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:16,padding:"4px 11px",fontSize:11.5,fontWeight:700,color:T.accent,cursor:"pointer",fontFamily:F.ui,textTransform:"capitalize",whiteSpace:"nowrap"}}>
-            {org.plan||"Free"}<span style={{fontWeight:500,color:T.textMuted}} className="num">{org.plan_doc_used||0}/{org.plan_doc_limit||10}</span>
-          </button>}
-          <div className="avatar" style={{cursor:"pointer",width:30,height:30,fontSize:12}} onClick={()=>setUserMenu(m=>!m)}>{(user?.full_name||"U")[0]}</div>
+          <button className="btn btn-primary sb-hide" onClick={()=>{setMobileNav(false);onNewInvoice?onNewInvoice():go("invoices");}} style={{height:40}}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>Neue Rechnung
+          </button>
+          <button className="avatar" aria-label="Kontomenü" aria-expanded={userMenu} style={{cursor:"pointer",width:36,height:36,fontSize:12.5,border:"none",fontFamily:F.ui}} onClick={()=>setUserMenu(m=>!m)}>{userInitials}</button>
           {userMenu&&<>
             <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setUserMenu(false)}/>
-            <div className="card sci" style={{position:"absolute",top:40,right:0,zIndex:999,width:240,padding:0,boxShadow:T.shadowXl}}>
-              <div style={{padding:"13px 15px",borderBottom:`1px solid ${T.bgBorder}`}}>
-                <div style={{fontSize:13.5,fontWeight:700,color:T.textPrimary}}>{user?.full_name||"—"}</div>
-                <div style={{fontSize:11.5,color:T.textMuted,marginTop:1}}>{user?.email||""}</div>
-                {org&&<div style={{fontSize:11.5,color:T.textSecondary,marginTop:6,display:"flex",justifyContent:"space-between"}}><span>{org.name}</span><span style={{textTransform:"capitalize",fontWeight:600,color:T.accent}}>{org.plan}</span></div>}
+            <div className="card sci" style={{position:"absolute",top:46,right:0,zIndex:999,width:260,padding:0,boxShadow:T.shadowXl}}>
+              <div style={{padding:"14px 16px",borderBottom:`1px solid ${T.bgBorder}`}}>
+                <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>{user?.full_name||"—"}</div>
+                <div style={{fontSize:12,color:T.textMuted,marginTop:1}}>{user?.email||""}</div>
+                {org&&<div style={{fontSize:12,color:T.textSecondary,marginTop:8,display:"flex",justifyContent:"space-between"}}><span>{org.name}</span><span style={{textTransform:"capitalize",fontWeight:600,color:T.accent}}>{org.plan}</span></div>}
               </div>
               <div style={{padding:6}}>
                 <button className="menu-item" onClick={()=>{setUserMenu(false);go("settings");}}>{NAV_ICONS.settings}<span>Einstellungen</span></button>
-                <button className="menu-item" style={{color:T.red}} onClick={onLogout}>
+                <button className="menu-item" style={{color:T.redText}} onClick={onLogout}>
                   <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10.5 11l3-3-3-3M13.5 8H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   <span>Abmelden</span>
                 </button>
@@ -1160,7 +1161,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
           </>}
         </div>
       </div>
-      <main style={{flex:1,overflowY:"auto",padding:"24px 28px"}}>{children}</main>
+      <main style={{flex:1,overflowY:"auto",padding:"36px 40px 48px"}}><div style={{maxWidth:1280,margin:"0 auto"}}>{children}</div></main>
     </div>
   </div>);
 }
@@ -1197,139 +1198,123 @@ function Dashboard({user,org,notify,onNav}){
   // Überfällig: Ausgangsrechnungen mit abgeleitetem Status "overdue"
   const overdueCount = invoices.filter(inv=>(inv.effective_status||inv.status)==='overdue').length;
 
-  // Cashflow-Prognose: 30-Tage Balkendiagramm
+  // Cashflow-Prognose: 30 Tage, Einnahmen über / Ausgaben unter der Nulllinie
+  const inflowSum = forecast.reduce((s,d)=>s+Math.max(0,d.in??(d.balance>0?d.balance:0)),0);
+  const outflowSum = forecast.reduce((s,d)=>s+Math.max(0,d.out??(d.balance<0?-d.balance:0)),0);
   const CashflowChart = ()=>{
     if(!forecast.length) return(
-      <div style={{textAlign:'center',padding:'20px 0',color:T.textMuted,fontSize:12.5}}>
-        Noch keine Daten — erstelle Rechnungen um die Prognose zu sehen.
+      <div style={{textAlign:'center',padding:'36px 0',color:T.textMuted,fontSize:13}}>
+        Noch keine Fälligkeiten – sobald Rechnungen offen sind, erscheint hier Ihre Prognose.
       </div>
     );
-    const maxVal = Math.max(...forecast.map(d=>Math.abs(d.balance)),1);
+    const days = forecast.slice(0,30).map(d=>({
+      date:d.date,
+      inc:Math.max(0,d.in??(d.balance>0?d.balance:0)),
+      out:Math.max(0,d.out??(d.balance<0?-d.balance:0)),
+    }));
+    const maxVal = Math.max(...days.map(d=>Math.max(d.inc,d.out)),1);
     return(
-      <div style={{display:'flex',alignItems:'flex-end',gap:3,height:72,paddingTop:8}}>
-        {forecast.slice(0,30).map((d,i)=>{
-          const h = Math.max(4, (Math.abs(d.balance)/maxVal)*64);
-          const col = d.balance>=0 ? T.green : T.red;
-          return(
-            <div key={i} title={`${new Date(d.date).toLocaleDateString('de-DE')}: ${fmtEUR(d.balance)}`}
-              style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2,cursor:'default'}}>
-              <div style={{width:'100%',background:col,borderRadius:'2px 2px 0 0',height:`${h}px`,opacity:.85,transition:'height .3s'}}/>
-              {i%7===0&&<div style={{fontSize:8,color:T.textMuted,whiteSpace:'nowrap'}}>{new Date(d.date).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}</div>}
-            </div>
-          );
-        })}
+      <div>
+        <div style={{display:'flex',alignItems:'flex-end',gap:4,height:112}}>
+          {days.map((d,i)=>(
+            <div key={i} title={`${new Date(d.date).toLocaleDateString('de-DE')}: +${fmtEUR(d.inc)} / −${fmtEUR(d.out)}`}
+              style={{flex:1,height:d.inc?Math.max(4,(d.inc/maxVal)*108):2,background:d.inc?T.accent:T.bgMuted,borderRadius:'3px 3px 0 0',transition:'height .3s'}}/>
+          ))}
+        </div>
+        <div style={{height:1,background:'#D8D4C8'}}/>
+        <div style={{display:'flex',alignItems:'flex-start',gap:4,height:48}}>
+          {days.map((d,i)=>(
+            <div key={i} style={{flex:1,height:d.out?Math.max(4,(d.out/maxVal)*46):0,background:'#B9B3A5',borderRadius:'0 0 3px 3px'}}/>
+          ))}
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:11.5,color:T.textMuted,marginTop:8}}>
+          {days.filter((_,i)=>i%7===0||i===days.length-1).map((d,i)=>(
+            <span key={i}>{new Date(d.date).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}</span>
+          ))}
+        </div>
       </div>
     );
   };
 
-  return(<div className="fi">
+  const addr = org?.inbound_email || (org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.de` : null);
+  const errorsTotal = stats?.errors_total||0;
+  const firstName = user?.full_name ? user.full_name.split(' ')[0] : '';
+  const hour = new Date().getHours();
+  const greeting = hour<11?'Guten Morgen':hour<18?'Guten Tag':'Guten Abend';
+  const Arrow = ()=>(<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 11l6-6M6 5h5v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+  const Check = ({ok=true})=>(
+    <span style={{width:28,height:28,borderRadius:8,background:ok?T.greenBg:T.amberBg,color:ok?T.greenText:T.amber,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      {ok
+        ?<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        :<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 4.5v4M8 11v.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>}
+    </span>
+  );
+  const kpis=[
+    {label:'Gesendet',   value:fmtNum(stats?.outbound_total||0), foot:'Ausgangsrechnungen', chart:weekData, nav:'invoices'},
+    {label:'Empfangen',  value:fmtNum(stats?.inbound_total||0),  foot:'Automatisch erfasst', nav:'inbound'},
+    {label:'Offene Forderungen', value:fmtEUR(cashflow?.open_receivables||0), foot:cashflow?.due_this_week_in>0?`${fmtEUR(cashflow.due_this_week_in)} fällig diese Woche`:'Noch nicht bezahlt', nav:'invoices'},
+    {label:'Überfällig', value:fmtNum(overdueCount), foot:overdueCount>0?'Zahlungserinnerung senden':'Nichts überfällig', danger:overdueCount>0, ok:overdueCount===0, nav:'invoices'},
+  ];
+
+  return(<div className="fi" style={{display:'flex',flexDirection:'column',gap:24}}>
     {/* Header */}
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:16,flexWrap:'wrap'}}>
       <div>
-        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em'}}>
-          Guten Tag{user?.full_name?`, ${user.full_name.split(' ')[0]}`:''}.</h1>
-        <p style={{color:T.textMuted,fontSize:12.5,marginTop:4}}>{new Date().toLocaleDateString('de-DE',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+        <div style={{color:T.textMuted,fontSize:13,marginBottom:6}}>{new Date().toLocaleDateString('de-DE',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+        <h1 className="display" style={{fontSize:'clamp(30px,4vw,40px)'}}>{greeting}{firstName?`, ${firstName}`:''}.</h1>
       </div>
-      <button className="btn btn-primary btn-sm" onClick={()=>onNav('invoices','create')}>+ Neue Rechnung</button>
+      {!loading&&<div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px 8px 10px',background:errorsTotal?T.amberBg:T.greenBg,border:`1px solid ${errorsTotal?T.amberBdr:T.greenBdr}`,borderRadius:999,color:errorsTotal?'#7A4405':T.greenText,fontSize:13,fontWeight:600}}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5.2 2.2v3.7c0 3.2-2.2 5.4-5.2 6.4-3-1-5.2-3.2-5.2-6.4V4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M5.8 8l1.6 1.6 2.9-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        {errorsTotal?`${errorsTotal} Beleg${errorsTotal===1?'':'e'} mit Prüffehlern`:'Alle Belege EN 16931-konform'}
+      </div>}
     </div>
 
-    {/* Personalisierte Eingangs-E-Mail-Adresse — prominent auf dem Dashboard */}
-    {(()=>{
-      const addr = org?.inbound_email || (org?.inbound_email_slug ? `${org.inbound_email_slug}@rechnungen.invoiq.de` : null);
-      return (
-        <div style={{padding:'14px 18px',background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:9,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
-          <div>
-            <div style={{fontSize:13,fontWeight:700,color:T.accent,marginBottom:3}}>Ihre e-Rechnungs-Adresse</div>
-            <div style={{fontSize:15,fontWeight:600,fontFamily:F.mono,color:T.textPrimary}}>{addr||'Wird eingerichtet…'}</div>
-            <div style={{fontSize:11.5,color:T.textMuted,marginTop:3}}>Ihre persönliche, einzigartige Adresse für den Empfang und Versand von E-Rechnungen — invoiq erfasst alles automatisch.</div>
-          </div>
-          {addr&&<button className="btn btn-ghost btn-sm" onClick={()=>{ navigator.clipboard.writeText(addr); notify('Adresse kopiert ✓','success'); }}>Kopieren</button>}
+    {/* Persönliche E-Rechnungs-Adresse */}
+    <section style={{display:'flex',alignItems:'center',gap:20,padding:'20px 24px',background:T.brand,borderRadius:16,color:'#fff',flexWrap:'wrap'}}>
+      <div className="hide-mobile" style={{width:44,height:44,borderRadius:12,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.12)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none"><rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M2.5 4.5L8 8.5l5.5-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </div>
+      <div style={{flex:1,minWidth:220}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12.5,color:'rgba(255,255,255,.72)',marginBottom:4}}>
+          <span style={{width:7,height:7,borderRadius:999,background:addr?'#5FD39A':'#E9B45A'}}/>Ihre E-Rechnungs-Adresse · {addr?'Empfang aktiv':'wird eingerichtet'}
         </div>
-      );
-    })()}
+        <div style={{fontFamily:F.mono,fontSize:'clamp(14px,1.6vw,19px)',fontWeight:500,wordBreak:'break-all'}}>{addr||'Wird eingerichtet…'}</div>
+        <div style={{fontSize:12.5,color:'rgba(255,255,255,.6)',marginTop:4}}>Lieferanten senden hierhin – invoiq erfasst, prüft und archiviert automatisch.</div>
+      </div>
+      {addr&&<button className="btn" style={{height:40,padding:'0 16px',border:'1px solid rgba(255,255,255,.18)',background:'rgba(255,255,255,.08)',color:'#fff'}}
+        onClick={()=>{ navigator.clipboard.writeText(addr); notify('Adresse kopiert','success'); }}>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M10.5 5.5V3.5a1 1 0 00-1-1h-6a1 1 0 00-1 1v6a1 1 0 001 1h2" stroke="currentColor" strokeWidth="1.5"/></svg>
+        Adresse kopieren
+      </button>}
+    </section>
 
-    {/* ERP-Modul-Kacheln (SAP-nah) — nur bei aktiviertem ERP-Feature-Flag */}
-    {FEATURES.erp&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:16}}>
+    {/* ERP-Modul-Kacheln — nur bei aktiviertem ERP-Feature-Flag */}
+    {FEATURES.erp&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}}>
       {ERP_MODULES.map(m=>(
-        <div key={m.key} className="card" style={{padding:'14px 14px 12px',cursor:'pointer',borderTop:`3px solid ${m.color}`,transition:'box-shadow .15s'}}
-          onClick={()=>onNav(`erp-${m.key}`)}
-          onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${m.color}`}
-          onMouseLeave={e=>e.currentTarget.style.boxShadow=''}>
+        <button key={m.key} className="card card-link" style={{padding:'14px 14px 12px',textAlign:'left',fontFamily:F.ui}} onClick={()=>onNav(`erp-${m.key}`)}>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-            <span style={{background:m.color,color:'#fff',borderRadius:6,fontSize:10.5,fontWeight:800,padding:'3px 6px',letterSpacing:.5}}>{m.code}</span>
-            <b style={{fontSize:12.5}}>{m.label}</b>
+            <span style={{background:m.color,color:'#fff',borderRadius:6,fontSize:10.5,fontWeight:700,padding:'3px 6px',letterSpacing:.5}}>{m.code}</span>
+            <b style={{fontSize:13,color:T.textPrimary}}>{m.label}</b>
           </div>
-          <div style={{fontSize:11,color:T.textMuted,lineHeight:1.45}}>{m.desc}</div>
-        </div>
+          <div style={{fontSize:12,color:T.textMuted,lineHeight:1.45}}>{m.desc}</div>
+        </button>
       ))}
     </div>}
 
-    {/* KPIs — klickbar */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:16}}>
-      {loading?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:18,height:96}}><div className="skeleton" style={{height:'100%'}}/></div>)
-      :[
-        {label:'Gesendet',   value:stats?.outbound_total||0, delta:'Ausgangsrechnungen', color:T.textPrimary, chart:weekData, nav:'invoices'},
-        {label:'Empfangen',  value:stats?.inbound_total||0,  delta:'Eingangsrechnungen', color:T.textPrimary, nav:'inbound'},
-        {label:'Offen',      value:fmtEUR(cashflow?.open_receivables||0), delta:'Noch nicht bezahlt', color:T.textPrimary, nav:'invoices'},
-        {label:'Überfällig', value:overdueCount, delta:overdueCount>0?'⚠ Zahlung überfällig':'✓ Nichts überfällig', color:overdueCount>0?T.red:T.green, nav:'invoices'},
-      ].map((s,i)=>(
-        <div key={i} className="card" style={{padding:18,cursor:'pointer',transition:'box-shadow .15s'}}
-          onClick={()=>onNav(s.nav)}
-          onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.accent}`}
-          onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
-          <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,marginBottom:10,textTransform:'uppercase',display:'flex',justifyContent:'space-between'}}>
-            {s.label}<span style={{fontSize:10,color:T.accent,opacity:.7}}>→</span>
+    {/* Kennzahlen */}
+    <div className="kpi-grid">
+      {loading?[1,2,3,4].map(i=><div key={i} className="card" style={{padding:20,height:122}}><div className="skeleton" style={{height:'100%'}}/></div>)
+      :kpis.map((k,i)=>(
+        <button key={i} className="card card-link" onClick={()=>onNav(k.nav)}
+          style={{padding:20,display:'flex',flexDirection:'column',gap:14,textAlign:'left',fontFamily:F.ui,color:T.textPrimary,borderColor:k.danger?T.redBdr:undefined}}>
+          <div style={{display:'flex',justifyContent:'space-between',width:'100%',fontSize:13,color:T.textMuted,fontWeight:500}}><span>{k.label}</span><Arrow/></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',width:'100%',gap:8}}>
+            <span className="stat-num" style={{color:k.danger?T.redText:T.textPrimary,fontSize:'clamp(22px,2.4vw,30px)'}}>{k.value}</span>
+            {k.chart&&<MiniChart data={k.chart} height={28} color={T.accent}/>}
           </div>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
-            <div>
-              <div className="stat-num" style={{color:s.color,fontSize:28}}>{s.value}</div>
-              <div style={{fontSize:11,color:s.color===T.green?T.green:s.color===T.red?T.red:T.textMuted,marginTop:4,fontWeight:600}}>{s.delta}</div>
-            </div>
-            {s.chart&&<MiniChart data={s.chart} height={32} color={T.accent}/>}
-          </div>
-        </div>
+          <div style={{fontSize:12.5,color:k.danger?T.redText:k.ok?T.greenText:T.textMuted,fontWeight:k.danger||k.ok?500:400}}>{k.foot}</div>
+        </button>
       ))}
-    </div>
-
-    {/* Cashflow-Cockpit — klickbar */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(230px,100%),1fr))',gap:10,marginBottom:16}}>
-      {/* Offene Forderungen → Ausgang */}
-      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.green}`,cursor:'pointer',transition:'box-shadow .15s'}}
-        onClick={()=>onNav('invoices')}
-        onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.green}`}
-        onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
-        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8,display:'flex',justifyContent:'space-between'}}>
-          Offene Forderungen<span style={{fontSize:10,color:T.green,opacity:.8}}>→ Ausgang</span>
-        </div>
-        <div style={{fontSize:26,fontWeight:800,color:T.green,letterSpacing:'-.03em'}}>{loading?'—':fmtEUR(cashflow?.open_receivables||0)}</div>
-        <div style={{fontSize:11.5,color:T.textMuted,marginTop:4}}>Ausgangsrechnungen, noch nicht bezahlt</div>
-        {cashflow?.due_this_week_in>0&&<div style={{marginTop:8,fontSize:11.5,color:T.green,fontWeight:600}}>↑ {fmtEUR(cashflow.due_this_week_in)} fällig diese Woche</div>}
-      </div>
-      {/* Offene Verbindlichkeiten → Eingang */}
-      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.red}`,cursor:'pointer',transition:'box-shadow .15s'}}
-        onClick={()=>onNav('inbound')}
-        onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.red}`}
-        onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
-        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8,display:'flex',justifyContent:'space-between'}}>
-          Offene Verbindlichkeiten<span style={{fontSize:10,color:T.red,opacity:.8}}>→ Eingang</span>
-        </div>
-        <div style={{fontSize:26,fontWeight:800,color:T.red,letterSpacing:'-.03em'}}>{loading?'—':fmtEUR(cashflow?.open_payables||0)}</div>
-        <div style={{fontSize:11.5,color:T.textMuted,marginTop:4}}>Eingangsrechnungen, noch nicht bezahlt</div>
-        {cashflow?.due_this_week_out>0&&<div style={{marginTop:8,fontSize:11.5,color:T.red,fontWeight:600}}>↓ {fmtEUR(cashflow.due_this_week_out)} fällig diese Woche</div>}
-      </div>
-      {/* Netto-Cashflow → Archiv */}
-      <div className="card" style={{padding:18,borderLeft:`3px solid ${T.accent}`,cursor:'pointer',transition:'box-shadow .15s'}}
-        onClick={()=>onNav('archive')}
-        onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.accent}`}
-        onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
-        <div style={{fontSize:11,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:'uppercase',marginBottom:8,display:'flex',justifyContent:'space-between'}}>
-          Netto-Cashflow<span style={{fontSize:10,color:T.accent,opacity:.8}}>→ Archiv</span>
-        </div>
-        <div style={{fontSize:26,fontWeight:800,letterSpacing:'-.03em',color:(cashflow?.open_receivables||0)-(cashflow?.open_payables||0)>=0?T.green:T.red}}>
-          {loading?'—':fmtEUR((cashflow?.open_receivables||0)-(cashflow?.open_payables||0))}
-        </div>
-        <div style={{fontSize:11.5,color:T.textMuted,marginTop:4}}>Forderungen minus Verbindlichkeiten</div>
-      </div>
     </div>
 
     {/* Belegfluss — offene Vorgänge im Vertrieb (nur bei aktiviertem ERP-Flag) */}
@@ -1337,93 +1322,107 @@ function Dashboard({user,org,notify,onNav}){
       const openOf=(t)=>bizDocs.filter(d=>d.doc_type===t&&!["storniert","fakturiert","abgelehnt","abgelaufen"].includes(d.status));
       const stages=[["request","Anfragen"],["quote","Angebote"],["order","Aufträge"],["delivery","Lieferungen"]];
       return(
-        <div className="card" style={{padding:18,marginBottom:16,cursor:"pointer",transition:"box-shadow .15s"}}
-          onClick={()=>onNav("belege")}
-          onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 0 2px ${T.accent}`}
-          onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <button className="card card-link" style={{padding:'20px 24px',textAlign:'left',fontFamily:F.ui}} onClick={()=>onNav("belege")}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
             <div>
-              <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Belegfluss — offene Vorgänge</div>
-              <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Anfrage → Angebot → Auftrag → Lieferung → Rechnung</div>
+              <div className="h2">Belegfluss — offene Vorgänge</div>
+              <div className="caption" style={{marginTop:2}}>Anfrage → Angebot → Auftrag → Lieferung → Rechnung</div>
             </div>
-            <span style={{fontSize:11,color:T.accent,fontWeight:600}}>→ Belege & Aufträge</span>
+            <span style={{fontSize:13,color:T.accent,fontWeight:600}}>Belege & Aufträge</span>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:0,overflowX:"auto"}}>
+          <div style={{display:"flex",alignItems:"center",overflowX:"auto"}}>
             {stages.map(([t,label],i)=>{
               const open=openOf(t);
               const sum=open.reduce((s,d)=>s+(parseFloat(d.amount_gross)||0),0);
               return(
                 <div key={t} style={{display:"flex",alignItems:"center",flexShrink:0}}>
-                  <div style={{background:open.length?T.accentLight:T.bgSubtle,border:`1px solid ${open.length?T.accentPale:T.bgBorder}`,borderRadius:8,padding:"9px 14px",minWidth:112}}>
-                    <div style={{fontSize:10,fontWeight:700,color:T.textMuted,letterSpacing:.4,textTransform:"uppercase",marginBottom:4}}>{label}</div>
+                  <div style={{background:open.length?T.accentLight:T.bgSubtle,border:`1px solid ${open.length?T.accentPale:T.bgBorder}`,borderRadius:10,padding:"10px 14px",minWidth:120}}>
+                    <div className="section-label" style={{marginBottom:4}}>{label}</div>
                     <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-                      <span className="num" style={{fontSize:19,fontWeight:800,color:open.length?T.accent:T.textPlaceholder}}>{open.length}</span>
-                      {open.length>0&&<span style={{fontSize:10.5,color:T.textMuted}}>{fmtEUR(sum)}</span>}
+                      <span className="num" style={{fontSize:20,fontWeight:600,color:open.length?T.accent:T.textPlaceholder}}>{open.length}</span>
+                      {open.length>0&&<span style={{fontSize:11.5,color:T.textMuted}}>{fmtEUR(sum)}</span>}
                     </div>
                   </div>
-                  {i<stages.length-1&&<span style={{padding:"0 8px",color:T.textPlaceholder,fontSize:14}}>→</span>}
+                  {i<stages.length-1&&<span style={{padding:"0 8px",color:T.textPlaceholder}}>→</span>}
                 </div>
               );
             })}
           </div>
-        </div>
+        </button>
       );
     })()}
 
-    {/* Cashflow-Prognose 30 Tage + Aktivität */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(320px,100%),2fr))',gap:12,marginBottom:16}}>
-      <div className="card" style={{padding:18}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+    {/* Cashflow-Prognose + Prüfstatus */}
+    <div className="split">
+      <div className="card" style={{flex:1,minWidth:0,padding:'22px 24px',display:'flex',flexDirection:'column',justifyContent:'space-between',gap:18}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,flexWrap:'wrap'}}>
           <div>
-            <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Cashflow-Prognose — nächste 30 Tage</div>
-            <div style={{fontSize:11.5,color:T.textMuted,marginTop:2}}>Basierend auf Fälligkeitsdaten deiner Rechnungen</div>
+            <h2 className="h2">Cashflow-Prognose</h2>
+            <div className="caption" style={{marginTop:3}}>Nächste 30 Tage · aus den Fälligkeiten Ihrer Rechnungen</div>
           </div>
-          <div style={{display:'flex',gap:8,fontSize:11}}>
-            <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:T.green,display:'inline-block'}}/>Einnahmen</span>
-            <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:T.red,display:'inline-block'}}/>Ausgaben</span>
+          <div style={{display:'flex',gap:28}}>
+            {[['Einnahmen',inflowSum,T.accent],['Ausgaben',outflowSum,'#B9B3A5']].map(([l,v,c])=>(
+              <div key={l} style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
+                <span style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:T.textMuted}}><span style={{width:8,height:8,borderRadius:2,background:c}}/>{l}</span>
+                <span style={{fontSize:17,fontWeight:600}}>{loading?'—':fmtEUR(v)}</span>
+              </div>
+            ))}
           </div>
         </div>
-        {loading?<div className="skeleton" style={{height:72}}/>:<CashflowChart/>}
+        {loading?<div className="skeleton" style={{height:180}}/>:<CashflowChart/>}
       </div>
-      <div className="card" style={{padding:18}}>
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Format-Verteilung</div>
-        {loading?<div className="skeleton" style={{height:80}}/>:
-          (stats?.format_breakdown||[['XRechnung',0,T.accent],['ZUGFeRD',0,T.purple],['Peppol',0,T.green]]).map(([f,pct,c],i)=>(
-            <div key={i} style={{marginBottom:11}}>
-              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,fontSize:12.5}}>
-                <span style={{color:T.textSecondary}}>{f}</span>
-                <span style={{fontWeight:600,color:T.textPrimary}}>{pct}%</span>
-              </div>
-              <div className="progress"><div className="progress-fill" style={{width:`${pct}%`,background:c}}/></div>
+
+      <div className="card" style={{width:380,flexShrink:0,padding:'22px 24px',display:'flex',flexDirection:'column'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+          <h2 className="h2">Prüfstatus</h2>
+          {!loading&&<span className={`badge ${errorsTotal?'badge-amber':'badge-green'}`}>{errorsTotal?'Handlungsbedarf':'Alles in Ordnung'}</span>}
+        </div>
+        {[
+          {ok:!errorsTotal, t:'EN 16931-Validierung', d:errorsTotal?`${errorsTotal} Beleg${errorsTotal===1?'':'e'} mit Fehlern – bitte prüfen`:'Alle Belege bestanden', nav:'invoices'},
+          {ok:true, t:'GoBD-Archiv', d:'Revisionssicher, SHA-256-versiegelt', nav:'archive'},
+          {ok:true, t:'Datenstandort', d:'Frankfurt am Main · DSGVO', nav:null},
+          {ok:true, t:'DATEV-Export', d:'Eingangsbelege für die Kanzlei bereitstellen', nav:'inbound', cta:'Öffnen'},
+        ].map((r,i,arr)=>(
+          <div key={r.t} style={{display:'flex',gap:12,alignItems:'center',padding:'12px 0',borderBottom:i<arr.length-1?`1px solid ${T.bgMuted}`:'none'}}>
+            <Check ok={r.ok}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13.5,fontWeight:600}}>{r.t}</div>
+              <div style={{fontSize:12.5,color:T.textMuted,marginTop:1}}>{r.d}</div>
             </div>
-          ))
-        }
+            {r.cta&&<button className="btn btn-sm btn-ghost" onClick={()=>onNav(r.nav)}>{r.cta}</button>}
+          </div>
+        ))}
       </div>
     </div>
 
-    {/* Letzte Dokumente */}
-    <div className="card">
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:`1px solid ${T.bgBorder}`}}>
-        <div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary}}>Letzte Dokumente</div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>onNav('invoices')}>Alle anzeigen →</button>
+    {/* Letzte Rechnungen */}
+    <div className="card" style={{overflow:'hidden'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'18px 24px'}}>
+        <h2 className="h2">Letzte Rechnungen</h2>
+        <button className="btn btn-sm" style={{background:'transparent',color:T.accent,padding:'6px 4px'}} onClick={()=>onNav('invoices')}>Alle anzeigen →</button>
       </div>
+      <div style={{overflowX:'auto'}}>
       <table className="table">
-        <thead><tr>{['Nummer','Empfänger','Betrag','Format','Status','Zeit'].map(h=><th key={h}>{h}</th>)}</tr></thead>
+        <thead><tr>{['Nummer','Empfänger','Format','Status','Erstellt','Betrag'].map((h,i)=><th key={h} style={{paddingLeft:i===0?24:16,paddingRight:i===5?24:16,textAlign:i===5?'right':'left',borderTop:`1px solid ${T.bgMuted}`}}>{h}</th>)}</tr></thead>
         <tbody>
-          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6}><div className="skeleton" style={{height:14,margin:'6px 0'}}/></td></tr>)
+          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={6} style={{padding:'12px 24px'}}><div className="skeleton" style={{height:14}}/></td></tr>)
           :invoices.length===0
-            ?<tr><td colSpan={6} style={{textAlign:'center',padding:28,color:T.textMuted,fontSize:13}}>Noch keine Rechnungen — <button className="btn btn-ghost btn-sm" onClick={()=>onNav('invoices')}>Erste Rechnung erstellen →</button></td></tr>
-            :invoices.slice(0,5).map(inv=><tr key={inv.id} className="tr-hover" style={{cursor:'pointer'}}>
-              <td style={{fontWeight:600,color:T.textPrimary,fontFamily:F.mono,fontSize:12.5}}>{inv.invoice_number}</td>
-              <td style={{color:T.textPrimary}}>{inv.buyer_name||'—'}</td>
-              <td style={{fontWeight:600,color:T.textPrimary}}>{fmtEUR(inv.amount_gross)}</td>
-              <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:'2px 7px',fontSize:11.5,fontWeight:600,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
+            ?<tr><td colSpan={6} style={{textAlign:'center',padding:36,color:T.textMuted,fontSize:13.5}}>
+                <div style={{marginBottom:12}}>Noch keine Rechnungen erstellt.</div>
+                <button className="btn btn-primary btn-sm" onClick={()=>onNav('invoices','create')}>Erste Rechnung erstellen</button>
+              </td></tr>
+            :invoices.slice(0,5).map(inv=><tr key={inv.id} className="tr-hover" tabIndex={0} onClick={()=>onNav('invoices')} onKeyDown={e=>{if(e.key==='Enter')onNav('invoices');}}>
+              <td className="mono" style={{paddingLeft:24,fontSize:12.5,color:T.textSecondary}}>{inv.invoice_number}</td>
+              <td style={{fontWeight:500}}>{inv.buyer_name||'—'}</td>
+              <td><span className="tag">{inv.format?.toUpperCase()}</span></td>
               <td><StatusBadge status={inv.effective_status||inv.status}/></td>
-              <td style={{color:T.textMuted,fontSize:12}}>{fmtAgo(inv.created_at)}</td>
+              <td style={{color:T.textMuted,fontSize:12.5}}>{fmtAgo(inv.created_at)}</td>
+              <td style={{paddingRight:24,textAlign:'right',fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
             </tr>)
           }
         </tbody>
       </table>
+      </div>
     </div>
   </div>);
 }
@@ -1463,7 +1462,7 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
 
   const[view,setView]=useState(initialView||"list");const[filter,setFilter]=useState(initialFilter||"all");
   const[sort,setSort]=useState({key:"created_at",dir:"desc"});
-  useEffect(()=>{if(initialView){setView(initialView);onNavDone&&onNavDone();}},[]);
+  useEffect(()=>{if(initialView){setView(initialView);onNavDone&&onNavDone();}},[initialView]);
   const[invoices,setInvoices]=useState([]);const[loading,setLoading]=useState(true);
   const[detail,setDetail]=useState(null);          // ausgewählte Rechnung (Detail-Modal)
   const[auditLogs,setAuditLogs]=useState(null);    // Audit-Trail der Detail-Rechnung
@@ -1544,7 +1543,7 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
   if(view==="create") return(<div className="fi">
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>
       <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setXml(null);}}>← Back</button>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:400,color:T.textPrimary}}>Neue Rechnung</h1><p style={{fontSize:12,color:T.textMuted}}>EN 16931-konforme E-Rechnung erstellen</p></div>
+      <div><h1 className="h1">Neue Rechnung</h1><p style={{fontSize:12,color:T.textMuted}}>EN 16931-konforme E-Rechnung erstellen</p></div>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
       <div className="card" style={{padding:20}}>
@@ -1626,7 +1625,7 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
 
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Ausgang</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} Rechnungen gesamt</p></div>
+      <div><h1 className="h1">Ausgang</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} Rechnungen gesamt</p></div>
       <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>api.datevExport().then(()=>notify("DATEV-Export heruntergeladen ✓","success")).catch(e=>notify(e.message,"error"))}>↓ DATEV-Export</button><button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontSize:13.5,fontWeight:700}} onClick={()=>setView("create")}>+ Neue Rechnung</button></div>
     </div>
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14,overflowX:"auto"}}>
@@ -1894,7 +1893,7 @@ function DokumentenScanner({ notify }) {
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={e=>handleFile(e.target.files?.[0])}/>
 
       <div style={{marginBottom:24}}>
-        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em',marginBottom:4}}>Dokumenten-Scanner</h1>
+        <h1 className="h1" style={{marginBottom:4}}>Dokumenten-Scanner</h1>
         <p style={{fontSize:13,color:T.textMuted}}>Rechnung fotografieren oder hochladen — wird automatisch in eine XRechnung konvertiert.</p>
       </div>
 
@@ -2042,7 +2041,7 @@ function DokumentenScanner({ notify }) {
       <h2 style={{fontSize:22,fontWeight:700,color:T.textPrimary,marginBottom:8,letterSpacing:'-.025em'}}>Wird analysiert...</h2>
       <p style={{fontSize:14,color:T.textMuted,marginBottom:28,lineHeight:1.6}}>Rechnungsfelder werden erkannt und validiert.</p>
       <div style={{background:T.bgMuted,borderRadius:6,height:8,overflow:'hidden',marginBottom:8}}>
-        <div style={{height:'100%',width:`${progress}%`,background:`linear-gradient(90deg,${T.accent},#818CF8)`,borderRadius:6,transition:'width .3s ease'}}/>
+        <div style={{height:'100%',width:`${progress}%`,background:`linear-gradient(90deg,${T.accent},#9FB2F5)`,borderRadius:6,transition:'width .3s ease'}}/>
       </div>
       <div style={{fontSize:12.5,color:T.textMuted,marginBottom:28}}>{progress}% abgeschlossen</div>
       <div style={{display:'flex',flexDirection:'column',gap:8}}>
@@ -2082,7 +2081,7 @@ function DokumentenScanner({ notify }) {
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18,flexWrap:'wrap',gap:10}}>
           <div>
             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4,flexWrap:'wrap'}}>
-              <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Ergebnis prüfen</h1>
+              <h1 className="h1">Ergebnis prüfen</h1>
               <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:5,background:confColor(conf)+'15',color:confColor(conf),border:`1px solid ${confColor(conf)}30`}}>
                 Konfidenz: {confLabel(conf)} ({Math.round(conf*100)}%)
               </span>
@@ -2286,7 +2285,7 @@ function InboundScreen({notify, org}){
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18,flexWrap:'wrap',gap:10}}>
         <div>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
-            <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em'}}>Eingang</h1>
+            <h1 className="h1">Eingang</h1>
             <span className="badge badge-red" style={{fontSize:10.5}}>Pflicht seit Jan 2025</span>
           </div>
           <p style={{fontSize:13,color:T.textMuted}}>Eingehende Rechnungen per E-Mail — automatisch geparst, mit SEPA-Zahlung per Klick.</p>
@@ -2749,7 +2748,7 @@ function BusinessScreen({notify,onOpenInvoice}){
   if(view==="create")return(<div className="fi" style={{maxWidth:860}}>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
       <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setWarnings([]);}}>← Zurück</button>
-      <div><h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Neuen Beleg anlegen</h1>
+      <div><h1 className="h1">Neuen Beleg anlegen</h1>
       <p style={{fontSize:12,color:T.textMuted}}>Anfrage, Angebot, Auftrag oder Lieferung — Folgebelege entstehen per „Anlegen mit Bezug".</p></div>
     </div>
     <WarningList/>
@@ -2928,7 +2927,7 @@ function BusinessScreen({notify,onOpenInvoice}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
       <div>
-        <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Belege & Aufträge</h1>
+        <h1 className="h1">Belege & Aufträge</h1>
         <p style={{fontSize:12.5,color:T.textMuted,marginTop:2}}>Anfrage → Angebot → Auftrag → Lieferung → Rechnung — mit durchgängigem Belegfluss.</p>
       </div>
       <button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontWeight:700}} onClick={()=>{setForm(emptyForm);setView("create");setWarnings([]);}}>+ Neuer Beleg</button>
@@ -3007,7 +3006,7 @@ function ItemsScreen({notify}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
       <div>
-        <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Artikel & Leistungen</h1>
+        <h1 className="h1">Artikel & Leistungen</h1>
         <p style={{fontSize:12.5,color:T.textMuted,marginTop:2}}>Stammdaten für Angebote, Aufträge und Rechnungen — mit Preis und Steuerkennzeichen.</p>
       </div>
       <button className="btn btn-primary btn-sm" style={{fontWeight:700}} onClick={()=>setModal({unit:"C62",tax_code:"S19",unit_price:0})}>+ Neuer Artikel</button>
@@ -3488,7 +3487,7 @@ function KundenScreen({notify}){
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
       <div>
-        <h1 style={{fontSize:20,fontWeight:700,color:T.textPrimary}}>Kunden</h1>
+        <h1 className="h1">Kunden</h1>
         <p style={{fontSize:12.5,color:T.textMuted,marginTop:2}}>Geschäftspartner-Stammdaten — fließen in Belege und Rechnungen ein und lernen aus jeder Rechnung mit.</p>
       </div>
       <button className="btn btn-primary btn-sm" style={{fontWeight:700}} onClick={()=>setModal({country:"DE",payment_terms_days:30})}>+ Neuer Kunde</button>
@@ -3612,7 +3611,7 @@ function ArchiveScreen({notify}){
     <div className="fi">
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
         <div>
-          <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em',marginBottom:4}}>GoBD-Archiv</h1>
+          <h1 className="h1" style={{marginBottom:4}}>GoBD-Archiv</h1>
           <p style={{fontSize:13,color:T.textMuted}}>SHA-256-gesichert · unveränderlich · §147 AO · 10 Jahre Aufbewahrung</p>
         </div>
         <div style={{display:'flex',gap:8}}>
@@ -3900,7 +3899,7 @@ function SettingsScreen({user,org,notify,initialTab}){
   return(
     <div className="fi">
       <div style={{marginBottom:22}}>
-        <h1 style={{fontFamily:F.ui,fontSize:22,fontWeight:700,color:T.textPrimary,letterSpacing:'-.025em',marginBottom:4}}>Einstellungen</h1>
+        <h1 className="h1" style={{marginBottom:4}}>Einstellungen</h1>
         <p style={{fontSize:13,color:T.textMuted}}>Konfigurieren Sie Ihr Konto, Formate und Integrationen.</p>
       </div>
 
@@ -4231,7 +4230,7 @@ function SettingsScreen({user,org,notify,initialTab}){
 }
 
 
-function Placeholder({title,sub,icon="📋"}){return(<div className="fi"><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:4}}>{title}</h1><p style={{color:T.textMuted,fontSize:13,marginBottom:22}}>{sub}</p><div className="card" style={{textAlign:"center",padding:52,color:T.textMuted}}><div style={{fontSize:28,marginBottom:10}}>{icon}</div><div style={{fontSize:13.5}}>Coming in Release 1.0</div></div></div>);}
+function Placeholder({title,sub,icon="📋"}){return(<div className="fi"><h1 className="h1" style={{marginBottom:4}}>{title}</h1><p style={{color:T.textMuted,fontSize:13,marginBottom:22}}>{sub}</p><div className="card" style={{textAlign:"center",padding:52,color:T.textMuted}}><div style={{fontSize:28,marginBottom:10}}>{icon}</div><div style={{fontSize:13.5}}>Coming in Release 1.0</div></div></div>);}
 
 // ── ADMIN SHELL ───────────────────────────────────────────────
 function AdminShell({user,org,nav,setNav,onBack,children}){
@@ -4287,7 +4286,7 @@ function AdminOverview({notify,isSuper}){
   const openErrors = adminStats?.open_errors || 0;
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
-      <div><h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.de · Super-Admin":(orgs[0]?.name||"")}</p></div>
+      <div><h1 className="h1">{isSuper?"Plattform-Übersicht":"Übersicht"}</h1><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{isSuper?"invoiq.de · Super-Admin":(orgs[0]?.name||"")}</p></div>
       {isSuper&&<button className="btn btn-ghost btn-sm" onClick={seedDemo} disabled={seedingDemo}>⚡ {seedingDemo?"Seeding...":"Seed Demo (nur Dev)"}</button>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(170px,100%),1fr))",gap:10,marginBottom:16}}>
@@ -4332,7 +4331,7 @@ function AdminDocs({notify}){
   },[]);
   const filtered = filter==="all" ? invoices : invoices.filter(i=>i.status===filter);
   return(<div className="fi">
-    <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:18}}>Alle Dokumente</h1>
+    <h1 className="h1" style={{marginBottom:18}}>Alle Dokumente</h1>
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14}}>
       {["all","delivered","validated","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
         {{all:"Alle",delivered:"Zugestellt",validated:"Validiert",error:"Fehler",archived:"Archiviert"}[s]}
@@ -4365,7 +4364,7 @@ function AdminUsers({notify}){
   },[]);
   return(<div className="fi">
     <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}>
-      <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary}}>Nutzer</h1>
+      <h1 className="h1">Nutzer</h1>
     </div>
     <div className="card"><table className="table"><thead><tr>{["Nutzer","Rolle","Organisation","Status","Letzter Login","Aktionen"].map(h=><th key={h}>{h}</th>)}</tr></thead>
       <tbody>
@@ -4397,7 +4396,7 @@ function AdminRevenue(){
   const mrr=active.reduce((s,o)=>s+(o.mrr||0),0);
   const planCounts=active.reduce((acc,o)=>{const p=(o.plan||'free').toLowerCase();acc[p]=(acc[p]||0)+1;return acc;},{});
   return(<div className="fi">
-    <h1 style={{fontFamily:F.ui,fontSize:20,fontWeight:700,color:T.textPrimary,marginBottom:18}}>Revenue</h1>
+    <h1 className="h1" style={{marginBottom:18}}>Revenue</h1>
     {loading?<div className="card" style={{padding:18}}><div className="skeleton" style={{height:60}}/></div>:<>
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
       {[["MRR",fmtEUR(mrr)],["ARR",fmtEUR(mrr*12)],["Ø/Kunde",fmtEUR(active.length?mrr/active.length:0)]].map(([l,v])=><div key={l} className="card" style={{padding:18}}><div style={{fontSize:10.5,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:9}}>{l}</div><div className="stat-num">{v}</div></div>)}
@@ -4508,7 +4507,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
           <button className="btn btn-ghost btn-sm" onClick={() => { setView('overview'); setSelected(null); setMandantTab('overview'); }}>← Alle Mandanten</button>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <h1 style={{ fontFamily: F.ui, fontSize: 20, fontWeight: 700, color: T.textPrimary, letterSpacing: '-.025em' }}>{m.name}</h1>
+              <h1 className="h1">{m.name}</h1>
               <StatusBadge status={m.status} />
               {m.open_errors > 0 && <span className="badge badge-red">{m.open_errors} Fehler</span>}
             </div>
@@ -4663,7 +4662,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <h1 style={{ fontFamily: F.ui, fontSize: 22, fontWeight: 700, color: T.textPrimary, letterSpacing: '-.025em' }}>Steuerberater-Portal</h1>
+            <h1 className="h1">Steuerberater-Portal</h1>
             <span className="badge badge-purple" style={{ fontSize: 10.5 }}>Kanzlei-Ansicht</span>
           </div>
           <p style={{ fontSize: 13, color: T.textMuted }}>{mandanten.length} Mandanten · Zentrales Dashboard für alle Ihre Mandanten</p>{limitReached&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,padding:'10px 14px',marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontSize:13,color:'#92400E'}}>⚠️ Mandanten-Limit ({mandanten.length}/{mandantenLimit===Infinity?'∞':mandantenLimit})</span><button onClick={onBack} style={{fontSize:13,fontWeight:600,color:'#D97706',background:'none',border:'none',cursor:'pointer',padding:0}}>Plan upgraden →</button></div>}
@@ -4855,7 +4854,7 @@ function LegalPage({ title, onBack, children }) {
         <Wordmark size={20}/>
       </header>
       <div style={{ maxWidth:760, margin:'0 auto', padding:'48px clamp(16px,4vw,40px) 80px' }}>
-        <h1 style={{ fontFamily:F.ui, fontSize:28, fontWeight:800, color:T.textPrimary, letterSpacing:'-.03em', marginBottom:8 }}>{title}</h1>
+        <h1 className="h1" style={{marginBottom:8}}>{title}</h1>
         <div style={{ fontSize:12.5, color:T.textMuted, marginBottom:36 }}>Stand: Mai 2025</div>
         <div style={{ fontSize:14.5, color:T.textSecondary, lineHeight:1.85 }}>{children}</div>
       </div>
@@ -5045,7 +5044,7 @@ function InstallPrompt(){
   return(
     <div style={{position:'fixed',bottom:16,left:16,right:16,maxWidth:380,margin:'0 auto',zIndex:9999,
       background:'#fff',borderRadius:14,boxShadow:'0 20px 48px -12px rgba(10,37,64,.22)',
-      border:'1px solid rgba(99,91,255,.2)',padding:'16px 18px',
+      border:'1px solid rgba(45,79,214,.2)',padding:'16px 18px',
       display:'flex',alignItems:'center',gap:13,animation:'drawIn .4s cubic-bezier(.16,1,.3,1)'}}>
       <div style={{width:44,height:44,borderRadius:11,background:'#635BFF',flexShrink:0,
         display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:800,fontSize:19,letterSpacing:'-1px'}}>ia</div>
@@ -5123,7 +5122,7 @@ const[mode,setMode]=useState(()=>{const p=window.location.pathname;return(p==='/
     {screen==="auth"&&<Auth mode={mode} onSwitch={()=>setMode(m=>m==="login"?"register":"login")} onSuccess={handleAuth} loading={loading} notify={notify}/>}
     {screen==="reset"&&<ResetPassword notify={notify} onDone={()=>{window.history.replaceState(null,'','/');setMode('login');setScreen('auth');}}/>}
     {screen==="onboarding"&&<OnboardingWizard user={user} onComplete={data=>{if(typeof localStorage!=="undefined")localStorage.setItem("invoiq_onboarding_done","true");if(data.org_name&&org)setOrg(p=>({...p,name:data.org_name}));setScreen("app");setNav("dashboard");notify("Setup abgeschlossen — willkommen bei invoiq! 🎉","success");}}/>}
-    {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onLogout={handleLogout} onSearch={(q)=>{setGlobalSearch(q);setNav("invoices");window.scrollTo(0,0);}} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
+    {screen==="app"&&<AppShell user={user} org={org} nav={nav} setNav={setNav} onNewInvoice={()=>onNav("invoices","create")} onLogout={handleLogout} onSearch={(q)=>{setGlobalSearch(q);setNav("invoices");window.scrollTo(0,0);}} onAdmin={()=>{setAdminNav("overview");setScreen("admin");}}>
       {nav==="dashboard"&&<Dashboard user={user} org={org} notify={notify} onNav={onNav}/>}
       {nav==="invoices"&&<Invoices notify={notify} initialView={subNav} onNavDone={()=>setSubNav(null)} searchQuery={globalSearch} onClearSearch={()=>setGlobalSearch(null)}/>}
       {nav==="drafts"&&<Invoices notify={notify} initialFilter="draft"/>}
