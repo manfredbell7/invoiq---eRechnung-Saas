@@ -216,7 +216,7 @@ function Landing({onEnter,onLegal=()=>{}}){
   const integrations=['XRechnung 3.0','ZUGFeRD 2.3','Peppol BIS 3.0','Factur-X','DATEV EXTF-Export','DATEV LODAS','PDF/A-3','SEPA XML','REST API','Webhooks','E-Mail-Versand (Resend)','KI-Beleg-Erkennung'];
 
   const stBadge=(s)=>{
-    const m={delivered:[T.green,'#ECFDF5','#A7F3D0','Delivered'],validated:[T.accent,'#EEF2FF','#C7D2FE','Validated'],error:[T.red,'#FEF2F2','#FECACA','Error'],pending:[T.amber,'#FFFBEB','#FDE68A','Pending']};
+    const m={delivered:[T.green,T.greenBg,T.greenBdr,'Zugestellt'],validated:[T.accent,T.accentLight,T.accentPale,'Validiert'],error:[T.red,T.redBg,T.redBdr,'Fehler'],pending:[T.amber,T.amberBg,T.amberBdr,'Ausstehend']};
     const[c,bg,bd,lbl]=m[s]||[T.textMuted,T.bgMuted,T.bgBorder,s];
     return <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:4,background:bg,color:c,border:`1px solid ${bd}`}}>{lbl}</span>;
   };
@@ -238,12 +238,12 @@ function Landing({onEnter,onLegal=()=>{}}){
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
           <div style={{background:T.bg,border:`1px solid ${T.greenBdr}`,borderRadius:5,padding:'10px 12px'}}>
             <div style={{fontSize:10,fontWeight:700,color:T.textMuted,marginBottom:6,letterSpacing:.5}}>AUSGEHEND</div>
-            <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em'}}>41</div>
+            <div style={{fontSize:22,fontWeight:600,color:T.textPrimary,letterSpacing:'-.03em'}}>41</div>
             <div style={{fontSize:10.5,color:T.green,fontWeight:600,marginTop:2}}>▲ +8% heute</div>
           </div>
           <div style={{background:T.bg,border:`1px solid ${T.accentPale}`,borderRadius:5,padding:'10px 12px'}}>
             <div style={{fontSize:10,fontWeight:700,color:T.textMuted,marginBottom:6,letterSpacing:.5}}>EINGEHEND</div>
-            <div style={{fontSize:22,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em'}}>28</div>
+            <div style={{fontSize:22,fontWeight:600,color:T.textPrimary,letterSpacing:'-.03em'}}>28</div>
             <div style={{fontSize:10.5,color:T.accent,fontWeight:600,marginTop:2}}>Automatisch verarbeitet</div>
           </div>
         </div>
@@ -284,7 +284,7 @@ function Landing({onEnter,onLegal=()=>{}}){
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
           {[['12.441','Archiviert'],['10J','Aufbewahrung'],['ViDA','Ready 2028']].map(([v,l])=>(
             <div key={l} style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:5,padding:'7px 9px',textAlign:'center'}}>
-              <div style={{fontSize:14,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em'}}>{v}</div>
+              <div style={{fontSize:14,fontWeight:600,color:T.textPrimary,letterSpacing:'-.03em'}}>{v}</div>
               <div style={{fontSize:9,color:T.textMuted,marginTop:2}}>{l}</div>
             </div>
           ))}
@@ -299,7 +299,7 @@ function Landing({onEnter,onLegal=()=>{}}){
     <header style={{position:'fixed',top:0,left:0,right:0,zIndex:100,height:72,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 clamp(16px,5vw,96px)',background:scrolled?'rgba(247,246,242,.92)':T.bgSubtle,borderBottom:`1px solid ${scrolled?T.bgBorder:'transparent'}`,backdropFilter:scrolled?'blur(12px)':'none',transition:'all .3s'}}>
       <Wordmark size={22}/>
       <nav style={{display:'flex',gap:2}}>
-        {['Funktionen','Preise','Sicherheit'].map(l=><a key={l} href={`#${l.toLowerCase()}`} style={{fontSize:14,fontWeight:500,color:T.textSecondary,textDecoration:'none',padding:'8px 12px',borderRadius:8,transition:'all .14s'}} onMouseEnter={e=>{e.target.style.color=T.textPrimary;e.target.style.background=T.bgMuted;}} onMouseLeave={e=>{e.target.style.color=T.textSecondary;e.target.style.background='transparent';}}>{l}</a>)}
+        {[['Funktionen','funktionen'],['E-Rechnungspflicht','pflicht'],['Sicherheit','sicherheit'],['Preise','preise']].map(([l,h])=><a key={l} href={`#${h}`} style={{fontSize:14,fontWeight:500,color:T.textSecondary,textDecoration:'none',padding:'8px 12px',borderRadius:8,transition:'all .14s'}} onMouseEnter={e=>{e.target.style.color=T.textPrimary;e.target.style.background=T.bgMuted;}} onMouseLeave={e=>{e.target.style.color=T.textSecondary;e.target.style.background='transparent';}}>{l}</a>)}
       </nav>
       <div style={{display:'flex',gap:8}}>
         <button className="btn btn-sm" style={{background:'transparent',color:T.textPrimary}} onClick={()=>onEnter('login')}>Anmelden</button>
@@ -338,7 +338,7 @@ function Landing({onEnter,onLegal=()=>{}}){
 
         {/* Hero Dashboard — 7 screens */}
         <div className="fu3" style={{position:'relative'}}>
-          <div style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:12,boxShadow:T.shadowXl,overflow:'hidden',position:'relative'}}>
+          <div style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:16,boxShadow:T.shadowXl,overflow:'hidden',position:'relative'}}>
             {/* Chrome */}
             <div style={{height:36,background:T.bgSubtle,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',padding:'0 14px',gap:7,flexShrink:0}}>
               {['#FF5F57','#FEBC2E','#28C840'].map(c=><div key={c} style={{width:10,height:10,borderRadius:'50%',background:c}}/>)}
@@ -371,7 +371,7 @@ function Landing({onEnter,onLegal=()=>{}}){
                       {[['41','Versendet','▲ +8%',T.green],['28','Empfangen','Diese Woche',T.accent],['1','Fehler','Prüfen',T.red],['98%','Compliance','EN 16931',T.green]].map(([v,l,s,c])=>(
                         <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'8px 10px',border:`1px solid ${T.bgBorder}`}}>
                           <div style={{fontSize:9.5,color:T.textMuted,marginBottom:3}}>{l}</div>
-                          <div style={{fontSize:18,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1}}>{v}</div>
+                          <div style={{fontSize:18,fontWeight:600,color:T.textPrimary,letterSpacing:'-.03em',lineHeight:1}}>{v}</div>
                           <div style={{fontSize:9,color:c,marginTop:3,fontWeight:600}}>{s}</div>
                         </div>
                       ))}
@@ -390,11 +390,11 @@ function Landing({onEnter,onLegal=()=>{}}){
                   </div>}
                   {heroTab===1&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                      <span style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>Documents</span>
-                      <div style={{background:T.accent,color:'#fff',borderRadius:5,padding:'3px 9px',fontSize:9.5,fontWeight:700}}>+ New</div>
+                      <span style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>Ausgang</span>
+                      <div style={{background:T.accent,color:'#fff',borderRadius:5,padding:'3px 9px',fontSize:9.5,fontWeight:700}}>+ Neu</div>
                     </div>
                     <div style={{display:'flex',gap:5,marginBottom:10}}>
-                      {['All','Delivered','Errors'].map((t,i)=><span key={t} style={{fontSize:9.5,padding:'2px 7px',borderRadius:4,background:i===0?T.accentLight:T.bgSubtle,color:i===0?T.accent:T.textMuted,border:`1px solid ${i===0?T.accentPale:T.bgBorder}`,fontWeight:i===0?700:500}}>{t}</span>)}
+                      {['Alle','Zugestellt','Fehler'].map((t,i)=><span key={t} style={{fontSize:9.5,padding:'2px 7px',borderRadius:4,background:i===0?T.accentLight:T.bgSubtle,color:i===0?T.accent:T.textMuted,border:`1px solid ${i===0?T.accentPale:T.bgBorder}`,fontWeight:i===0?700:500}}>{t}</span>)}
                     </div>
                     {liveRows.slice(0,5).map((r,i)=>(
                       <div key={r.num} style={{display:'flex',alignItems:'center',gap:7,padding:'5px 0',borderBottom:i<4?`1px solid ${T.bgSubtle}`:'none'}}>
@@ -421,13 +421,13 @@ function Landing({onEnter,onLegal=()=>{}}){
                   </div>}
                   {heroTab===3&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
                     <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
-                      <span style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>Inbound</span>
+                      <span style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>Eingang</span>
                       <span style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:4,background:T.redBg,color:T.red,border:`1px solid ${T.redBdr}`}}>Pflicht Jan 2025</span>
                     </div>
                     <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
                       {[['3','Empfangen',T.accent],['2','Validiert',T.green],['1','Fehler',T.red]].map(([v,l,c])=>(
                         <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'7px 8px',border:`1px solid ${T.bgBorder}`,textAlign:'center'}}>
-                          <div style={{fontSize:18,fontWeight:800,color:c,letterSpacing:'-.03em'}}>{v}</div>
+                          <div style={{fontSize:18,fontWeight:600,color:c,letterSpacing:'-.03em'}}>{v}</div>
                           <div style={{fontSize:9.5,color:T.textMuted,marginTop:2}}>{l}</div>
                         </div>
                       ))}
@@ -440,14 +440,14 @@ function Landing({onEnter,onLegal=()=>{}}){
                         <span style={{fontSize:9.5,fontWeight:600}}>{r.a}</span>
                       </div>
                     ))}
-                    <div style={{marginTop:10,padding:'7px 10px',background:T.blueBg,border:`1px solid ${T.blueBdr}`,borderRadius:6,fontSize:9.5,color:T.blue}}>📧 rechnungen@invoiq.de · Peppol: 0190:DE...</div>
+                    <div style={{marginTop:10,padding:'7px 10px',background:T.blueBg,border:`1px solid ${T.blueBdr}`,borderRadius:6,fontSize:9.5,color:T.blue}}>ihre-firma@rechnungen.invoiq.de</div>
                   </div>}
                   {heroTab===4&&<div style={{padding:14,animation:'fadeIn .3s ease'}}>
                     <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary,marginBottom:10}}>GoBD-Archiv</div>
                     <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6,marginBottom:10}}>
-                      {[['12.441','Archiviert'],['10 Jahre','Retention']].map(([v,l])=>(
+                      {[['12.441','Archiviert'],['10 Jahre','Aufbewahrung']].map(([v,l])=>(
                         <div key={l} style={{background:T.bgSubtle,borderRadius:5,padding:'8px 10px',border:`1px solid ${T.bgBorder}`}}>
-                          <div style={{fontSize:16,fontWeight:800,color:T.textPrimary,letterSpacing:'-.03em'}}>{v}</div>
+                          <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,letterSpacing:'-.03em'}}>{v}</div>
                           <div style={{fontSize:9.5,color:T.textMuted,marginTop:2}}>{l}</div>
                         </div>
                       ))}
@@ -486,24 +486,44 @@ function Landing({onEnter,onLegal=()=>{}}){
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div>
-              <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>XRechnung generiert</div>
-              <div style={{fontSize:10,color:T.textMuted}}>EN 16931 · GoBD · ViDA-ready ✓</div>
+              <div style={{fontSize:11.5,fontWeight:700,color:T.textPrimary}}>Geprüft nach EN 16931</div>
+              <div style={{fontSize:10,color:T.textMuted}}>XRechnung erzeugt · SHA-256 versiegelt</div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    {/* INTEGRATIONS MARQUEE — coming soon */}
-    <section style={{padding:'48px 0',borderTop:`1px solid rgba(45,79,214,.12)`,borderBottom:`1px solid rgba(45,79,214,.12)`,background:'#07102A',overflow:'hidden',position:'relative'}}>
-      {/* Coming Soon Badge */}
-      <p style={{fontSize:10.5,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.4,textTransform:'uppercase',marginBottom:24,textAlign:'center',position:'relative'}}>Unterstützte Standards, Formate & Exporte — heute, nicht irgendwann</p>
-      <div className="marquee-wrap" style={{position:'relative'}}>
-        <div className="marquee-track">
-          {[...integrations,...integrations].map((n,i)=>(
-            <div key={i} className="integration-logo" style={{color:'rgba(255,255,255,.6)',background:'rgba(255,255,255,.05)',borderColor:'rgba(255,255,255,.1)',padding:'10px 20px',fontSize:13.5,fontWeight:600,minWidth:160,justifyContent:'center',gap:10,borderRadius:10}}>
-              <span style={{width:7,height:7,borderRadius:'50%',background:'rgba(45,79,214,.6)',display:'inline-block',flexShrink:0}}/>
-              {n}
+    {/* STANDARDS */}
+    <section aria-label="Unterstützte Standards" style={{padding:'0 clamp(16px,5vw,96px)'}}>
+      <div style={{maxWidth:1248,margin:'0 auto',padding:'28px 0',borderTop:`1px solid ${T.bgBorder}`,borderBottom:`1px solid ${T.bgBorder}`,display:'flex',alignItems:'center',gap:32,flexWrap:'wrap'}}>
+        <span style={{fontSize:13,color:T.textMuted,width:170,flexShrink:0}}>Unterstützte Standards, Formate &amp; Exporte</span>
+        <div style={{flex:1,display:'flex',gap:'10px 28px',flexWrap:'wrap',fontSize:15,fontWeight:600,color:T.textSecondary,letterSpacing:'-.01em'}}>
+          {integrations.map(n=><span key={n}>{n}</span>)}
+        </div>
+      </div>
+    </section>
+
+    {/* PFLICHT — drei Stufen */}
+    <section id="pflicht" style={{padding:'104px clamp(16px,5vw,96px) 40px'}}>
+      <div style={{maxWidth:1248,margin:'0 auto',display:'flex',flexDirection:'column',gap:48}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:'24px 64px',flexWrap:'wrap'}}>
+          <h2 className="reveal display" style={{fontSize:'clamp(32px,4vw,52px)',maxWidth:640}}>Die E-Rechnungspflicht kommt in drei Stufen.</h2>
+          <p className="reveal" style={{fontSize:16,lineHeight:1.6,color:T.textSecondary,maxWidth:420}}>Für Umsätze zwischen Unternehmen in Deutschland gilt: Papier und einfache PDFs laufen aus. invoiq deckt jede Stufe schon heute ab.</p>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(280px,100%),1fr))',gap:20}}>
+          {[
+            {d:'01.01.2025',t:'Empfangen',x:'Alle Unternehmen müssen E-Rechnungen annehmen und verarbeiten können.',tag:'Gilt bereits',dark:true},
+            {d:'01.01.2027',t:'Versenden ab 800.000 €',x:'Unternehmen mit mehr als 800.000 € Vorjahresumsatz müssen E-Rechnungen ausstellen.',tag:'Nächste Stufe'},
+            {d:'01.01.2028',t:'Versenden für alle',x:'Die Übergangsfrist endet – E-Rechnungen werden für alle Unternehmen Pflicht.',tag:'Übergang endet'},
+          ].map((c,i)=>(
+            <div key={c.d} className="reveal" style={{transitionDelay:`${i*.07}s`,background:c.dark?T.brand:T.bg,color:c.dark?'#fff':T.textPrimary,border:`1px solid ${c.dark?T.brand:T.bgBorder}`,borderRadius:18,padding:28,display:'flex',flexDirection:'column',gap:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                <span style={{fontFamily:F.mono,fontSize:14,color:c.dark?'rgba(255,255,255,.7)':T.textMuted}}>{c.d}</span>
+                <span style={{fontSize:12,fontWeight:600,borderRadius:999,padding:'3px 10px',background:c.dark?'#5FD39A':i===1?T.accentLight:T.grayBg,color:c.dark?T.brand:i===1?T.accentHover:T.textSecondary}}>{c.tag}</span>
+              </div>
+              <div style={{fontSize:22,fontWeight:600,letterSpacing:'-.02em'}}>{c.t}</div>
+              <div style={{fontSize:14.5,lineHeight:1.55,color:c.dark?'rgba(255,255,255,.78)':T.textSecondary}}>{c.x}</div>
             </div>
           ))}
         </div>
@@ -511,11 +531,12 @@ function Landing({onEnter,onLegal=()=>{}}){
     </section>
 
     {/* INBOUND EMPFANG — Kritische Marktlücke */}
-    <section style={{padding:'88px clamp(16px,4vw,56px)',background:T.bgSubtle,borderBottom:`1px solid ${T.bgBorder}`}}>
+    <section style={{padding:'88px clamp(16px,4vw,56px)'}}>
       <div style={{maxWidth:1060,margin:'0 auto',display:'grid',gridTemplateColumns:'1fr 1fr',gap:56,alignItems:'center'}}>
         <div>
-          <div className="reveal" style={{display:'inline-flex',alignItems:'center',gap:7,background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:6,padding:'4px 12px',fontSize:11.5,fontWeight:700,color:T.red,marginBottom:16}}>
-            ⚠ Seit 1. Januar 2025 gesetzlich verpflichtend
+          <div className="reveal hero-pill" style={{marginBottom:16}}>
+            <span style={{fontSize:11.5,fontWeight:600,color:'#fff',background:T.accent,borderRadius:999,padding:'2px 8px'}}>Pflicht</span>
+            Seit 1. Januar 2025 gesetzlich verpflichtend
           </div>
           <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(24px,3.5vw,40px)',fontWeight:400,color:T.textPrimary,letterSpacing:'-.02em',lineHeight:1.08,marginBottom:16}}>
             Inbound-Empfang.<br/><span style={{color:T.accent}}>Für alle Unternehmen.</span>
@@ -544,8 +565,8 @@ function Landing({onEnter,onLegal=()=>{}}){
 
         {/* Inbound flow visual */}
         <div className="reveal">
-          <div style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:10,padding:24,boxShadow:T.shadow2}}>
-            <div style={{fontSize:12,fontWeight:600,color:T.textMuted,letterSpacing:.5,textTransform:'uppercase',marginBottom:16}}>Eingehende Rechnung — Live</div>
+          <div style={{background:T.bg,border:`1px solid ${T.bgBorder}`,borderRadius:18,padding:28,boxShadow:T.shadow3}}>
+            <div style={{fontSize:12,fontWeight:600,color:T.textMuted,letterSpacing:.5,textTransform:'uppercase',marginBottom:16}}>Eingehende Rechnung — Beispiel</div>
             {[
               {icon:'📥',step:'Empfang',detail:'XRechnung von Lieferant ABC',status:'done',time:'09:14:03'},
               {icon:'🔍',step:'Parsing & Validierung',detail:'EN 16931 ✓ · Alle Pflichtfelder vorhanden',status:'done',time:'09:14:03'},
@@ -584,11 +605,11 @@ function Landing({onEnter,onLegal=()=>{}}){
           {STEPS.map((s,i)=>(
             <div key={s.n} className="flow-step" data-step={i} style={{display:'grid',gridTemplateColumns:'56px 1fr',gap:24,paddingBottom:i<STEPS.length-1?40:0,position:'relative',opacity:activeStep>=i?1:0,transform:activeStep>=i?'translateY(0)':'translateY(16px)',transition:'opacity .5s ease, transform .5s ease'}}>
               {i<STEPS.length-1&&<div style={{position:'absolute',left:27,top:56,width:2,height:'calc(100% - 30px)',background:`linear-gradient(to bottom,${activeStep>i?T.accent:T.bgBorder} 0%,${T.bgBorder} 100%)`,transition:'background .5s',borderRadius:1}}/>}
-              <div style={{width:56,height:56,borderRadius:'50%',background:activeStep>=i?T.accent:T.bg,border:`2px solid ${activeStep>=i?T.accent:T.bgBorder}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:800,color:activeStep>=i?'#fff':T.textMuted,flexShrink:0,zIndex:1,transition:'all .4s cubic-bezier(.16,1,.3,1)',transform:activeStep===i?'scale(1.12)':'scale(1)',boxShadow:activeStep===i?`0 0 0 6px ${T.accentPale}`:activeStep>i?`0 0 0 4px ${T.accentLight}`:'none'}}>
+              <div style={{width:56,height:56,borderRadius:'50%',background:activeStep>=i?T.accent:T.bg,border:`2px solid ${activeStep>=i?T.accent:T.bgBorder}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:600,color:activeStep>=i?'#fff':T.textMuted,flexShrink:0,zIndex:1,transition:'all .4s cubic-bezier(.16,1,.3,1)',transform:activeStep===i?'scale(1.12)':'scale(1)',boxShadow:activeStep===i?`0 0 0 6px ${T.accentPale}`:activeStep>i?`0 0 0 4px ${T.accentLight}`:'none'}}>
                 {activeStep>i?<svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>:s.n}
               </div>
               <div style={{paddingTop:12}}>
-                <h3 style={{fontSize:17,fontWeight:700,color:T.textPrimary,marginBottom:6,letterSpacing:'-.025em'}}>{s.title}</h3>
+                <h3 style={{fontSize:17,fontWeight:600,color:T.textPrimary,marginBottom:6,letterSpacing:'-.025em'}}>{s.title}</h3>
                 <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65,marginBottom:10,maxWidth:560}}>{s.desc}</p>
                 <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                   {s.tags.map(t=><span key={t} style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:4,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,color:T.textSecondary}}>{t}</span>)}
@@ -604,17 +625,17 @@ function Landing({onEnter,onLegal=()=>{}}){
     </section>
 
     {/* NEW FEATURES — Market dominance */}
-    <section style={{padding:'88px clamp(16px,4vw,56px)',background:T.bgSubtle,borderTop:`1px solid ${T.bgBorder}`,borderBottom:`1px solid ${T.bgBorder}`}}>
+    <section style={{padding:'88px clamp(16px,4vw,56px)',borderTop:`1px solid ${T.bgBorder}`,borderBottom:`1px solid ${T.bgBorder}`}}>
       <div style={{maxWidth:1080,margin:'0 auto'}}>
         <div style={{textAlign:'center',marginBottom:52}}>
-          <span className="reveal badge badge-blue" style={{marginBottom:14,fontSize:11}}>Marktführende Funktionen</span>
+          <span className="reveal badge badge-blue" style={{marginBottom:14,fontSize:11}}>Funktionen</span>
           <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(26px,3.5vw,44px)',fontWeight:400,color:T.textPrimary,letterSpacing:'-.02em',lineHeight:1.08}}>Alles was Sie brauchen.<br/>Nichts was Sie nicht brauchen.</h2>
         </div>
         <div className="bento-grid">
           {/* Bento 1 — WIDE: KI-Scanner mit Live-Typewriter-Demo */}
           <div className="bento-card bento-wide reveal" style={{transitionDelay:'0s'}}>
             <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.purple+'15',color:T.purple,border:`1px solid ${T.purple}30`}}>Neu</span>
-            <h3 style={{fontWeight:700,fontSize:17,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>KI-Rechnungserkennung</h3>
+            <h3 style={{fontWeight:600,fontSize:17,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>KI-Rechnungserkennung</h3>
             <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65,maxWidth:'52ch'}}>Foto oder PDF hochladen — invoiq extrahiert alle Felder automatisch und erzeugt eine konforme XRechnung. Ohne Abtippen.</p>
             <div style={{marginTop:18,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:10,padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
               <span className="live-dot" style={{background:T.purple}}/>
@@ -628,7 +649,7 @@ function Landing({onEnter,onLegal=()=>{}}){
           {/* Bento 2 — Inbound mit Pulse */}
           <div className="bento-card reveal" style={{transitionDelay:'.07s'}}>
             <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.green+'15',color:T.green,border:`1px solid ${T.green}30`}}>Pflicht seit 2025</span>
-            <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>Eingang in jedem Tarif</h3>
+            <h3 style={{fontWeight:600,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>Eingang in jedem Tarif</h3>
             <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Empfang, Parsing und Validierung eingehender E-Rechnungen — auch im Free-Plan.</p>
             <div style={{marginTop:16,display:'flex',alignItems:'center',gap:8}}>
               <span className="live-dot" style={{background:T.green}}/>
@@ -638,24 +659,24 @@ function Landing({onEnter,onLegal=()=>{}}){
           {/* Bento 3 — Kanzlei */}
           <div className="bento-card reveal" style={{transitionDelay:'.14s'}}>
             <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.accent+'15',color:T.accent,border:`1px solid ${T.accent}30`}}>Neu</span>
-            <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>Ihr Rechnungsdesign</h3>
+            <h3 style={{fontWeight:600,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>Ihr Rechnungsdesign</h3>
             <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Drei Vorlagen (Klassisch, Modern, Kompakt), eigenes Logo und Markenfarbe — mit Live-Vorschau, pro Rechnung wählbar.</p>
           </div>
           {/* Bento 4 */}
           <div className="bento-card reveal" style={{transitionDelay:'.21s'}}>
             <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.amber+'15',color:T.amber,border:`1px solid ${T.amber}30`}}>2028 ready</span>
-            <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>ViDA Reporting</h3>
+            <h3 style={{fontWeight:600,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>ViDA Reporting</h3>
             <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Die EU-Meldepflicht kommt 2028 — invoiq ist darauf ausgerichtet: strukturierte EN-16931-Daten von Tag eins.</p>
           </div>
           {/* Bento 5 — WIDE: GoBD-Archiv mit Daten-Strip */}
           <div className="bento-card bento-wide reveal" style={{transitionDelay:'.28s'}}>
             <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.blue+'15',color:T.blue,border:`1px solid ${T.blue}30`}}>Rechtssicher</span>
-            <h3 style={{fontWeight:700,fontSize:17,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>GoBD-Archiv — 10 Jahre, unveränderbar</h3>
+            <h3 style={{fontWeight:600,fontSize:17,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>GoBD-Archiv — 10 Jahre, unveränderbar</h3>
             <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.65,maxWidth:'52ch'}}>Jedes Dokument wird mit SHA-256 versiegelt und revisionssicher archiviert. Prüfbar per Klick.</p>
             <div style={{marginTop:16,display:'flex',gap:0,borderTop:`1px solid ${T.bgBorder}`}}>
               {[['10 Jahre','Aufbewahrung'],['SHA-256','Hash-Siegel'],['EN 16931','Validierung'],['DSGVO','EU-Hosting']].map(([v,l],i)=>(
                 <div key={l} style={{flex:1,padding:'12px 0 0',borderLeft:i>0?`1px solid ${T.bgBorder}`:'none',paddingLeft:i>0?16:0}}>
-                  <div style={{fontSize:14,fontWeight:800,fontFamily:F.mono,color:T.textPrimary,letterSpacing:'-.02em'}}>{v}</div>
+                  <div style={{fontSize:14,fontWeight:600,fontFamily:F.mono,color:T.textPrimary,letterSpacing:'-.02em'}}>{v}</div>
                   <div style={{fontSize:10.5,color:T.textMuted,marginTop:2}}>{l}</div>
                 </div>
               ))}
@@ -674,15 +695,15 @@ function Landing({onEnter,onLegal=()=>{}}){
         </div>
         <div className="zg-grid">
           {[
-            {num:'01',target:'Einzelunternehmer & KMU',sub:'Handwerker · Freelancer · kleine Firmen · ohne IT-Aufwand',points:['XRechnung per E-Mail empfangen & senden','Foto/PDF → XRechnung per KI-Scanner','GoBD-Archivierung automatisch','Kein ERP · kein IT-Wissen nötig'],cta:'Kostenlos starten →',color:T.accent},
-            {num:'02',target:'Zusammenarbeit mit dem Steuerberater',sub:'DATEV-ready · ein Klick statt Pendelordner',points:['DATEV-EXTF-Buchungsstapel exportieren','Belege per E-Mail an die Kanzlei weiterleiten','Integrierte Buchhaltung: SKR03/04, Bilanz & GuV','Dokumenten-Archiv GoBD-konform'],cta:'Jetzt testen',color:T.purple},
-            {num:'03',target:'Kleinunternehmen',sub:'Alle müssen empfangen können',points:['Kostenloser Einstieg (10 Dok.)','Inbound-Empfang inklusive','Kein ERP nötig','XRechnung-Generator gratis'],cta:'Kostenlos starten',color:T.green},
+            {num:'01',target:'Einzelunternehmer & KMU',sub:'Handwerker · Freelancer · kleine Firmen · ohne IT-Aufwand',points:['XRechnung per E-Mail empfangen & senden','Foto/PDF → XRechnung per KI-Scanner','GoBD-Archivierung automatisch','Kein ERP · kein IT-Wissen nötig'],cta:'Kostenlos starten',color:T.accent},
+            {num:'02',target:'Zusammenarbeit mit dem Steuerberater',sub:'DATEV-ready · ein Klick statt Pendelordner',points:['DATEV-EXTF-Buchungsstapel exportieren','Belege per E-Mail an die Kanzlei weiterleiten','Integrierte Buchhaltung: SKR03/04, Bilanz & GuV','Dokumenten-Archiv GoBD-konform'],cta:'Jetzt testen',color:T.accent},
+            {num:'03',target:'Kleinunternehmen',sub:'Alle müssen empfangen können',points:['Kostenloser Einstieg (10 Dok.)','Inbound-Empfang inklusive','Kein ERP nötig','XRechnung-Generator gratis'],cta:'Kostenlos starten',color:T.accent},
           ].map((g,i)=>(
             <div key={i} className="card reveal" style={{padding:24,transitionDelay:`${i*.08}s`}}>
               <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-                <div style={{width:28,height:18,borderRadius:3,background:g.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9.5,fontWeight:800,color:'rgba(255,255,255,.8)',letterSpacing:.4}}>{g.num}</div>
+                <span style={{fontFamily:F.mono,fontSize:13,color:T.textMuted}}>{g.num}</span>
               </div>
-              <h3 style={{fontSize:17,fontWeight:700,color:T.textPrimary,marginBottom:5,letterSpacing:'-.025em'}}>{g.target}</h3>
+              <h3 style={{fontSize:17,fontWeight:600,color:T.textPrimary,marginBottom:5,letterSpacing:'-.025em'}}>{g.target}</h3>
               <p style={{fontSize:12,color:T.textMuted,marginBottom:16}}>{g.sub}</p>
               <div style={{display:'flex',flexDirection:'column',gap:7,marginBottom:20}}>
                 {g.points.map((p,j)=>(
@@ -700,26 +721,25 @@ function Landing({onEnter,onLegal=()=>{}}){
     </section>
 
     {/* SECURITY */}
-    <section id="sicherheit" style={{padding:'88px clamp(16px,4vw,56px)',background:T.bgSubtle,borderTop:`1px solid ${T.bgBorder}`,borderBottom:`1px solid ${T.bgBorder}`}}>
-      <div style={{maxWidth:920,margin:'0 auto',display:'grid',gridTemplateColumns:'1fr 1fr',gap:48,alignItems:'center'}}>
-        <div>
-          <span className="reveal badge badge-green" style={{marginBottom:16,fontSize:11}}>Security & Compliance</span>
-          <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(24px,3vw,40px)',fontWeight:400,color:T.textPrimary,letterSpacing:'-.02em',marginBottom:18}}>Revisionssicher. Gerichtsfest.</h2>
-          <p className="reveal" style={{fontSize:14,color:T.textSecondary,lineHeight:1.75,marginBottom:20}}>SHA-256-gesichert, unveränderlich für 10 Jahre nach §147 AO archiviert. Vollständiger Audit-Trail für jede Transaktion.</p>
-          <div className="reveal" style={{display:'flex',flexDirection:'column',gap:8}}>
-            {['EN 16931 — Europäischer E-Rechnungsstandard','GoBD — Grundsätze ordnungsmäßiger Buchführung','§ 147 AO — 10 Jahre Aufbewahrungspflicht','DSGVO — Datenhaltung in AWS Frankfurt (EU)','ViDA-ready — Transaction Reporting ab 2028','SHA-256 — Kryptographische Integrität'].map(item=>(
-              <div key={item} style={{display:'flex',gap:10,alignItems:'center',fontSize:13.5,color:T.textSecondary}}>
-                <span style={{width:16,height:16,borderRadius:'50%',background:T.greenBg,border:`1px solid ${T.greenBdr}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color:T.green,flexShrink:0,fontWeight:700}}>✓</span>
-                {item}
-              </div>
-            ))}
-          </div>
+    <section id="sicherheit" style={{padding:'88px clamp(16px,3vw,48px)'}}>
+      <div style={{maxWidth:1344,margin:'0 auto',background:T.brand,color:'#fff',borderRadius:28,padding:'clamp(40px,5vw,72px) clamp(24px,4vw,48px)',display:'flex',gap:'40px 64px',flexWrap:'wrap'}}>
+        <div style={{flex:'1 1 320px',maxWidth:440,display:'flex',flexDirection:'column',gap:18}}>
+          <span className="reveal" style={{fontSize:13,fontWeight:600,color:'#9FB2F5',letterSpacing:'.06em',textTransform:'uppercase'}}>Sicherheit &amp; Compliance</span>
+          <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(30px,3.4vw,44px)',fontWeight:400,letterSpacing:'-.02em',lineHeight:1.08}}>Bei Rechnungen ist Vertrauen keine Option.</h2>
+          <p className="reveal" style={{fontSize:15,lineHeight:1.65,color:'rgba(255,255,255,.72)'}}>Jede Rechnung wird geprüft, versiegelt und revisionssicher aufbewahrt – mit vollständigem Audit-Trail für jede Transaktion.</p>
         </div>
-        <div className="reveal" style={{background:T.brand,borderRadius:8,padding:28,color:'#fff'}}>
-          {[['Validierung','EN 16931 bei jeder Rechnung',T.green],['Integrität','SHA-256 je Dokument','rgba(255,255,255,.85)'],['Aufbewahrung','10 Jahre (§ 147 AO)','rgba(255,255,255,.6)'],['Hosting','EU — Frankfurt','#86EFAC'],['Zugriff','Mandantengetrennt (RLS)','#A5B4FC']].map(([l,v,c])=>(
-            <div key={l} style={{padding:'12px 0',borderBottom:'1px solid rgba(255,255,255,.07)'}}>
-              <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:600,letterSpacing:.5,marginBottom:3,textTransform:'uppercase'}}>{l}</div>
-              <div style={{fontSize:16,fontWeight:800,color:c,lineHeight:1.2,letterSpacing:'-.02em'}}>{v}</div>
+        <div style={{flex:'2 1 480px',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(240px,100%),1fr))',gap:'32px 40px'}}>
+          {[
+            ['M8 14s4.5-3.8 4.5-7.2a4.5 4.5 0 00-9 0C3.5 10.2 8 14 8 14zM8 5.2a1.8 1.8 0 110 3.6 1.8 1.8 0 010-3.6z','Hosting in Frankfurt','Datenhaltung in der EU (AWS Frankfurt). DSGVO-konform.'],
+            ['M3.5 7h9v6.5h-9zM5.5 7V5a2.5 2.5 0 015 0v2','Revisionssicher nach GoBD','Unveränderbar archiviert, zehn Jahre gemäß § 147 AO.'],
+            ['M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5','SHA-256-Versiegelung','Jeder Beleg bekommt einen Prüfwert – Änderungen fallen sofort auf.'],
+            ['M8 1.8l5.2 2.2v3.7c0 3.2-2.2 5.4-5.2 6.4-3-1-5.2-3.2-5.2-6.4V4zM5.8 8l1.6 1.6 2.9-3','Geprüft nach EN 16931','Jede Rechnung wird vor dem Versand validiert – auch eingehende.'],
+            ['M6 8.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM1.5 13.5c.6-2.3 2.3-3.5 4.5-3.5s3.9 1.2 4.5 3.5','Mandantengetrennt','Strikte Trennung der Daten je Unternehmen auf Datenbankebene.'],
+            ['M3 8h10M9 4l4 4-4 4','ViDA-ready','Strukturierte EN-16931-Daten – vorbereitet auf die EU-Meldepflicht.'],
+          ].map(([d,t,x])=>(
+            <div key={t} className="reveal" style={{display:'flex',gap:14}}>
+              <svg width="22" height="22" viewBox="0 0 16 16" fill="none" style={{flexShrink:0,color:'#9FB2F5'}}><path d={d} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <div><div style={{fontSize:16,fontWeight:600}}>{t}</div><div style={{fontSize:14,lineHeight:1.55,color:'rgba(255,255,255,.72)',marginTop:4}}>{x}</div></div>
             </div>
           ))}
         </div>
@@ -735,9 +755,9 @@ function Landing({onEnter,onLegal=()=>{}}){
           <p className="reveal" style={{fontSize:14,color:T.textSecondary,marginTop:10,marginBottom:24}}>Gratis starten — E-Rechnungen schreiben und empfangen kostet nichts. Bezahlt wird erst, wenn invoiq mehr für dich übernimmt. Maximal 30 € im Monat, zzgl. USt., jederzeit kündbar.</p>
 
           {/* Billing toggle — default yearly */}
-          <div className="reveal" style={{display:'inline-flex',alignItems:'center',gap:8,background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,padding:'5px 6px'}}>
-            <button onClick={()=>setBillingYearly(false)} style={{padding:'6px 16px',borderRadius:6,border:'none',fontSize:13,fontWeight:600,cursor:'pointer',background:!billingYearly?T.bg:T.bgSubtle,color:!billingYearly?T.textPrimary:T.textMuted,boxShadow:!billingYearly?T.shadow1:'none',transition:'all .15s',fontFamily:F.ui}}>Monatlich</button>
-            <button onClick={()=>setBillingYearly(true)} style={{padding:'6px 16px',borderRadius:6,border:'none',fontSize:13,fontWeight:600,cursor:'pointer',background:billingYearly?T.bg:T.bgSubtle,color:billingYearly?T.textPrimary:T.textMuted,boxShadow:billingYearly?T.shadow1:'none',transition:'all .15s',fontFamily:F.ui,display:'flex',alignItems:'center',gap:6}}>
+          <div className="reveal" style={{display:'inline-flex',alignItems:'center',gap:8,background:T.bgMuted,borderRadius:10,padding:4}}>
+            <button onClick={()=>setBillingYearly(false)} style={{padding:'6px 16px',borderRadius:6,border:'none',fontSize:13,fontWeight:600,cursor:'pointer',background:!billingYearly?T.bg:'transparent',color:!billingYearly?T.textPrimary:T.textMuted,boxShadow:!billingYearly?T.shadow1:'none',transition:'all .15s',fontFamily:F.ui}}>Monatlich</button>
+            <button onClick={()=>setBillingYearly(true)} style={{padding:'6px 16px',borderRadius:6,border:'none',fontSize:13,fontWeight:600,cursor:'pointer',background:billingYearly?T.bg:'transparent',color:billingYearly?T.textPrimary:T.textMuted,boxShadow:billingYearly?T.shadow1:'none',transition:'all .15s',fontFamily:F.ui,display:'flex',alignItems:'center',gap:6}}>
               Jährlich
               <span style={{fontSize:10.5,fontWeight:700,color:'#fff',background:T.green,padding:'1px 7px',borderRadius:10}}>-20%</span>
             </button>
@@ -745,7 +765,7 @@ function Landing({onEnter,onLegal=()=>{}}){
         </div>
 
         {/* Plan cards */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(170px,100%),1fr))',gap:10,marginBottom:20}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(220px,100%),1fr))',gap:16,marginBottom:20}}>
           {[
             {
               name:'FREE',key:'free',price:0,yearly:0,docs:'10 Rechnungen/Monat',
@@ -786,16 +806,16 @@ function Landing({onEnter,onLegal=()=>{}}){
             const bd=isFeatured?T.brand:T.bgBorder;
             return(
               <div key={i} className="pricing-card reveal" style={{transitionDelay:`${i*.07}s`,position:'relative',background:bg,border:`1.5px solid ${bd}`,display:'flex',flexDirection:'column'}}>
-                {p.tag&&<div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:p.tagColor,color:'#fff',fontSize:9.5,fontWeight:800,padding:'3px 12px',borderRadius:10,whiteSpace:'nowrap',zIndex:2,letterSpacing:.5}}>{p.tag}</div>}
+                {p.tag&&<div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:p.tagColor,color:'#fff',fontSize:9.5,fontWeight:600,padding:'3px 12px',borderRadius:10,whiteSpace:'nowrap',zIndex:2,letterSpacing:.5}}>{p.tag}</div>}
 
                 {/* Plan name */}
-                <div style={{fontWeight:800,fontSize:11,marginBottom:10,color:isFeatured?'rgba(255,255,255,.45)':T.textMuted,letterSpacing:1,textTransform:'uppercase'}}>{p.name}</div>
+                <div style={{fontWeight:600,fontSize:11,marginBottom:10,color:isFeatured?'rgba(255,255,255,.45)':T.textMuted,letterSpacing:1,textTransform:'uppercase'}}>{p.name}</div>
 
                 {/* Price */}
                 <div style={{display:'flex',alignItems:'baseline',gap:3,marginBottom:3}}>
                   {price===0
-                    ? <span style={{fontSize:34,fontWeight:800,lineHeight:1,color:isFeatured?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>Gratis</span>
-                    : <><span style={{fontSize:34,fontWeight:800,lineHeight:1,color:isFeatured?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>{price}€</span><span style={{fontSize:12.5,color:isFeatured?'rgba(255,255,255,.4)':T.textMuted}}>/Mo</span></>
+                    ? <span style={{fontSize:34,fontWeight:600,lineHeight:1,color:isFeatured?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>Gratis</span>
+                    : <><span style={{fontSize:34,fontWeight:600,lineHeight:1,color:isFeatured?'#fff':T.textPrimary,letterSpacing:'-.04em'}}>{price}€</span><span style={{fontSize:12.5,color:isFeatured?'rgba(255,255,255,.4)':T.textMuted}}>/Mo</span></>
                   }
                 </div>
                 <div style={{fontSize:11.5,color:isFeatured?'rgba(255,255,255,.45)':T.textMuted,marginBottom:3}}>{p.docs}</div>
@@ -803,8 +823,8 @@ function Landing({onEnter,onLegal=()=>{}}){
 
                 {/* ROI badge */}
                 {p.roi&&(
-                  <div style={{background:isFeatured?'rgba(255,255,255,.1)':T.greenBg,border:`1px solid ${isFeatured?'rgba(255,255,255,.15)':T.greenBdr}`,borderRadius:5,padding:'6px 10px',fontSize:11,color:isFeatured?'rgba(255,255,255,.7)':T.green,fontWeight:500,marginBottom:14,lineHeight:1.4}}>
-                    💡 {p.roi}
+                  <div style={{background:isFeatured?'rgba(255,255,255,.1)':T.greenBg,border:`1px solid ${isFeatured?'rgba(255,255,255,.15)':T.greenBdr}`,borderRadius:8,padding:'6px 10px',fontSize:11.5,color:isFeatured?'rgba(255,255,255,.7)':T.green,fontWeight:500,marginBottom:14,lineHeight:1.4}}>
+                    {p.roi}
                   </div>
                 )}
 
@@ -814,13 +834,13 @@ function Landing({onEnter,onLegal=()=>{}}){
                 <div style={{flex:1}}>
                   {p.features.map((f,j)=>(
                     <div key={j} style={{display:'flex',gap:7,marginBottom:7,fontSize:12.5,color:j===0?(isFeatured?'#fff':T.textPrimary):(isFeatured?'rgba(255,255,255,.55)':T.textSecondary),alignItems:'flex-start'}}>
-                      <span style={{fontSize:8,color:isFeatured?'rgba(255,255,255,.4)':'#635BFF',flexShrink:0,fontWeight:700,marginTop:3}}>✓</span>{f}
+                      <span style={{fontSize:8,color:isFeatured?'rgba(255,255,255,.4)':T.accent,flexShrink:0,fontWeight:700,marginTop:3}}>✓</span>{f}
                     </div>
                   ))}
                 </div>
 
                 {/* CTA */}
-                <button onClick={()=>onEnter(p.key)} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',gap:5,background:isFeatured?'rgba(255,255,255,.12)':'transparent',color:isFeatured?'#fff':'#635BFF',border:isFeatured?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'9px',fontSize:12.5,fontWeight:600,borderRadius:6,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.opacity='.8';}} onMouseLeave={e=>{e.currentTarget.style.opacity='1';}}>
+                <button onClick={()=>onEnter(p.key)} style={{marginTop:16,width:'100%',display:'flex',justifyContent:'center',alignItems:'center',gap:5,background:isFeatured?'rgba(255,255,255,.12)':'transparent',color:isFeatured?'#fff':T.accent,border:isFeatured?'1px solid rgba(255,255,255,.2)':`1px solid ${T.accentPale}`,padding:'11px',fontSize:13.5,fontWeight:600,borderRadius:10,cursor:'pointer',fontFamily:F.ui,transition:'all .15s'}} onMouseEnter={e=>{e.currentTarget.style.opacity='.8';}} onMouseLeave={e=>{e.currentTarget.style.opacity='1';}}>
                   {p.cta} →
                 </button>
               </div>
@@ -830,14 +850,14 @@ function Landing({onEnter,onLegal=()=>{}}){
 
         {/* Overage note */}
         <div className="reveal" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-          <div style={{padding:'13px 18px',background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,display:'flex',alignItems:'flex-start',gap:10}}>
+          <div style={{padding:'13px 18px',background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:12,display:'flex',alignItems:'flex-start',gap:10}}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{flexShrink:0,marginTop:1}}><circle cx="8" cy="8" r="7" stroke={T.accent} strokeWidth="1.5"/><path d="M8 5v3.5M8 11v.5" stroke={T.accent} strokeWidth="1.5" strokeLinecap="round"/></svg>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:T.textPrimary,marginBottom:3}}>Kein Zwangsupgrade bei Überschreitung</div>
               <div style={{fontSize:12.5,color:T.textSecondary}}>Zusätzliche Rechnungen werden flexibel mit <strong>0,50€/Rechnung</strong> berechnet — kein sofortiger Plan-Wechsel nötig.</div>
             </div>
           </div>
-          <div style={{padding:'13px 18px',background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:8,display:'flex',alignItems:'flex-start',gap:10}}>
+          <div style={{padding:'13px 18px',background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:12,display:'flex',alignItems:'flex-start',gap:10}}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{flexShrink:0,marginTop:1}}><path d="M3 8l4 4 6-7" stroke={T.green} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:T.textPrimary,marginBottom:3}}>Inbound-Empfang in allen Tarifen</div>
@@ -849,17 +869,17 @@ function Landing({onEnter,onLegal=()=>{}}){
     </section>
 
     {/* CTA */}
-    <section style={{background:T.brand,padding:'72px clamp(16px,4vw,56px)',textAlign:'center'}}>
-      <span className="reveal badge" style={{background:'rgba(255,255,255,.1)',color:'rgba(255,255,255,.6)',borderColor:'rgba(255,255,255,.12)',marginBottom:14,fontSize:11}}>3,5 Mio. Unternehmen betroffen — jetzt</span>
-      <h2 className="reveal" style={{fontFamily:F.display,fontSize:'clamp(26px,3.5vw,44px)',color:'#fff',fontWeight:400,letterSpacing:'-.02em',marginBottom:10}}>Bereit vor dem Stichtag.</h2>
-      <p className="reveal" style={{color:'rgba(255,255,255,.45)',fontSize:15,marginBottom:28}}>Inbound ab sofort · Outbound ab 2027 · ViDA-ready ab 2028.</p>
-      <button className="reveal btn btn-xl" onClick={onEnter} style={{background:'#fff',color:T.brand,border:'none',fontWeight:700}}>Kostenlos starten →</button>
+    <section style={{padding:'104px clamp(16px,4vw,56px) 88px',textAlign:'center'}}>
+      <span className="reveal badge badge-blue" style={{marginBottom:18,fontSize:12}}>3,5 Mio. Unternehmen betroffen</span>
+      <h2 className="reveal display" style={{fontSize:'clamp(32px,4.4vw,56px)',marginBottom:14}}>Bereit für die erste E-Rechnung?</h2>
+      <p className="reveal" style={{color:T.textSecondary,fontSize:17,marginBottom:32}}>Eigene Adresse in zwei Minuten. Kostenlos starten, jederzeit kündbar.</p>
+      <button className="reveal btn btn-primary btn-xl" onClick={onEnter}>Kostenlos starten →</button>
     </section>
 
     {/* FOOTER */}
-    <footer style={{background:T.bg,borderTop:`1px solid ${T.bgBorder}`,padding:'24px clamp(16px,4vw,56px)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
+    <footer style={{borderTop:`1px solid ${T.bgBorder}`,margin:'0 clamp(16px,5vw,96px)',padding:'28px 0 36px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
       <Wordmark size={18}/>
-      <div style={{fontSize:12,color:T.textMuted}}>© 2025 invoiq · invoiq.de · EN 16931 · GoBD · ViDA-ready · DSGVO</div>
+      <div style={{fontSize:12,color:T.textMuted}}>© {new Date().getFullYear()} invoiq · Made in Germany · EN 16931 · GoBD · DSGVO</div>
       <div style={{display:'flex',gap:16}}>{[['Impressum','impressum'],['Datenschutz','datenschutz'],['AGB','agb']].map(([l,s])=><button key={l} onClick={()=>onLegal(s)} style={{fontSize:12,color:T.textMuted,background:'none',border:'none',cursor:'pointer',fontFamily:F.ui}} onMouseEnter={e=>e.target.style.color=T.textPrimary} onMouseLeave={e=>e.target.style.color=T.textMuted}>{l}</button>)}</div>
     </footer>
   </div>);
@@ -889,7 +909,7 @@ function Auth({mode,onSwitch,onSuccess,loading,notify}){
     <div style={{width:"100%",maxWidth:400}}>
       <div style={{textAlign:"center",marginBottom:28}}><Wordmark size={24}/></div>
       <div className="card sci" style={{padding:30,boxShadow:T.shadow3}}>
-        <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:5,letterSpacing:"-.02em"}}>Passwort vergessen?</h2>
+        <h2 style={{fontFamily:F.display,fontSize:32,fontWeight:400,lineHeight:1.1,color:T.textPrimary,marginBottom:5,letterSpacing:"-.02em"}}>Passwort vergessen?</h2>
         {forgotSent?(
           <>
             <p style={{fontSize:13.5,color:T.textSecondary,lineHeight:1.6,marginBottom:20}}>Falls ein Konto mit <strong>{form.email}</strong> existiert, haben wir einen Reset-Link gesendet. Der Link ist 1 Stunde gültig — bitte auch den Spam-Ordner prüfen.</p>
@@ -913,7 +933,7 @@ function Auth({mode,onSwitch,onSuccess,loading,notify}){
     <div style={{width:"100%",maxWidth:400}}>
       <div style={{textAlign:"center",marginBottom:28}}><Wordmark size={24}/></div>
       <div className="card sci" style={{padding:30,boxShadow:T.shadow3}}>
-        <h2 style={{fontFamily:F.ui,fontSize:24,fontWeight:400,color:T.textPrimary,marginBottom:5,letterSpacing:"-.02em"}}>{mode==="login"?"Willkommen zurück.":"Konto erstellen."}</h2>
+        <h2 style={{fontFamily:F.display,fontSize:32,fontWeight:400,lineHeight:1.1,color:T.textPrimary,marginBottom:5,letterSpacing:"-.02em"}}>{mode==="login"?"Willkommen zurück.":"Konto erstellen."}</h2>
         <p style={{fontSize:13,color:T.textMuted,marginBottom:24}}>{mode==="login"?"E-Invoice Compliance — automatisch.":"Kostenlos starten — in 2 Minuten."}</p>
         <div style={{display:"flex",flexDirection:"column",gap:13}}>
           {mode==="register"&&<>
@@ -962,19 +982,19 @@ function ResetPassword({onDone,notify}){
       <div className="card sci" style={{padding:30,boxShadow:T.shadow3}}>
         {done?(
           <>
-            <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:8}}>Passwort geändert ✓</h2>
+            <h2 style={{fontFamily:F.display,fontSize:32,fontWeight:400,lineHeight:1.1,color:T.textPrimary,marginBottom:8}}>Passwort geändert ✓</h2>
             <p style={{fontSize:13.5,color:T.textSecondary,marginBottom:20}}>Sie können sich jetzt mit dem neuen Passwort anmelden.</p>
             <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",padding:"11px"}} onClick={onDone}>Zur Anmeldung →</button>
           </>
         ):!token?(
           <>
-            <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:8}}>Link ungültig</h2>
+            <h2 style={{fontFamily:F.display,fontSize:32,fontWeight:400,lineHeight:1.1,color:T.textPrimary,marginBottom:8}}>Link ungültig</h2>
             <p style={{fontSize:13.5,color:T.textSecondary,marginBottom:20}}>Dieser Reset-Link ist unvollständig. Bitte fordern Sie über „Passwort vergessen?" einen neuen an.</p>
             <button className="btn btn-ghost" style={{width:"100%",justifyContent:"center"}} onClick={onDone}>Zur Anmeldung →</button>
           </>
         ):(
           <>
-            <h2 style={{fontFamily:F.ui,fontSize:22,fontWeight:400,color:T.textPrimary,marginBottom:5}}>Neues Passwort vergeben</h2>
+            <h2 style={{fontFamily:F.display,fontSize:32,fontWeight:400,lineHeight:1.1,color:T.textPrimary,marginBottom:5}}>Neues Passwort vergeben</h2>
             <p style={{fontSize:13,color:T.textMuted,marginBottom:20}}>Mindestens 8 Zeichen.</p>
             <div style={{display:"flex",flexDirection:"column",gap:13}}>
               <div><label className="label">Neues Passwort</label><input className="input" type="password" value={pw} onChange={e=>setPw(e.target.value)} autoFocus/></div>
@@ -1507,7 +1527,7 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
       const inv=await api.createInvoice({...form, seller_name: form.seller_name||(await api.getOrgSettings().catch(()=>({}))).name||''});
       const xmlContent=await api.getXML(inv.id);
       setXml({content:xmlContent,id:inv.id,number:inv.invoice_number});
-      notify("XRechnung generiert · EN 16931 ✓","success");
+      notify("E-Rechnung erzeugt · EN 16931 geprüft","success");
       load();
            setView('list');
     }catch(e){const msg=e.message.includes("erreichbar")?"Server nicht erreichbar – Railway startet, bitte 30 Sek. warten und erneut versuchen":e.message.includes("401")?"Nicht autorisiert – bitte neu einloggen":e.message.includes("400")?"Ungültige Rechnungsdaten – bitte Felder prüfen":e.message.includes("500")?"Serverfehler – Railway Logs prüfen":e.message.includes("seller")||e.message.includes("buyer")||e.message.includes("required")?"Pflichtfeld fehlt – Absender und Empfänger müssen ausgefüllt sein":e.message;notify(msg,"error");}
@@ -1542,7 +1562,7 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
 
   if(view==="create") return(<div className="fi">
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>
-      <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setXml(null);}}>← Back</button>
+      <button className="btn btn-ghost btn-sm" onClick={()=>{setView("list");setXml(null);}}>← Zurück</button>
       <div><h1 className="h1">Neue Rechnung</h1><p style={{fontSize:12,color:T.textMuted}}>EN 16931-konforme E-Rechnung erstellen</p></div>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
@@ -1610,9 +1630,9 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
           const blob=await res.blob();
           window.open(URL.createObjectURL(blob),"_blank");
         }catch(e){notify(e.message||"Vorschau fehlgeschlagen","error");}
-      }}>👁 Vorschau (PDF)</button>
+      }}>PDF-Vorschau</button>
       <button className="btn btn-ghost" style={{fontSize:13.5,padding:"10px 20px"}} onClick={saveDraft} disabled={saving||generating}>{saving?<><Spinner size={14}/>&nbsp;Speichert...</>:"Als Entwurf speichern"}</button>
-      <button className="btn btn-primary" style={{fontSize:13.5,padding:"10px 24px"}} onClick={generate} disabled={generating||saving}>{generating?<><Spinner color="#fff" size={14}/>&nbsp;Wird generiert...</>:"⚡ XRechnung generieren"}</button>
+      <button className="btn btn-primary" style={{fontSize:13.5,padding:"10px 24px"}} onClick={generate} disabled={generating||saving}>{generating?<><Spinner color="#fff" size={14}/>&nbsp;Wird generiert...</>:"Prüfen & erzeugen"}</button>
     </div>
     {xml&&<div className="card fi" style={{padding:20}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
@@ -1623,56 +1643,163 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
     </div>}
   </div>);
 
-  return(<div className="fi">
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-      <div><h1 className="h1">Ausgang</h1><p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{invoices.length} Rechnungen gesamt</p></div>
-      <div style={{display:"flex",gap:8}}><button className="btn btn-ghost btn-sm" onClick={()=>api.datevExport().then(()=>notify("DATEV-Export heruntergeladen ✓","success")).catch(e=>notify(e.message,"error"))}>↓ DATEV-Export</button><button className="btn btn-primary btn-sm" style={{padding:"8px 18px",fontSize:13.5,fontWeight:700}} onClick={()=>setView("create")}>+ Neue Rechnung</button></div>
-    </div>
-    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${T.bgBorder}`,marginBottom:14,overflowX:"auto"}}>
-      {["all","draft","delivered","validated","sent","error","archived"].map(s=><button key={s} className={`tab ${filter===s?"active":""}`} onClick={()=>setFilter(s)}>
-        {{all:"Alle",draft:"Entwürfe",delivered:"Zugestellt",validated:"Validiert",sent:"Gesendet",error:"Fehler",archived:"Archiviert"}[s]}
-        {s!=="all"&&<span style={{marginLeft:4,fontSize:10,background:T.bgMuted,padding:"1px 5px",borderRadius:7,color:T.textMuted}}>{invoices.filter(i=>i.status===s).length}</span>}
-      </button>)}
-    </div>
-    {searchQuery&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-      <span style={{fontSize:12.5,color:T.textSecondary}}>Suche:</span>
-      <span style={{display:"inline-flex",alignItems:"center",gap:6,background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:14,padding:"3px 11px",fontSize:12.5,fontWeight:600,color:T.accent}}>
-        „{searchQuery}“
-        <button onClick={onClearSearch} style={{background:"none",border:"none",cursor:"pointer",color:T.accent,fontSize:14,lineHeight:1,padding:0}}>×</button>
-      </span>
-      <span style={{fontSize:12,color:T.textMuted}}>{filtered.length} Treffer</span>
-    </div>}
-    <div className="card">
-      <div style={{overflowX:"auto"}}>
-      <table className="table">
-        <thead><tr><SortTh k="invoice_number">Nummer</SortTh><th>Empfänger</th><SortTh k="amount_gross">Betrag</SortTh><th>Format</th><th>Status</th><SortTh k="created_at">Datum</SortTh><th>Aktionen</th></tr></thead>
-        <tbody>
-          {loading?[1,2,3].map(i=><tr key={i}><td colSpan={7}><div className="skeleton" style={{height:14}}/></td></tr>)
-          :filtered.map(inv=><tr key={inv.id} className="tr-hover" onClick={()=>openDetail(inv)} style={{cursor:"pointer"}}>
-            <td style={{fontWeight:600,fontFamily:F.mono,fontSize:12.5,color:T.textPrimary}}>{inv.invoice_number}</td>
-            <td>{inv.buyer_name||"—"}</td>
-            <td style={{fontWeight:600}}>{fmtEUR(inv.amount_gross)}</td>
-            <td><span style={{background:T.bgMuted,color:T.textSecondary,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:F.mono}}>{inv.format?.toUpperCase()}</span></td>
-            <td><StatusBadge status={inv.effective_status||inv.status}/></td>
-            <td style={{fontSize:12,color:T.textMuted,whiteSpace:"nowrap"}} className="num">{inv.created_at?new Date(inv.created_at).toLocaleDateString("de-DE"):"—"}</td>
-            <td onClick={e=>e.stopPropagation()}><div style={{display:"flex",gap:5}}>
-              {inv.status==="validated"&&<button className="btn btn-outline btn-sm" onClick={()=>{setCurrentInvId(inv.id);setEmailTo(inv.buyer_email||'');setEmailModal(true);}}>✉ Senden</button>}
-              {inv.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(inv.id).then(c=>setXml({content:c,id:inv.id,number:inv.invoice_number})).catch(e=>notify(e.message,"error"))}>XML</button>}
-              <button className="btn btn-ghost btn-sm" onClick={()=>api.openPDF(inv.id).catch(e=>notify(e.message,"error"))}>PDF</button>
-            </div></td>
-          </tr>)}
-          {!loading&&filtered.length===0&&invoices.length===0&&<tr><td colSpan={7} style={{padding:0}}>
-            <div style={{textAlign:'center',padding:'60px 24px',color:T.textMuted}}>
-              <div style={{width:56,height:56,borderRadius:14,background:T.accentLight,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,margin:'0 auto 16px'}}>📄</div>
-              <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:8}}>Noch keine Rechnung erstellt</div>
-              <div style={{fontSize:14,marginBottom:20}}>Erstelle deine erste XRechnung in wenigen Sekunden.</div>
-              <button className="btn btn-primary" onClick={()=>setView('create')}>Erste Rechnung erstellen →</button>
-            </div>
-          </td></tr>}
-          {!loading&&filtered.length===0&&invoices.length>0&&<tr><td colSpan={7} style={{textAlign:"center",color:T.textMuted,padding:28,fontSize:13}}>Keine Dokumente in diesem Filter</td></tr>}
-        </tbody>
-      </table>
+  const openSum=invoices.filter(i=>!["paid","draft","cancelled","archived"].includes(i.effective_status||i.status)).reduce((t,i)=>t+(parseFloat(i.amount_gross)||0),0);
+  const FILTERS=[["all","Alle"],["draft","Entwürfe"],["validated","Validiert"],["sent","Gesendet"],["delivered","Zugestellt"],["error","Fehler"],["archived","Archiviert"]];
+  const auditLabels={created:"Erstellt",validated:"Validiert",sent:"Versendet",sent_email:"Per E-Mail gesendet",sent_peppol:"Per Peppol gesendet",delivered:"Zugestellt",archived:"Archiviert (GoBD)",viewed:"Angesehen",inbound_received:"Empfangen",delivery_failed:"Zustellung fehlgeschlagen",integrity_check:"Integritätsprüfung",paid:"Als bezahlt markiert",mark_paid:"Als bezahlt markiert",cancelled:"Storniert"};
+  const fmtDate=d=>d?new Date(d).toLocaleDateString("de-DE"):"—";
+  const Ico=({d,size=14})=>(<svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d={d} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+  const detailErrors=Array.isArray(detail?.validation_result?.errors)?detail.validation_result.errors:[];
+  const detailValid=detail&&detail.validation_passed!==false&&detailErrors.length===0;
+  const detailWarnings=Array.isArray(detail?.validation_result?.warnings)?detail.validation_result.warnings.length:0;
+
+  return(<div className="fi" style={{display:"flex",flexDirection:"column",gap:20}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:16,flexWrap:"wrap"}}>
+      <div>
+        <h1 className="h1">Ausgang</h1>
+        <p className="caption" style={{fontSize:13.5,marginTop:6}}>{invoices.length} Rechnung{invoices.length===1?"":"en"}{openSum>0?` · ${fmtEUR(openSum)} offen`:""}</p>
       </div>
+      <div style={{display:"flex",gap:10}}>
+        <button className="btn btn-ghost" onClick={()=>api.datevExport().then(()=>notify("DATEV-Export heruntergeladen","success")).catch(e=>notify(e.message,"error"))}><Ico d="M8 2.5v8M4.5 7L8 10.5 11.5 7M3 13.5h10"/>DATEV-Export</button>
+        <button className="btn btn-primary" onClick={()=>setView("create")}><Ico d="M8 3v10M3 8h10"/>Neue Rechnung</button>
+      </div>
+    </div>
+
+    <div role="tablist" aria-label="Filter" style={{display:"flex",gap:4,padding:4,background:T.bgMuted,borderRadius:10,alignSelf:"flex-start",maxWidth:"100%",overflowX:"auto"}}>
+      {FILTERS.map(([k,l])=>{
+        const active=filter===k;
+        const count=k==="all"?invoices.length:invoices.filter(i=>i.status===k).length;
+        return(<button key={k} role="tab" aria-selected={active} onClick={()=>setFilter(k)} className="btn"
+          style={{height:32,padding:"0 12px",borderRadius:7,fontSize:13,fontWeight:active?600:500,background:active?T.bg:"transparent",color:k==="error"&&count>0?T.redText:active?T.textPrimary:T.textSecondary,boxShadow:active?"0 1px 2px rgba(15,23,41,.08)":"none"}}>
+          {l}<span style={{color:T.textMuted,fontWeight:500}}>{count}</span>
+        </button>);
+      })}
+    </div>
+
+    {searchQuery&&<div style={{display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontSize:13,color:T.textSecondary}}>Suche:</span>
+      <span style={{display:"inline-flex",alignItems:"center",gap:6,background:T.accentLight,borderRadius:999,padding:"3px 6px 3px 12px",fontSize:13,fontWeight:600,color:T.accentHover}}>
+        „{searchQuery}“
+        <button onClick={onClearSearch} aria-label="Suche zurücksetzen" style={{background:"none",border:"none",cursor:"pointer",color:"inherit",width:22,height:22,borderRadius:999,display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d="M4 4l8 8M12 4l-8 8" size={12}/></button>
+      </span>
+      <span className="caption">{filtered.length} Treffer</span>
+    </div>}
+
+    <div className="list-detail">
+      <div className="card" style={{flex:1,minWidth:0,overflow:"hidden",alignSelf:"flex-start"}}>
+        <div style={{overflowX:"auto"}}>
+        <table className="table">
+          <thead><tr><SortTh k="invoice_number">Nummer</SortTh><th>Empfänger</th><th>Status</th><SortTh k="created_at">Datum</SortTh><SortTh k="amount_gross">Betrag</SortTh></tr></thead>
+          <tbody>
+            {loading?[1,2,3,4].map(i=><tr key={i}><td colSpan={5}><div className="skeleton" style={{height:14}}/></td></tr>)
+            :filtered.map(inv=>{
+              const sel=detail?.id===inv.id;
+              const st=inv.effective_status||inv.status;
+              return(<tr key={inv.id} className="tr-hover" tabIndex={0} aria-selected={sel}
+                onClick={()=>openDetail(inv)} onKeyDown={e=>{if(e.key==="Enter")openDetail(inv);}}
+                style={{background:sel?"#F3F5FD":undefined,boxShadow:sel?`inset 3px 0 0 ${T.accent}`:undefined}}>
+                <td className="mono" style={{fontSize:12.5,color:T.textSecondary,whiteSpace:"nowrap"}}>{inv.invoice_number}</td>
+                <td><div style={{fontWeight:600}}>{inv.buyer_name||"—"}</div><div className="caption" style={{fontSize:12}}>{inv.format?{xrechnung:"XRechnung",zugferd:"ZUGFeRD",facturx:"Factur-X",peppol:"Peppol"}[inv.format]||inv.format.toUpperCase():"—"}{inv.due_date?` · fällig ${fmtDate(inv.due_date)}`:""}</div></td>
+                <td><StatusBadge status={st}/></td>
+                <td style={{fontSize:12.5,color:T.textMuted,whiteSpace:"nowrap"}}>{fmtDate(inv.created_at)}</td>
+                <td style={{fontWeight:600,textAlign:"right",whiteSpace:"nowrap"}}>{fmtEUR(inv.amount_gross)}</td>
+              </tr>);
+            })}
+            {!loading&&filtered.length===0&&invoices.length===0&&<tr><td colSpan={5} style={{padding:0}}>
+              <div style={{textAlign:"center",padding:"64px 24px",color:T.textMuted}}>
+                <div style={{width:52,height:52,borderRadius:14,background:T.accentLight,color:T.accent,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><Ico size={22} d="M4 2.5h5.5L12 5v8.5H4zM6.3 9.2l1.3 1.3 2.4-2.6"/></div>
+                <div style={{fontSize:16,fontWeight:600,color:T.textPrimary,marginBottom:6}}>Noch keine Rechnung erstellt</div>
+                <div style={{fontSize:14,marginBottom:20}}>Ihre erste XRechnung ist in wenigen Minuten fertig – geprüft nach EN 16931.</div>
+                <button className="btn btn-primary" onClick={()=>setView("create")}>Erste Rechnung erstellen</button>
+              </div>
+            </td></tr>}
+            {!loading&&filtered.length===0&&invoices.length>0&&<tr><td colSpan={5} style={{textAlign:"center",color:T.textMuted,padding:32,fontSize:13.5}}>Keine Rechnungen in diesem Filter.</td></tr>}
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      {detail&&<div className="detail-backdrop" onClick={()=>setDetail(null)}/>}
+      {detail&&<aside className="detail-panel card sci" aria-label={`Rechnung ${detail.invoice_number}`}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+            <span className="mono" style={{fontSize:13,color:T.textSecondary}}>{detail.invoice_number}</span>
+            <StatusBadge status={detail.effective_status||detail.status}/>
+          </div>
+          <button onClick={()=>setDetail(null)} aria-label="Details schließen" className="btn" style={{width:32,height:32,padding:0,background:"transparent",color:T.textMuted}}><Ico d="M4 4l8 8M12 4l-8 8" size={16}/></button>
+        </div>
+
+        <div>
+          <div style={{fontSize:34,fontWeight:600,letterSpacing:"-.03em",lineHeight:1}}>{fmtEUR(detail.amount_gross)}</div>
+          <div style={{fontSize:13.5,color:T.textSecondary,marginTop:10}}>an <strong style={{fontWeight:600,color:T.textPrimary}}>{detail.buyer_name||"—"}</strong>{detail.due_date?<> · fällig am {fmtDate(detail.due_date)}</>:null}</div>
+        </div>
+
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn btn-ghost" style={{flex:1}} onClick={()=>api.openPDF(detail.id).catch(e=>notify(e.message,"error"))}><Ico d="M8 2.5v8M4.5 7L8 10.5 11.5 7M3 13.5h10"/>PDF</button>
+          {detail.has_xml&&<button className="btn btn-ghost" style={{flex:1}} onClick={()=>api.getXML(detail.id).then(c=>setXml({content:c,id:detail.id,number:detail.invoice_number})).catch(e=>notify(e.message,"error"))}><Ico d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5"/>XML</button>}
+          {detail.status==="validated"&&<button className="btn btn-primary" style={{flex:1}} onClick={()=>{setCurrentInvId(detail.id);setEmailTo(detail.buyer_email||'');setDetail(null);setEmailModal(true);}}><Ico d="M13.5 2.5L7 9M13.5 2.5L9.5 13.5 7 9 2.5 6.5z"/>Senden</button>}
+        </div>
+
+        {/* Prüfsiegel */}
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:detailValid?T.greenBg:T.redBg,border:`1px solid ${detailValid?T.greenBdr:T.redBdr}`,borderRadius:12,color:detailValid?T.greenText:T.redText}}>
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" style={{flexShrink:0}}><path d="M8 1.8l5.2 2.2v3.7c0 3.2-2.2 5.4-5.2 6.4-3-1-5.2-3.2-5.2-6.4V4z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>{detailValid?<path d="M5.8 8l1.6 1.6 2.9-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>:<path d="M8 5v3.5M8 10.5v.3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>}</svg>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:13.5,fontWeight:600}}>EN 16931 · {{xrechnung:"XRechnung",zugferd:"ZUGFeRD",facturx:"Factur-X",peppol:"Peppol BIS"}[detail.format]||detail.format?.toUpperCase()||"—"}</div>
+            <div style={{fontSize:12.5,opacity:.9}}>{detailValid?`Prüfung bestanden · ${detailWarnings} Warnung${detailWarnings===1?"":"en"}`:`${detailErrors.length||1} Fehler – bitte korrigieren`}</div>
+          </div>
+        </div>
+        {detailErrors.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4,marginTop:-12}}>
+          {detailErrors.map((er,i)=>(<div key={i} style={{fontSize:12.5,color:T.redText}}><span className="mono" style={{fontSize:11.5}}>{er.code}</span> — {er.msg}</div>))}
+        </div>}
+
+        {/* Verlauf */}
+        <div>
+          <div className="section-label" style={{marginBottom:12}}>Verlauf</div>
+          {auditLogs===null?<div className="skeleton" style={{height:64}}/>
+          :auditLogs.length===0?<div className="caption">Noch keine Einträge.</div>
+          :[...auditLogs].sort((x,y)=>new Date(y.created_at||0)-new Date(x.created_at||0)).map((log,i,arr)=>{
+            const isErr=(log.action||"").includes("failed")||(log.action||"").includes("error");
+            return(<div key={log.id||i} style={{display:"flex",gap:14}}>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:12,flexShrink:0}}>
+                <span style={{width:10,height:10,borderRadius:999,marginTop:5,background:isErr?T.red:i===0?T.accent:"#B9B3A5"}}/>
+                {i<arr.length-1&&<span style={{width:1,flex:1,background:T.bgBorder}}/>}
+              </div>
+              <div style={{paddingBottom:i<arr.length-1?14:0,minWidth:0}}>
+                <div style={{fontSize:13.5,fontWeight:600,color:isErr?T.redText:T.textPrimary}}>{auditLabels[log.action]||log.action}</div>
+                <div className="caption">{log.created_at?new Date(log.created_at).toLocaleString("de-DE",{dateStyle:"medium",timeStyle:"short"}):""}{log.details?.recipient_email?` · an ${log.details.recipient_email}`:log.details?.method?` · via ${log.details.method}`:""}</div>
+              </div>
+            </div>);
+          })}
+          {detail.xml_hash&&<div className="caption" style={{marginTop:12}}>SHA-256 <span className="mono" style={{fontSize:11.5}}>{String(detail.xml_hash).slice(0,8)}…{String(detail.xml_hash).slice(-8)}</span></div>}
+        </div>
+
+        {/* Beträge */}
+        <div style={{borderTop:`1px solid ${T.bgMuted}`,paddingTop:16,display:"flex",flexDirection:"column",gap:8,fontSize:13.5}}>
+          <div style={{display:"flex",justifyContent:"space-between",color:T.textSecondary}}><span>Nettobetrag</span><span>{fmtEUR(detail.amount_net)}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",color:T.textSecondary}}><span>Umsatzsteuer</span><span>{fmtEUR(detail.amount_vat)}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",fontWeight:600,paddingTop:8,borderTop:`1px solid ${T.bgMuted}`}}><span>Gesamt</span><span>{fmtEUR(detail.amount_gross)}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",color:T.textMuted,fontSize:12.5,marginTop:4}}><span>Zustellweg</span><span>{detail.delivery_method||"—"}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",color:T.textMuted,fontSize:12.5}}><span>Archiviert</span><span>{detail.archived?`Ja · ${fmtDate(detail.archived_at)}`:"Nein"}</span></div>
+        </div>
+
+        {["validated","sent"].includes(detail.status)&&detail.invoice_kind!=="cancellation"&&<div style={{display:"flex",flexDirection:"column",gap:8,marginTop:"auto"}}>
+          <button className="btn btn-dark" style={{height:42}} onClick={async()=>{
+            try{await api.post(`/invoices/${detail.id}/mark-paid`,{});notify("Als bezahlt markiert","success");setDetail(null);load();}
+            catch(e){notify(e.message,"error");}
+          }}><Ico d="M3.5 8.5l3 3 6-7"/>Als bezahlt markieren</button>
+          <div style={{display:"flex",gap:8}}>
+            <button className="btn btn-ghost" style={{flex:1}} onClick={async()=>{
+              if(!window.confirm(`Rechnung ${detail.invoice_number} korrigieren?\n\nDas Original wird per Stornorechnung ausgeglichen und ein Korrektur-Entwurf mit allen Positionen angelegt.`))return;
+              try{const r=await api.post(`/invoices/${detail.id}/correct`,{});notify(`Korrektur-Entwurf ${r.draft?.invoice_number} angelegt`,"success");setDetail(null);load();}
+              catch(e){notify(e.message,"error");}
+            }}>Korrigieren</button>
+            <button className="btn btn-danger" style={{flex:1}} onClick={async()=>{
+              if(!window.confirm(`Rechnung ${detail.invoice_number} stornieren?\n\nEs wird eine Stornorechnung mit Negativbeträgen erstellt. Das Original bleibt GoBD-konform erhalten.`))return;
+              try{const r=await api.post(`/invoices/${detail.id}/cancel`,{});notify(`Storniert — ${r.storno?.invoice_number} erstellt`,"success");setDetail(null);load();}
+              catch(e){notify(e.message,"error");}
+            }}>Stornieren</button>
+          </div>
+        </div>}
+      </aside>}
     </div>
     {xml&&<div className="modal-overlay" onClick={()=>setXml(null)}>
       <div className="modal fi" onClick={e=>e.stopPropagation()}>
@@ -1681,97 +1808,6 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
           <div style={{display:"flex",gap:7}}><button className="btn btn-primary btn-sm" onClick={()=>{const b=new Blob([xml.content],{type:"application/xml"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`${xml.number}.xml`;a.click();}}>↓ Herunterladen</button><button className="btn btn-ghost btn-sm" onClick={()=>setXml(null)}>×</button></div>
         </div>
         <pre style={{background:T.bgSubtle,borderRadius:8,padding:14,fontSize:10.5,color:T.textSecondary,overflow:"auto",maxHeight:420,lineHeight:1.55,fontFamily:F.mono}}>{xml.content}</pre>
-      </div>
-    </div>}
-    {detail&&<div className="modal-overlay" onClick={()=>setDetail(null)}>
-      <div className="modal sci" style={{maxWidth:640,maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-        {/* Kopf */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-              <span style={{fontSize:17,fontWeight:700,fontFamily:F.mono,color:T.textPrimary}}>{detail.invoice_number}</span>
-              <StatusBadge status={detail.effective_status||detail.status}/>
-              {detail.validation_passed===false&&<span className="badge badge-red">Validierung fehlgeschlagen</span>}
-            </div>
-            <div style={{fontSize:12.5,color:T.textMuted}}>{detail.buyer_name||"—"} · {detail.format?.toUpperCase()} · {detail.invoice_date?new Date(detail.invoice_date).toLocaleDateString("de-DE"):"—"}</div>
-          </div>
-          <button onClick={()=>setDetail(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.textMuted}}>×</button>
-        </div>
-
-        {/* Beträge & Eckdaten */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
-          {[["Netto",fmtEUR(detail.amount_net)],["MwSt.",fmtEUR(detail.amount_vat)],["Brutto",fmtEUR(detail.amount_gross)]].map(([l,v])=>(
-            <div key={l} style={{background:T.bgSubtle,border:`1px solid ${T.bgBorder}`,borderRadius:7,padding:"9px 12px"}}>
-              <div style={{fontSize:10,color:T.textMuted,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",marginBottom:3}}>{l}</div>
-              <div style={{fontSize:15,fontWeight:700,color:T.textPrimary}}>{v}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px",fontSize:12.5,marginBottom:14}}>
-          {[["Fällig",detail.due_date?new Date(detail.due_date).toLocaleDateString("de-DE"):"—"],
-            ["Zustellweg",detail.delivery_method||"—"],
-            ["Empfänger-E-Mail",detail.buyer_email||"—"],
-            ["Archiviert",detail.archived?`✓ ${detail.archived_at?new Date(detail.archived_at).toLocaleDateString("de-DE"):""}`:"Nein"]].map(([l,v])=>(
-            <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${T.bgSubtle}`}}>
-              <span style={{color:T.textMuted}}>{l}</span><span style={{fontWeight:500,color:T.textPrimary}}>{v}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Validierungsfehler, falls vorhanden */}
-        {Array.isArray(detail.validation_result?.errors)&&detail.validation_result.errors.length>0&&(
-          <div style={{background:T.redBg,border:`1px solid ${T.redBdr}`,borderRadius:7,padding:"10px 13px",marginBottom:14}}>
-            <div style={{fontSize:11.5,fontWeight:700,color:T.red,marginBottom:6}}>Validierungsfehler (EN 16931)</div>
-            {detail.validation_result.errors.map((er,i)=>(
-              <div key={i} style={{fontSize:12,color:T.red,marginBottom:3}}><span style={{fontFamily:F.mono,fontSize:10.5}}>{er.code}</span> — {er.msg}</div>
-            ))}
-          </div>
-        )}
-
-        {/* Audit-Verlauf */}
-        <div style={{fontSize:11,fontWeight:700,color:T.textMuted,letterSpacing:.5,textTransform:"uppercase",marginBottom:8}}>Verlauf (Audit-Trail)</div>
-        {auditLogs===null?<div className="skeleton" style={{height:48,marginBottom:8}}/>
-        :auditLogs.length===0?<div style={{fontSize:12.5,color:T.textMuted,padding:"8px 0"}}>Keine Einträge.</div>
-        :<div style={{marginBottom:6}}>
-          {auditLogs.map((log,i)=>{
-            const labels={created:"Erstellt",validated:"Validiert",sent:"Versendet",sent_email:"Per E-Mail gesendet",sent_peppol:"Per Peppol gesendet",delivered:"Zugestellt",archived:"Archiviert (GoBD)",viewed:"Angesehen",inbound_received:"Empfangen",delivery_failed:"Zustellung fehlgeschlagen",integrity_check:"Integritätsprüfung"};
-            const isErr=(log.action||"").includes("failed")||(log.action||"").includes("error");
-            return(
-              <div key={log.id||i} style={{display:"flex",gap:10,padding:"7px 0",borderBottom:i<auditLogs.length-1?`1px solid ${T.bgSubtle}`:"none",alignItems:"flex-start"}}>
-                <div style={{width:7,height:7,borderRadius:"50%",background:isErr?T.red:T.accent,flexShrink:0,marginTop:5}}/>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:12.5,fontWeight:600,color:isErr?T.red:T.textPrimary}}>{labels[log.action]||log.action}</div>
-                  {log.details?.recipient_email&&<div style={{fontSize:11.5,color:T.textMuted}}>an {log.details.recipient_email}</div>}
-                  {log.details?.method&&!log.details?.recipient_email&&<div style={{fontSize:11.5,color:T.textMuted}}>via {log.details.method}</div>}
-                </div>
-                <div style={{fontSize:11,color:T.textMuted,flexShrink:0,fontFamily:F.mono}}>{log.created_at?new Date(log.created_at).toLocaleString("de-DE"):""}</div>
-              </div>
-            );
-          })}
-        </div>}
-
-        {/* Aktionen */}
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:14,paddingTop:14,borderTop:`1px solid ${T.bgBorder}`}}>
-          {detail.has_xml&&<button className="btn btn-ghost btn-sm" onClick={()=>api.getXML(detail.id).then(c=>setXml({content:c,id:detail.id,number:detail.invoice_number})).catch(e=>notify(e.message,"error"))}>XML ansehen</button>}
-          <button className="btn btn-ghost btn-sm" onClick={()=>api.openPDF(detail.id).catch(e=>notify(e.message,"error"))}>PDF öffnen</button>
-          {["validated","sent"].includes(detail.status)&&detail.invoice_kind!=="cancellation"&&<>
-            <button className="btn btn-ghost btn-sm" onClick={async()=>{
-              try{await api.post(`/invoices/${detail.id}/mark-paid`,{});notify("Als bezahlt markiert ✓","success");setDetail(null);load();}
-              catch(e){notify(e.message,"error");}
-            }}>✓ Bezahlt</button>
-            <button className="btn btn-ghost btn-sm" onClick={async()=>{
-              if(!window.confirm(`Rechnung ${detail.invoice_number} korrigieren?\n\nDas Original wird per Stornorechnung ausgeglichen und ein Korrektur-Entwurf mit allen Positionen angelegt.`))return;
-              try{const r=await api.post(`/invoices/${detail.id}/correct`,{});notify(`Korrektur-Entwurf ${r.draft?.invoice_number} angelegt ✓`,"success");setDetail(null);load();}
-              catch(e){notify(e.message,"error");}
-            }}>✎ Korrigieren</button>
-            <button className="btn btn-danger btn-sm" onClick={async()=>{
-              if(!window.confirm(`Rechnung ${detail.invoice_number} stornieren?\n\nEs wird eine Stornorechnung mit Negativbeträgen erstellt. Das Original bleibt GoBD-konform erhalten.`))return;
-              try{const r=await api.post(`/invoices/${detail.id}/cancel`,{});notify(`Storniert — ${r.storno?.invoice_number} erstellt ✓`,"success");setDetail(null);load();}
-              catch(e){notify(e.message,"error");}
-            }}>⊘ Stornieren</button>
-          </>}
-          {detail.status==="validated"&&<button className="btn btn-primary btn-sm" onClick={()=>{setCurrentInvId(detail.id);setEmailTo(detail.buyer_email||'');setDetail(null);setEmailModal(true);}}>✉ Senden</button>}
-        </div>
       </div>
     </div>}
     {emailModal&&<div className="modal-overlay" onClick={()=>setEmailModal(false)}>

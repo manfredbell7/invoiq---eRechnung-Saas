@@ -9,32 +9,55 @@ const API_BASE = (import.meta?.env?.VITE_API_URL) || "https://api.invoiq.de/v1";
    Ziel: Neuer Kunde → erste echte Rechnung in 3 Minuten
    ═══════════════════════════════════════════════════════════════ */
 
+// Farben & Schriften folgen dem zentralen invoiq-Designsystem (src/theme.js)
 const C = {
-  navy:      "#08122A",
-  navyMid:   "#0E1E42",
-  navyLite:  "#1A3A7C",
-  navyPale:  "#2B4FA0",
+  navy:      "#0F1729",   // Tinte
+  navyMid:   "#1C2438",
+  navyLite:  "#2D4FD6",   // Kobalt (Akzent)
+  navyPale:  "#1F3AAE",
   white:     "#FFFFFF",
-  bg:        "#F4F6FA",
-  text:      "#08122A",
-  textMid:   "#2C3E6B",
-  textMuted: "#6B7FA8",
-  textLight: "#9AAAC8",
-  border:    "#DDE3F0",
-  borderMid: "#C8D0E8",
-  accentPale:"#EBF0FB",
-  green:     "#0A6640",
-  greenBg:   "#EDFAF3",
-  greenBdr:  "#86EFAC",
+  bg:        "#F7F6F2",   // Papier
+  text:      "#0F1729",
+  textMid:   "#3B4256",
+  textMuted: "#6B7080",
+  textLight: "#9A9DA8",
+  border:    "#E7E4DC",
+  borderMid: "#D6D2C6",
+  accentPale:"#EBEFFC",
+  green:     "#17603E",
+  greenBg:   "#E8F3EC",
+  greenBdr:  "#C9E3D3",
 };
 
 const F = {
-  display: "'Fraunces', Georgia, serif",
-  ui:      "'DM Sans', system-ui, sans-serif",
+  display: "'Newsreader', Georgia, serif",
+  ui:      "'Geist', system-ui, sans-serif",
 };
 
+// Ruhige Stroke-Icons statt Emoji (gleiches Set wie die App)
+const ICON_PATHS = {
+  company: "M3 2.5h10v11H3zM6 5.5h1M9 5.5h1M6 8h1M9 8h1M7 13.5V11h2v2.5",
+  link:    "M6.5 9.5l3-3M5 8l-1.5 1.5a2.1 2.1 0 003 3L8 11M11 8l1.5-1.5a2.1 2.1 0 00-3-3L8 5",
+  doc:     "M4 2.5h5.5L12 5v8.5H4zM6.3 9.2l1.3 1.3 2.4-2.6",
+  send:    "M13.5 2.5L7 9M13.5 2.5L9.5 13.5 7 9 2.5 6.5z",
+  done:    "M8 1.8l5.2 2.2v3.7c0 3.2-2.2 5.4-5.2 6.4-3-1-5.2-3.2-5.2-6.4V4zM5.8 8l1.6 1.6 2.9-3",
+  card:    "M2 4h12v8.5H2zM2 7h12M4.5 10h2",
+  team:    "M6 8.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM1.5 13.5c.6-2.3 2.3-3.5 4.5-3.5s3.9 1.2 4.5 3.5M10.5 3.8a2.3 2.3 0 010 4.4M12 10.3c1.2.5 2 1.6 2.4 3.2",
+};
+function StepIcon({ name, size = 44 }) {
+  return (
+    <div className="fu" style={{ width: size, height: size, borderRadius: 12, background: C.accentPale, color: C.navyLite, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+      <svg width={size * .48} height={size * .48} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d={ICON_PATHS[name]} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    </div>
+  );
+}
+function Monogram({ text, size = 36 }) {
+  const t = (text || "").replace(/[^A-Za-z0-9ÄÖÜäöü ]/g, " ").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  return <span aria-hidden="true" style={{ width: size, height: size, flexShrink: 0, borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, color: C.textMid, fontSize: size * .34, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.ui }}>{t}</span>;
+}
+
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-font-smoothing: antialiased; }
@@ -118,7 +141,7 @@ body { font-family: ${F.ui}; background: ${C.bg}; color: ${C.text}; }
   border-color: ${C.navyLite};
   background: ${C.accentPale};
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(8,18,42,.08);
+  box-shadow: 0 4px 16px rgba(15,23,41,.08);
 }
 .erp-card.selected {
   border-color: ${C.navyLite};
@@ -139,7 +162,7 @@ body { font-family: ${F.ui}; background: ${C.bg}; color: ${C.text}; }
 .format-card:hover {
   border-color: ${C.navyLite};
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(8,18,42,.08);
+  box-shadow: 0 4px 16px rgba(15,23,41,.08);
 }
 .format-card.selected {
   border-color: ${C.navy};
@@ -160,12 +183,12 @@ body { font-family: ${F.ui}; background: ${C.bg}; color: ${C.text}; }
   align-items: center;
   gap: 8px;
   transition: all .18s cubic-bezier(.22,1,.36,1);
-  box-shadow: 0 2px 8px rgba(8,18,42,.18);
+  box-shadow: 0 2px 8px rgba(15,23,41,.18);
 }
 .btn-primary:hover {
   background: ${C.navyMid};
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(8,18,42,.22);
+  box-shadow: 0 6px 20px rgba(15,23,41,.22);
 }
 .btn-primary:disabled {
   opacity: .5;
@@ -269,7 +292,7 @@ function ProgressBar({ step, total }) {
   const pct = ((step - 1) / (total - 1)) * 100;
   return (
     <div style={{ height: 3, background: C.border, borderRadius: 2, overflow: "hidden", marginBottom: 40 }}>
-      <div style={{ height: "100%", background: `linear-gradient(90deg, ${C.navyLite}, ${C.navy})`, borderRadius: 2, width: `${pct}%`, transition: "width .5s cubic-bezier(.22,1,.36,1)" }} />
+      <div style={{ height: "100%", background: C.navyLite, borderRadius: 2, width: `${pct}%`, transition: "width .5s cubic-bezier(.22,1,.36,1)" }} />
     </div>
   );
 }
@@ -296,7 +319,7 @@ function Step1({ data, setData }) {
   const upd = (k, v) => setData(p => ({ ...p, [k]: v }));
   return (
     <div>
-      <div className="fu" style={{ fontSize: 32, marginBottom: 8 }}>🏢</div>
+      <StepIcon name="company" />
       <h2 className="fu2" style={{ fontFamily: F.display, fontSize: 28, fontWeight: 400, color: C.navy, marginBottom: 6, letterSpacing: "-.025em" }}>
         Ihr Unternehmen.
       </h2>
@@ -377,7 +400,7 @@ function Step2({ data, setData }) {
   const upd = (k, v) => setData(p => ({ ...p, [k]: v }));
   return (
     <div>
-      <div className="fu" style={{ fontSize: 32, marginBottom: 8 }}>🔗</div>
+      <StepIcon name="link" />
       <h2 className="fu2" style={{ fontFamily: F.display, fontSize: 28, fontWeight: 400, color: C.navy, marginBottom: 6, letterSpacing: "-.025em" }}>
         Ihr ERP-System.
       </h2>
@@ -395,7 +418,7 @@ function Step2({ data, setData }) {
             {data.erp === erp.type && (
               <div style={{ position: "absolute", top: 10, right: 10 }} className="check-circle">✓</div>
             )}
-            <span style={{ fontSize: 22, flexShrink: 0 }}>{erp.icon}</span>
+            <Monogram text={erp.name} />
             <div>
               <div style={{ fontWeight: 700, fontSize: 13.5, color: C.navy }}>{erp.name}</div>
               <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{erp.desc}</div>
@@ -407,7 +430,7 @@ function Step2({ data, setData }) {
       {/* SAP-spezifische Hinweise */}
       {(data.erp === "sap_s4" || data.erp === "sap_ecc") && (
         <div className="sci" style={{ background: C.accentPale, border: `1px solid ${C.borderMid}`, borderRadius: 10, padding: "14px 18px", fontSize: 13, color: C.textMid }}>
-          <div style={{ fontWeight: 700, color: C.navy, marginBottom: 6 }}>⚙️ SAP-Integration</div>
+          <div style={{ fontWeight: 700, color: C.navy, marginBottom: 6 }}>SAP-Integration</div>
           <div style={{ lineHeight: 1.65 }}>
             Ihr SAP-Berater konfiguriert die Verbindung einmalig in ca. 4–8 Stunden (SM59, WE20, NACE).
             Danach läuft jede Faktura automatisch durch invoiq.{" "}
@@ -418,7 +441,7 @@ function Step2({ data, setData }) {
 
       {data.erp === "datev" && (
         <div className="sci" style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "14px 18px", fontSize: 13, color: "#92400E" }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>📊 DATEV-Integration</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>DATEV-Integration</div>
           <div style={{ lineHeight: 1.65 }}>
             DATEV Connect Online API · OAuth 2.0 · Zertifizierung durch invoiq bereits beantragt.
             Wir melden uns sobald die Verbindung aktiviert werden kann.
@@ -428,7 +451,7 @@ function Step2({ data, setData }) {
 
       {data.erp === "manual" && (
         <div className="sci" style={{ background: C.greenBg, border: `1px solid ${C.greenBdr}`, borderRadius: 10, padding: "14px 18px", fontSize: 13, color: C.green }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>✏️ Manueller Betrieb</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Manueller Betrieb</div>
           <div style={{ lineHeight: 1.65 }}>
             Perfekt für den Start. Sie können Rechnungen direkt in invoiq erstellen oder als CSV hochladen.
             ERP-Anbindung jederzeit nachrüstbar.
@@ -444,7 +467,7 @@ function Step3({ data, setData }) {
   const upd = (k, v) => setData(p => ({ ...p, [k]: v }));
   return (
     <div>
-      <div className="fu" style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
+      <StepIcon name="doc" />
       <h2 className="fu2" style={{ fontFamily: F.display, fontSize: 28, fontWeight: 400, color: C.navy, marginBottom: 6, letterSpacing: "-.025em" }}>
         Ihr Rechnungsformat.
       </h2>
@@ -463,7 +486,7 @@ function Step3({ data, setData }) {
                 {data.format === fmt.type ? "" : "EMPFOHLEN"}
               </div>
             )}
-            <span style={{ fontSize: 28, flexShrink: 0 }}>{fmt.icon}</span>
+            <Monogram text={fmt.name} size={40} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 16, color: data.format === fmt.type ? C.white : C.navy, marginBottom: 3 }}>{fmt.name}</div>
               <div style={{ fontSize: 13, color: data.format === fmt.type ? "rgba(255,255,255,.65)" : C.textMuted, marginBottom: 8 }}>{fmt.desc}</div>
@@ -503,7 +526,7 @@ function Step4({ data, setData, onGenerate, generating, generatedXML }) {
 
   return (
     <div>
-      <div className="fu" style={{ fontSize: 32, marginBottom: 8 }}>✉️</div>
+      <StepIcon name="send" />
       <h2 className="fu2" style={{ fontFamily: F.display, fontSize: 28, fontWeight: 400, color: C.navy, marginBottom: 6, letterSpacing: "-.025em" }}>
         Erste Rechnung.
       </h2>
@@ -552,12 +575,12 @@ function Step4({ data, setData, onGenerate, generating, generatedXML }) {
           {(inv.price > 0) && (
             <div className="sci" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 13, color: C.textMuted }}>Netto {fmtEUR(net)} · MwSt {fmtEUR(vat)}</div>
-              <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 500, color: C.navy }}>Brutto {fmtEUR(gross)}</div>
+              <div style={{ fontFamily: F.ui, fontSize: 20, fontWeight: 600, color: C.navy, fontVariantNumeric: "tabular-nums" }}>Brutto {fmtEUR(gross)}</div>
             </div>
           )}
 
           <button className="btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 4, padding: "15px" }} onClick={onGenerate} disabled={generating || !inv.buyer_name || !inv.description}>
-            {generating ? <><Spinner /> Generiere XRechnung...</> : "⚡ XRechnung generieren"}
+            {generating ? <><Spinner /> Generiere XRechnung...</> : "Prüfen & erzeugen"}
           </button>
 
           <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
@@ -600,7 +623,7 @@ function Step4({ data, setData, onGenerate, generating, generatedXML }) {
 
 // ── STEP 5: Done ───────────────────────────────────────────────
 function Step5({ data, onFinish }) {
-  const confettiColors = ["#08122A", "#1A3A7C", "#DDE3F0", "#9AAAC8", "#0E1E42"];
+  const confettiColors = ["#0F1729", "#2D4FD6", "#E7E4DC", "#B9B3A5", "#5FD39A"];
   const pieces = Array.from({ length: 18 }, (_, i) => ({
     left:  `${Math.random() * 90 + 5}%`,
     delay: `${Math.random() * .8}s`,
@@ -616,7 +639,7 @@ function Step5({ data, onFinish }) {
         <div key={i} className="confetti-piece" style={{ left: p.left, top: 0, background: p.color, width: p.size, height: p.size, animationDelay: p.delay, transform: `rotate(${p.rotate}deg)` }} />
       ))}
 
-      <div className="fu" style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
+      <div style={{ display: "flex", justifyContent: "center" }}><StepIcon name="done" size={64} /></div>
       <h2 className="fu2" style={{ fontFamily: F.display, fontSize: 32, fontWeight: 400, color: C.navy, marginBottom: 10, letterSpacing: "-.025em" }}>
         invoiq ist bereit.
       </h2>
@@ -646,12 +669,12 @@ function Step5({ data, onFinish }) {
       <div className="fu5" style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28, maxWidth: 420, margin: "0 auto 28px" }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.textLight, letterSpacing: .8, textTransform: "uppercase", marginBottom: 4 }}>Empfohlene nächste Schritte</div>
         {[
-          { icon: "🔗", text: "ERP-Konnektor aktivieren", sub: "Automatisierung einschalten" },
-          { icon: "💳", text: "Plan aktivieren", sub: "Basis ab 15 €/Monat — oder gratis bleiben", plan: localStorage.getItem("invoiq_selected_plan")||"starter" },
-          { icon: "👥", text: "Team einladen", sub: "Kollegen hinzufügen" },
+          { icon: "link", text: "ERP-Konnektor aktivieren", sub: "Automatisierung einschalten" },
+          { icon: "card", text: "Plan aktivieren", sub: "Basis ab 15 €/Monat — oder gratis bleiben", plan: localStorage.getItem("invoiq_selected_plan")||"starter" },
+          { icon: "team", text: "Team einladen", sub: "Kollegen hinzufügen" },
         ].map((s, i) => (
           <div key={i} onClick={s.plan?async()=>{const r=await fetch(`${API_BASE}/payments/checkout`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("invoiq_token")}`},body:JSON.stringify({plan:s.plan})});const d=await r.json();if(d.checkout_url)window.location.href=d.checkout_url;}:undefined} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", transition: "border-color .15s" }} onMouseEnter={e => e.currentTarget.style.borderColor = C.navyLite} onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-            <span style={{ fontSize: 20 }}>{s.icon}</span>
+            <span style={{ width: 36, height: 36, borderRadius: 10, background: C.accentPale, color: C.navyLite, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d={ICON_PATHS[s.icon]} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, color: C.navy, fontSize: 13.5 }}>{s.text}</div>
               <div style={{ fontSize: 12, color: C.textMuted }}>{s.sub}</div>
@@ -803,17 +826,12 @@ export default function OnboardingWizard({ user, onComplete }) {
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, userSelect: "none" }}>
-              <div style={{ width: 28, height: 28, background: C.navy, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                  <rect x="2" y="8" width="3.5" height="9" rx="1.75" fill="#93C5FD"/>
-                  <rect x="2" y="2" width="3.5" height="4" rx="1.75" fill="#fff"/>
-                  <circle cx="13.5" cy="12" r="4.5" stroke="#fff" strokeWidth="2.2" fill="none"/>
-                  <rect x="15.8" y="7" width="2.5" height="10" rx="1.25" fill="#fff"/>
+              <div style={{ width: 30, height: 30, background: C.navy, color: "#fff", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 2.5h5.5L12 5v8.5H4z"/><path d="M6.3 9.2l1.3 1.3 2.4-2.6"/>
                 </svg>
               </div>
-              <span style={{ fontFamily: F.display, fontSize: 20, fontWeight: 600, color: C.navy, letterSpacing: "-.03em" }}>
-                inv<span style={{ color: C.navyLite }}>o</span>iq
-              </span>
+              <span style={{ fontFamily: F.ui, fontSize: 18, fontWeight: 650, color: C.navy, letterSpacing: "-.02em" }}>invoiq</span>
             </div>
             <div style={{ fontSize: 13, color: C.textMuted, fontWeight: 500 }}>
               Schritt {step} von {STEPS.length}
@@ -825,9 +843,8 @@ export default function OnboardingWizard({ user, onComplete }) {
           <StepDots step={step} total={STEPS.length} />
 
           {/* Card */}
-          <div key={step} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 20, padding: "36px 40px", boxShadow: "0 4px 28px rgba(8,18,42,.07)", position: "relative", overflow: "hidden" }}>
+          <div key={step} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 20, padding: "36px 40px", boxShadow: "0 4px 28px rgba(15,23,41,.07)", position: "relative", overflow: "hidden" }}>
             {/* Subtle corner accent */}
-            <div style={{ position: "absolute", top: 0, right: 0, width: 120, height: 120, background: `radial-gradient(ellipse at top right, ${C.accentPale} 0%, transparent 70%)`, pointerEvents: "none" }} />
 
             {step === 1 && <Step1 data={data} setData={setData} />}
             {step === 2 && <Step2 data={data} setData={setData} />}
@@ -852,7 +869,7 @@ export default function OnboardingWizard({ user, onComplete }) {
                                 {step === 4 ? (generatedXML ? "Weiter →" : "Ohne Rechnung fortfahren →") : "Weiter →"}
                  </button>
                              {!canAdvance() && step < 4 && (
-                             <p style={{color:"#C0392B",fontSize:12,marginTop:6,textAlign:"center"}}>Bitte alle Pflichtfelder (*) ausfüllen</p>
+                             <p style={{color:"#A3241C",fontSize:12,marginTop:6,textAlign:"center"}}>Bitte alle Pflichtfelder (*) ausfüllen</p>
                            )}
                           </div>
               </div>

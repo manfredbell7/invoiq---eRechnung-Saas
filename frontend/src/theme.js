@@ -293,7 +293,7 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
 }
 .modal-overlay{
   position:fixed;inset:0;background:rgba(15,23,41,.45);
-  z-index:1000;display:flex;align-items:center;justify-content:center;
+  z-index:1250;display:flex;align-items:center;justify-content:center;
   padding:24px;backdrop-filter:blur(3px);
 }
 .modal{
@@ -366,6 +366,15 @@ body{font-family:${F.ui};background:${T.bgSubtle};color:${T.textPrimary};font-si
 .split{display:flex;gap:16px;}
 @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.split{flex-direction:column;}.split>*{width:auto!important;}}
 @media(max-width:520px){.kpi-grid{grid-template-columns:1fr 1fr;gap:10px;}}
+
+/* Liste + Detailspalte (Ausgang) */
+.list-detail{display:flex;gap:20px;align-items:flex-start;}
+.detail-panel{width:400px;flex-shrink:0;position:sticky;top:88px;max-height:calc(100vh - 112px);overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:22px;}
+.detail-backdrop{display:none;}
+@media(max-width:1180px){
+  .detail-panel{position:fixed;top:0;right:0;bottom:0;max-height:none;width:min(420px,100vw);z-index:1200;border-radius:16px 0 0 16px;box-shadow:${T.shadowXl};}
+  .detail-backdrop{display:block;position:fixed;inset:0;z-index:1199;background:rgba(15,23,41,.35);}
+}
 
 /* Mobile-Navigation: Sidebar als Overlay-Drawer */
 .mobile-menu-btn{display:none;}
