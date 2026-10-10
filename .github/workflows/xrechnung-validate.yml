@@ -1,0 +1,116 @@
+# Prüft die erzeugten E-Rechnungen (XRechnung UBL + CII, ZUGFeRD) mit dem
+# offiziellen KoSIT-Validator und der aktuellen XRechnung-Konfiguration —
+# dieselbe Prüfung, die Behörden-Portale (ZRE, OZG-RE) beim Empfang durchführen.
+name: xrechnung-validate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'backend/services/xmlEngine.js'
+      - 'backend/lib/sellerProfile.js'
+      - 'backend/scripts/xrechnung-samples.mjs'
+      - '.github/workflows/xrechnung-validate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/services/xmlEngine.js'
+      - 'backend/lib/sellerProfile.js'
+      - 'backend/scripts/xrechnung-samples.mjs'
+      - '.github/workflows/xrechnung-validate.yml'
+
+jobs:
+  kosit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Beispielrechnungen erzeugen
+        working-directory: backend
+        run: node scripts/xrechnung-samples.mjs "$RUNNER_TEMP/samples"
+
+      - name: KoSIT-Validator + XRechnung-Konfiguration laden (jeweils neueste Version)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          asset() {
+            curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/$1/releases/latest" \
+              | jq -r '.assets[] | select(.name | endswith(".zip")) | .browser_download_url' | head -1
+          }
+          VAL_URL=$(asset itplr-kosit/validator)
+          CFG_URL=$(asset itplr-kosit/validator-configuration-xrechnung)
+          echo "Validator:     $VAL_URL"
+          echo "Konfiguration: $CFG_URL"
+          curl -fsSL -o validator.zip "$VAL_URL"
+          curl -fsSL -o config.zip "$CFG_URL"
+          unzip -q validator.zip -d validator
+          unzip -q config.zip -d config
+          echo "Inhalt Validator-Paket:"; find validator -maxdepth 3 | head -40
+          # Bis 1.5: *-standalone.jar; ab 1.6 heißt das ausführbare JAR anders —
+          # bevorzugt standalone, sonst das größte JAR außerhalb eines lib-Ordners
+          JAR=$(find validator -name '*standalone*.jar' | head -1)
+          if [ -z "$JAR" ]; then
+            JAR=$(find validator -name '*.jar' -not -path '*/lib*/*' -printf '%s %p\n' | sort -rn | head -1 | cut -d' ' -f2-)
+          fi
+          test -n "$JAR" || { echo "Validator-JAR nicht gefunden"; exit 1; }
+          echo "Verwende: $JAR"
+          echo "JAR=$PWD/$JAR" >> "$GITHUB_ENV"
+          SCEN=$(find config -name 'scenarios.xml' | head -1)
+          echo "Erkennungsregeln der Konfiguration (match):"
+          grep -oE '<match>[^<]*</match>' "$SCEN" | head -12
+          echo "SCENARIOS=$PWD/$SCEN" >> "$GITHUB_ENV"
+          echo "REPO=$PWD/$(dirname "$SCEN")" >> "$GITHUB_ENV"
+
+      - name: Validieren
+        run: |
+          set -uo pipefail
+          mkdir -p "$RUNNER_TEMP/reports"
+          # Bis 1.5 ein ausführbares Standalone-JAR; ab 1.6 JAR + libs/ ohne
+          # Main-Manifest → Hauptklasse (CommandLineApplication) aus dem JAR lesen
+          if unzip -p "$JAR" META-INF/MANIFEST.MF | grep -q '^Main-Class:'; then
+            java -jar "$JAR" -s "$SCENARIOS" -r "$REPO" -o "$RUNNER_TEMP/reports" "$RUNNER_TEMP"/samples/*.xml || true
+          else
+            MAIN=$(unzip -l "$JAR" | grep -oE '[^ ]*/CommandLineApplication\.class' | head -1 | sed 's/\.class$//; s#/#.#g')
+            echo "Hauptklasse: $MAIN"
+            test -n "$MAIN" || { echo "Hauptklasse nicht gefunden"; exit 1; }
+            java -cp "$JAR:$(dirname "$JAR")/libs/*" "$MAIN" -s "$SCENARIOS" -r "$REPO" -o "$RUNNER_TEMP/reports" "$RUNNER_TEMP"/samples/*.xml || true
+          fi
+          samples=$(find "$RUNNER_TEMP/samples" -name '*.xml' | wc -l)
+          reports=$(find "$RUNNER_TEMP/reports" -name '*.xml' | wc -l)
+          echo "Beispiele: $samples · Reports: $reports"
+          status=0
+          for r in $(find "$RUNNER_TEMP/reports" -name '*.xml' | sort); do
+            name=$(basename "$r")
+            if grep -q '<rep:accept' "$r"; then
+              echo "✓ akzeptiert: $name"
+            else
+              echo "✗ ABGELEHNT: $name"
+              python3 backend/scripts/kosit-report.py "$r" || true
+              status=1
+            fi
+          done
+          [ "$reports" -eq "$samples" ] || { echo "Nicht für jedes Beispiel ein Report"; status=1; }
+          if [ $status -ne 0 ]; then
+            first=$(find "$RUNNER_TEMP/reports" -name '*ubl-report.xml' | sort | head -1)
+            echo "──── Rohbericht: $(basename "$first") ────"
+            sed 's/></>\n</g' "$first" | grep -E 'noScenarioMatched|Dokumenttyp|class="error"|<rep:message|svrl:text|Bewertung' | head -60 || true
+          fi
+          exit $status
+
+      - name: Reports aufbewahren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kosit-reports
+          path: ${{ runner.temp }}/reports

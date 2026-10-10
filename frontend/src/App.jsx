@@ -650,7 +650,7 @@ function Landing({onEnter,onLegal=()=>{}}){
           <div className="bento-card reveal" style={{transitionDelay:'.14s'}}>
             <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:4,background:T.accent+'15',color:T.accent,border:`1px solid ${T.accent}30`}}>Neu</span>
             <h3 style={{fontWeight:700,fontSize:15.5,color:T.textPrimary,margin:'14px 0 7px',letterSpacing:'-.02em'}}>Ihr Rechnungsdesign</h3>
-            <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Drei Vorlagen (Klassisch, Modern, Kompakt), eigenes Logo und Markenfarbe — mit Live-Vorschau, pro Rechnung wählbar.</p>
+            <p style={{fontSize:13,color:T.textSecondary,lineHeight:1.6}}>Fünf Vorlagen (Klassisch, Modern, Kompakt, Elegant, Markant), eigenes Logo und Markenfarbe — mit Live-Vorschau, pro Rechnung wählbar. Schon im Gratis-Plan.</p>
           </div>
           {/* Bento 4 */}
           <div className="bento-card reveal" style={{transitionDelay:'.21s'}}>
@@ -762,7 +762,7 @@ function Landing({onEnter,onLegal=()=>{}}){
               name:'FREE',key:'free',price:0,yearly:0,docs:'10 Rechnungen/Monat',
               tag:null,tagColor:null,
               sub:'Dauerhaft gratis — keine Kreditkarte',
-              features:['E-Rechnungen erstellen (XRechnung, ZUGFeRD)','Eigene Empfangsadresse inklusive','3 Rechnungsdesigns + Markenfarbe','PDF- & XML-Download','1 Benutzer'],
+              features:['E-Rechnungen erstellen (XRechnung, ZUGFeRD)','Eigene Empfangsadresse inklusive','5 Rechnungsdesigns + Logo & Markenfarbe','PDF- & XML-Download','1 Benutzer'],
               cta:'Gratis starten',ctaPrimary:false,
               roi:null,
             },
@@ -930,10 +930,10 @@ function Auth({mode,onSwitch,onSuccess,loading,notify}){
           {mode==="register"&&<>
             <div><label className="label">Name</label><input className="input" value={form.full_name} onChange={e=>upd("full_name",e.target.value)} placeholder="Max Mustermann"/></div>
             <div><label className="label">Unternehmen</label><input className="input" value={form.org_name} onChange={e=>upd("org_name",e.target.value)} placeholder="Mustermann GmbH"/></div>
-            <div><label className="label">Straße & Hausnummer</label><input className="input" value={form.address} onChange={e=>upd("address",e.target.value)} placeholder="Musterstraße 1"/></div>
+            <div><label className="label">Straße & Hausnummer <span style={{color:T.red}}>*</span></label><input className="input" value={form.address} onChange={e=>upd("address",e.target.value)} placeholder="Musterstraße 1"/></div>
             <div style={{display:"grid",gridTemplateColumns:"100px 1fr",gap:10}}>
-              <div><label className="label">PLZ</label><input className="input" value={form.zip} onChange={e=>upd("zip",e.target.value)} placeholder="80331"/></div>
-              <div><label className="label">Stadt</label><input className="input" value={form.city} onChange={e=>upd("city",e.target.value)} placeholder="München"/></div>
+              <div><label className="label">PLZ <span style={{color:T.red}}>*</span></label><input className="input" value={form.zip} onChange={e=>upd("zip",e.target.value)} placeholder="80331"/></div>
+              <div><label className="label">Stadt <span style={{color:T.red}}>*</span></label><input className="input" value={form.city} onChange={e=>upd("city",e.target.value)} placeholder="München"/></div>
             </div>
             <div style={{fontSize:11.5,color:T.textMuted,marginTop:-4}}>IBAN und ERP-Anbindung können Sie später im Setup oder in den Einstellungen ergänzen.</div>
           </>}
@@ -1021,6 +1021,9 @@ NAV_ICONS["erp-crm"]=NAV_ICONS.kunden; NAV_ICONS["erp-pm"]=NAV_ICONS.belege;
 NAV_ICONS["erp-qm"]=NAV_ICONS.scanner; NAV_ICONS["erp-dms"]=NAV_ICONS.archive;
 NAV_ICONS["drafts"]=NAV_ICONS.invoices; NAV_ICONS["settings-team"]=NAV_ICONS.kunden;
 
+const PLAN_NAMES={free:"Free",starter:"Basis",business:"Plus",enterprise:"Premium",pro:"Premium"};
+const planName=(p)=>PLAN_NAMES[String(p||"free").toLowerCase()]||(p?String(p):"Free");
+
 function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
   // Kanzlei-Portal ab Business-Plan (siehe Pricing: Business/Pro/Enterprise enthalten es)
   const plan = (org?.plan||'free').toLowerCase();
@@ -1103,7 +1106,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
       <div style={{padding:collapsed?"10px 8px 14px":"10px 10px 14px",borderTop:"1px solid rgba(255,255,255,.08)"}}>
         {org&&<div className="sb-hide" style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"9px 11px",marginBottom:8}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-            <span style={{fontSize:12,fontWeight:600,color:"#fff",textTransform:"capitalize"}}>{org.plan||"Free"}</span>
+            <span style={{fontSize:12,fontWeight:600,color:"#fff",}}>{planName(org.plan)}</span>
             <span style={{fontSize:11,color:"rgba(255,255,255,.5)"}} className="num">{org.plan_doc_used||0}/{org.plan_doc_limit||10}</span>
           </div>
           <div className="progress" style={{background:"rgba(255,255,255,.12)"}}><div className="progress-fill" style={{width:`${pct}%`}}/></div>
@@ -1138,7 +1141,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
         </div>
         <div style={{display:"flex",gap:10,alignItems:"center",position:"relative"}}>
           {org&&<button className="sb-hide" onClick={()=>go("settings")} style={{display:"flex",alignItems:"center",gap:6,background:T.accentLight,border:`1px solid ${T.accentPale}`,borderRadius:16,padding:"4px 11px",fontSize:11.5,fontWeight:700,color:T.accent,cursor:"pointer",fontFamily:F.ui,textTransform:"capitalize",whiteSpace:"nowrap"}}>
-            {org.plan||"Free"}<span style={{fontWeight:500,color:T.textMuted}} className="num">{org.plan_doc_used||0}/{org.plan_doc_limit||10}</span>
+            {planName(org.plan)}<span style={{fontWeight:500,color:T.textMuted}} className="num">{org.plan_doc_used||0}/{org.plan_doc_limit||10}</span>
           </button>}
           <div className="avatar" style={{cursor:"pointer",width:30,height:30,fontSize:12}} onClick={()=>setUserMenu(m=>!m)}>{(user?.full_name||"U")[0]}</div>
           {userMenu&&<>
@@ -1147,7 +1150,7 @@ function AppShell({user,org,nav,setNav,onLogout,onAdmin,onSearch,children}){
               <div style={{padding:"13px 15px",borderBottom:`1px solid ${T.bgBorder}`}}>
                 <div style={{fontSize:13.5,fontWeight:700,color:T.textPrimary}}>{user?.full_name||"—"}</div>
                 <div style={{fontSize:11.5,color:T.textMuted,marginTop:1}}>{user?.email||""}</div>
-                {org&&<div style={{fontSize:11.5,color:T.textSecondary,marginTop:6,display:"flex",justifyContent:"space-between"}}><span>{org.name}</span><span style={{textTransform:"capitalize",fontWeight:600,color:T.accent}}>{org.plan}</span></div>}
+                {org&&<div style={{fontSize:11.5,color:T.textSecondary,marginTop:6,display:"flex",justifyContent:"space-between"}}><span>{org.name}</span><span style={{fontWeight:600,color:T.accent}}>{planName(org.plan)}</span></div>}
               </div>
               <div style={{padding:6}}>
                 <button className="menu-item" onClick={()=>{setUserMenu(false);go("settings");}}>{NAV_ICONS.settings}<span>Einstellungen</span></button>
@@ -1491,7 +1494,32 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
   };
   const load=useCallback(()=>{setLoading(true);api.listInvoices().then(d=>setInvoices(d.invoices||[])).catch(()=>setInvoices([])).finally(()=>setLoading(false));},[]);
   useEffect(()=>load(),[load]);
-  const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
+  // Fälligkeit aus dem Standard-Zahlungsziel der Einstellungen vorbelegen —
+  // solange der Nutzer das Datum nicht selbst geändert hat.
+  useEffect(()=>{
+    if(view!=="create")return;
+    api.getOrgSettings().then(d=>{
+      const days=parseInt(d?.default_due_days);
+      if(!Number.isFinite(days))return;
+      setForm(p=>{
+        if(p._dueTouched)return p;
+        const base=new Date(p.invoice_date||Date.now());
+        if(isNaN(base))return p;
+        base.setDate(base.getDate()+days);
+        return {...p,due_date:base.toISOString().split("T")[0],_dueDays:days};
+      });
+    }).catch(()=>{});
+  },[view]);
+  const upd=(k,v)=>setForm(p=>{
+    const next={...p,[k]:v};
+    if(k==="due_date")next._dueTouched=true;
+    // Rechnungsdatum geändert → Fälligkeit mitziehen, solange nicht manuell gesetzt
+    if(k==="invoice_date"&&!p._dueTouched&&Number.isFinite(p._dueDays)){
+      const d=new Date(v);
+      if(!isNaN(d)){d.setDate(d.getDate()+p._dueDays);next.due_date=d.toISOString().split("T")[0];}
+    }
+    return next;
+  });
   const updItem=(i,k,v)=>{const a=[...form.line_items];a[i]={...a[i],[k]:k==="description"?v:parseFloat(v)||0};upd("line_items",a);};
   const net=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price,0);
   const vat=form.line_items.reduce((s,i)=>s+i.quantity*i.unit_price*(i.vat_rate/100),0);
@@ -1564,6 +1592,8 @@ function Invoices({notify,initialView=null,onNavDone=null,searchQuery=null,onCle
               <option value="classic">Klassisch</option>
               <option value="modern">Modern</option>
               <option value="compact">Kompakt</option>
+              <option value="elegant">Elegant</option>
+              <option value="bold">Markant</option>
             </select>
           </div>
           <div><label className="label">Rechnungsdatum</label><input className="input" type="date" value={form.invoice_date} onChange={e=>upd("invoice_date",e.target.value)}/></div>
@@ -3863,6 +3893,7 @@ function SettingsScreen({user,org,notify,initialTab}){
     invoice_template: org?.invoice_template||'classic',
     leitweg_id:       org?.leitweg_id||'',
     default_due_days: org?.default_due_days??14,
+    contact_name:     org?.contact_name||'',
   });
 
   const onLogoFile=(file)=>{
@@ -3908,7 +3939,7 @@ function SettingsScreen({user,org,notify,initialTab}){
         {/* Sidebar tabs */}
         <div className="card" style={{padding:'8px',height:'fit-content'}}>
           {TABS.map(([k,l])=>(
-            <button key={k} className={`nav-item ${tab===k?'active':''}`} onClick={()=>setTab(k)} style={{fontSize:13,marginBottom:2}}>
+            <button key={k} onClick={()=>setTab(k)} style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',padding:'9px 11px',marginBottom:2,border:'none',borderRadius:8,cursor:'pointer',fontFamily:F.ui,fontSize:13,fontWeight:tab===k?700:500,color:tab===k?T.accent:T.textSecondary,background:tab===k?T.accentLight:'transparent',transition:'all .15s'}}>
               <span style={{width:8,height:8,borderRadius:'50%',background:tab===k?T.accent:T.bgBorder,display:'inline-block',flexShrink:0}}/>
               {l}
             </button>
@@ -3922,23 +3953,25 @@ function SettingsScreen({user,org,notify,initialTab}){
               <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,marginBottom:18,paddingBottom:14,borderBottom:`1px solid ${T.bgBorder}`}}>Unternehmensdaten</div>
               <div style={{display:'flex',flexDirection:'column',gap:14}}>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                  <div><label className="label">Unternehmensname</label><input className="input" value={form.name} onChange={e=>upd('name',e.target.value)}/></div>
-                  <div><label className="label">USt-IdNr.</label><input className="input" value={form.vat_id} onChange={e=>upd('vat_id',e.target.value)} placeholder="DE123456789"/></div>
+                  <div><label className="label">Unternehmensname <span style={{color:T.red}}>*</span></label><input className="input" value={form.name} onChange={e=>upd('name',e.target.value)}/></div>
+                  <div><label className="label">USt-IdNr. <span style={{color:T.textMuted,fontWeight:400}}>(oder Steuernummer)</span> <span style={{color:T.red}}>*</span></label><input className="input" value={form.vat_id} onChange={e=>upd('vat_id',e.target.value)} placeholder="DE123456789"/></div>
                 </div>
-                <div><label className="label">Straße & Hausnummer</label><input className="input" value={form.address} onChange={e=>upd('address',e.target.value)}/></div>
+                <div><label className="label">Straße & Hausnummer <span style={{color:T.red}}>*</span></label><input className="input" value={form.address} onChange={e=>upd('address',e.target.value)}/></div>
                 <div style={{display:'grid',gridTemplateColumns:'120px 1fr 120px',gap:14}}>
-                  <div><label className="label">PLZ</label><input className="input" value={form.zip} onChange={e=>upd('zip',e.target.value)}/></div>
-                  <div><label className="label">Stadt</label><input className="input" value={form.city} onChange={e=>upd('city',e.target.value)}/></div>
+                  <div><label className="label">PLZ <span style={{color:T.red}}>*</span></label><input className="input" value={form.zip} onChange={e=>upd('zip',e.target.value)}/></div>
+                  <div><label className="label">Stadt <span style={{color:T.red}}>*</span></label><input className="input" value={form.city} onChange={e=>upd('city',e.target.value)}/></div>
                   <div><label className="label">Land</label><select className="select" value={form.country} onChange={e=>upd('country',e.target.value)}><option value="DE">Deutschland</option><option value="AT">Österreich</option><option value="CH">Schweiz</option></select></div>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                  <div><label className="label">E-Mail (Rechnungseingang)</label><input className="input" type="email" value={form.email} onChange={e=>upd('email',e.target.value)}/></div>
-                  <div><label className="label">Telefon</label><input className="input" value={form.phone} onChange={e=>upd('phone',e.target.value)} placeholder="+49 30 123456"/></div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14}}>
+                  <div><label className="label">Ansprechpartner <span style={{color:T.red}}>*</span></label><input className="input" value={form.contact_name} onChange={e=>upd('contact_name',e.target.value)} placeholder="Max Mustermann"/></div>
+                  <div><label className="label">Telefon <span style={{color:T.red}}>*</span></label><input className="input" value={form.phone} onChange={e=>upd('phone',e.target.value)} placeholder="+49 30 123456"/></div>
+                  <div><label className="label">E-Mail für Rückfragen <span style={{color:T.red}}>*</span></label><input className="input" type="email" value={form.email} onChange={e=>upd('email',e.target.value)} placeholder="buchhaltung@ihre-firma.de"/></div>
                 </div>
+                <div style={{fontSize:11.5,color:T.textMuted,marginTop:-6}}><span style={{color:T.red}}>*</span> Pflichtangaben für XRechnung (Verkäufer-Kontakt, BR-DE-5/6/7). Ohne sie lehnen Behörden-Portale und Prüfsoftware die Rechnung ab.</div>
 
                 <div style={{fontSize:13,fontWeight:700,color:T.textPrimary,margin:'12px 0 0',paddingTop:14,borderTop:`1px solid ${T.bgBorder}`}}>Bank & Registerdaten <span style={{fontWeight:400,color:T.textMuted}}>(erscheinen auf jeder Rechnung)</span></div>
                 <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:14}}>
-                  <div><label className="label">IBAN</label><input className="input" value={form.iban} onChange={e=>upd('iban',e.target.value)} placeholder="DE89 3704 0044 0532 0130 00"/></div>
+                  <div><label className="label">IBAN <span style={{color:T.red}}>*</span></label><input className="input" value={form.iban} onChange={e=>upd('iban',e.target.value)} placeholder="DE89 3704 0044 0532 0130 00"/></div>
                   <div><label className="label">BIC</label><input className="input" value={form.bic} onChange={e=>upd('bic',e.target.value)} placeholder="COBADEFFXXX"/></div>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
@@ -3976,7 +4009,7 @@ function SettingsScreen({user,org,notify,initialTab}){
                 <div>
                   <label className="label">Rechnungsdesign <span style={{fontWeight:400,color:T.textMuted}}>— Standard für alle PDFs, pro Rechnung änderbar</span></label>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:6}}>
-                    {[['classic','Klassisch','Farbband, farbige Tabelle — der bewährte Look'],['modern','Modern','Großer farbiger Briefkopf, luftige Tabelle'],['compact','Kompakt','Reduziert, ohne Farbflächen — dezent & klassisch']].map(([key,label,desc])=>{
+                    {[['classic','Klassisch','Farbband, farbige Tabelle — der bewährte Look'],['modern','Modern','Großer farbiger Briefkopf, luftige Tabelle'],['compact','Kompakt','Reduziert, ohne Farbflächen — dezent'],['elegant','Elegant','Serifenschrift, zentrierter Briefkopf — edel'],['bold','Markant','Dunkler Kopf mit Farbakzent — selbstbewusst']].map(([key,label,desc])=>{
                       const active=form.invoice_template===key;
                       const c=form.brand_color||'#635BFF';
                       return(
@@ -3986,6 +4019,8 @@ function SettingsScreen({user,org,notify,initialTab}){
                             {key==='classic'&&<><div style={{height:5,background:c}}/><div style={{margin:'8px 10px 4px',height:6,width:'45%',background:'#111827',borderRadius:2}}/><div style={{margin:'10px 10px 0',height:8,background:c,borderRadius:2}}/><div style={{margin:'4px 10px 0',height:5,background:'#F1F5F9',borderRadius:2}}/><div style={{margin:'3px 10px 0',height:5,background:'#fff',border:'1px solid #F1F5F9',borderRadius:2}}/></>}
                             {key==='modern'&&<><div style={{height:24,background:c,display:'flex',alignItems:'center',paddingLeft:10}}><div style={{height:6,width:'40%',background:'rgba(255,255,255,.9)',borderRadius:2}}/></div><div style={{margin:'10px 10px 0',height:2,background:c,borderRadius:2}}/><div style={{margin:'5px 10px 0',height:5,background:'#F1F5F9',borderRadius:2}}/><div style={{margin:'3px 10px 0',height:5,background:'#F8FAFC',borderRadius:2}}/></>}
                             {key==='compact'&&<><div style={{margin:'8px 10px 3px',height:6,width:'40%',background:'#111827',borderRadius:2}}/><div style={{margin:'0 10px',height:1,background:'#E5E7EB'}}/><div style={{margin:'10px 10px 0',height:1.5,background:'#111827'}}/><div style={{margin:'5px 10px 0',height:5,background:'#F8FAFC',borderRadius:2}}/><div style={{margin:'3px 10px 0',height:5,background:'#fff',border:'1px solid #F1F5F9',borderRadius:2}}/></>}
+                            {key==='elegant'&&<><div style={{margin:'8px auto 3px',height:6,width:'44%',background:'#111827',borderRadius:2}}/><div style={{margin:'0 10px',height:1,background:c}}/><div style={{margin:'1.5px 10px 0',height:.5,background:c}}/><div style={{margin:'10px 10px 0',height:1,background:'#111827'}}/><div style={{margin:'5px 10px 0',height:5,background:'#F8FAFC',borderRadius:2}}/><div style={{margin:'3px 10px 0',height:5,background:'#fff',border:'1px solid #F1F5F9',borderRadius:2}}/></>}
+                            {key==='bold'&&<><div style={{height:3,background:c}}/><div style={{height:20,background:'#111827',display:'flex',alignItems:'center',paddingLeft:10}}><div style={{height:5,width:'40%',background:'rgba(255,255,255,.9)',borderRadius:2}}/></div><div style={{margin:'10px 10px 0',height:8,background:'#111827',borderRadius:2}}/><div style={{margin:'4px 10px 0',height:5,background:'#F1F5F9',borderRadius:2}}/><div style={{margin:'3px 10px 0 auto',height:6,width:'38%',background:c,borderRadius:2}}/></>}
                           </div>
                           <div style={{fontSize:12.5,fontWeight:700,color:active?T.accent:T.textPrimary}}>{label}{active&&' ✓'}</div>
                           <div style={{fontSize:10.5,color:T.textMuted,marginTop:2,lineHeight:1.4}}>{desc}</div>
@@ -3995,14 +4030,6 @@ function SettingsScreen({user,org,notify,initialTab}){
                   </div>
                 </div>
                 <div><label className="label">Website</label><input className="input" value={form.website} onChange={e=>upd('website',e.target.value)} placeholder="https://ihre-firma.de"/></div>
-                <div style={{background:T.bgSubtle,borderRadius:8,padding:'14px 16px',border:`1px solid ${T.bgBorder}`,marginTop:4}}>
-                  <div style={{fontSize:12,fontWeight:700,color:T.textMuted,marginBottom:12,letterSpacing:.4,textTransform:'uppercase'}}>Bankverbindung (für SEPA-Zahlungen) — optional</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                    <div><label className="label">IBAN (eigene)</label><input className="input" value={form.iban} onChange={e=>upd('iban',e.target.value)} placeholder="DE89 3704 0044 0532 0130 00" style={{fontFamily:F.mono}}/><div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Optional — kann jederzeit ergänzt werden. Wird als Auftraggeber in SEPA-Dateien verwendet.</div></div>
-                    <div><label className="label">BIC / SWIFT</label><input className="input" value={form.bic} onChange={e=>upd('bic',e.target.value)} placeholder="COBADEFFXXX" style={{fontFamily:F.mono}}/><div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Optional — für ältere Banksysteme</div></div>
-                  </div>
-                </div>
-
                 {/* e-Rechnungs-Adresse für Eingang */}
                 <div style={{background:T.accentLight,borderRadius:8,padding:'14px 16px',border:`1px solid ${T.accentPale}`,marginTop:4}}>
                   <div style={{fontSize:12,fontWeight:700,color:T.accent,marginBottom:8,letterSpacing:.4,textTransform:'uppercase'}}>Ihre e-Rechnungs-Adresse (Eingang)</div>
@@ -4038,10 +4065,15 @@ function SettingsScreen({user,org,notify,initialTab}){
                   {(()=>{
                     const checks=[
                       ['Firmenname (BT-27)',!!form.name],
-                      ['Anschrift (BG-5)',!!(form.address&&form.city&&form.zip)],
+                      ['Straße (BT-35)',!!form.address],
+                      ['PLZ (BR-DE-4)',!!form.zip],
+                      ['Ort (BR-DE-3)',!!form.city],
                       ['USt-IdNr. oder Steuernummer (BT-31/32)',!!(form.vat_id||form.tax_number)],
-                      ['IBAN für den Zahlungsblock (BG-17)',!!form.iban],
-                      ['E-Mail-Adresse (BT-43)',!!form.email],
+                      ['Ansprechpartner (BR-DE-5)',!!form.contact_name],
+                      ['Telefon (BR-DE-6)',!!form.phone],
+                      ['E-Mail für Rückfragen (BR-DE-7)',!!form.email],
+                      ['IBAN für den Zahlungsblock (BR-DE-1)',!!form.iban],
+                      ['Elektronische Adresse (BT-34) — automatisch',!!inboundAddress],
                     ];
                     const missing=checks.filter(([,ok])=>!ok).length;
                     return(
@@ -4118,7 +4150,7 @@ function SettingsScreen({user,org,notify,initialTab}){
                   <div><label className="label">Standard-Zustellweg</label>
                     <select className="select" value={form.default_delivery} onChange={e=>upd('default_delivery',e.target.value)}>
                       <option value="email">E-Mail</option>
-                      <option value="peppol">Peppol-Netzwerk</option>
+                      <option value="peppol" disabled>Peppol-Netzwerk (in Vorbereitung)</option>
                       <option value="manual">Manuell / Download</option>
                     </select>
                   </div>
@@ -4405,7 +4437,7 @@ function AdminRevenue(){
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
       <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Plan-Verteilung</div>
         {Object.keys(planCounts).length===0&&<div style={{fontSize:12.5,color:T.textMuted,textAlign:'center',padding:'12px 0'}}>Noch keine aktiven Kunden</div>}
-        {Object.entries(planCounts).map(([p,count])=><div key={p} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{fontWeight:600,textTransform:'capitalize'}}>{p}</span><span style={{color:T.textMuted}}>{count} Kunde{count>1?'n':''}</span></div><div className="progress"><div className="progress-fill" style={{width:`${(count/Math.max(active.length,1))*100}%`}}/></div></div>)}
+        {Object.entries(planCounts).map(([p,count])=><div key={p} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12.5}}><span style={{fontWeight:600}}>{planName(p)}</span><span style={{color:T.textMuted}}>{count} Kunde{count>1?'n':''}</span></div><div className="progress"><div className="progress-fill" style={{width:`${(count/Math.max(active.length,1))*100}%`}}/></div></div>)}
       </div>
       <div className="card" style={{padding:18}}><div style={{fontSize:13.5,fontWeight:600,color:T.textPrimary,marginBottom:14}}>Dokumenten-Volumen</div>
         {active.length===0&&<div style={{fontSize:12.5,color:T.textMuted,textAlign:'center',padding:'12px 0'}}>Noch keine aktiven Kunden</div>}
@@ -4580,7 +4612,7 @@ function SteuerberaterPortal({ user, org, notify, onBack }) {
               <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary, marginBottom: 14 }}>Mandanten-Info</div>
               {[
                 ['ERP-System', m.erp],
-                ['Plan', m.plan.charAt(0).toUpperCase() + m.plan.slice(1)],
+                ['Plan', planName(m.plan)],
                 ['USt-IdNr.', m.vat],
                 ['Letzte Rechnung', m.last_invoice],
                 ['Compliance-Score', `${m.compliance}%`],

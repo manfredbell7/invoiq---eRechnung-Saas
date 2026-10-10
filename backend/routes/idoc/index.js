@@ -3,6 +3,7 @@
 
 import { parseIDoc, validateIDoc, generateStatusIDoc } from '../../services/idocService.js';
 import { generateXML, hashXML, validateEN16931 } from '../../services/xmlEngine.js';
+import { withSellerDefaults } from '../../lib/sellerProfile.js';
 import { archiveService } from '../../services/archiveService.js';
 import { deliveryService } from '../../services/deliveryService.js';
 import { db } from '../../config/db.js';
@@ -96,15 +97,19 @@ export async function idocRoutes(fastify) {
       status:     'processing',
       source:     'sap_idoc',
     };
+    // Verkäuferdaten aus den Einstellungen nur für Prüfung + XML ergänzen —
+    // createInvoice speichert das Objekt 1:1, die seller_*-Zusatzfelder sind
+    // keine Tabellenspalten.
+    const xmlData = withSellerDefaults(invoiceData, org);
 
-    // EN 16931 validieren
-    const en16931 = validateEN16931(invoiceData);
+    // EN 16931 + XRechnung-Pflichtregeln validieren
+    const en16931 = validateEN16931(xmlData, { outbound: true });
     invoiceData.validation_result = en16931;
     invoiceData.validation_passed = en16931.passed;
 
     // XML generieren
     if (en16931.passed) {
-      const xml = generateXML(invoiceData);
+      const xml = generateXML(xmlData);
       invoiceData.xml_content = xml;
       invoiceData.xml_hash    = hashXML(xml);
       invoiceData.status      = 'validated';
