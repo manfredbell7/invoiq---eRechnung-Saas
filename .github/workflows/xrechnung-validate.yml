@@ -56,8 +56,15 @@ jobs:
           curl -fsSL -o config.zip "$CFG_URL"
           unzip -q validator.zip -d validator
           unzip -q config.zip -d config
+          echo "Inhalt Validator-Paket:"; find validator -maxdepth 3 | head -40
+          # Bis 1.5: *-standalone.jar; ab 1.6 heißt das ausführbare JAR anders —
+          # bevorzugt standalone, sonst das größte JAR außerhalb eines lib-Ordners
           JAR=$(find validator -name '*standalone*.jar' | head -1)
+          if [ -z "$JAR" ]; then
+            JAR=$(find validator -name '*.jar' -not -path '*/lib*/*' -printf '%s %p\n' | sort -rn | head -1 | cut -d' ' -f2-)
+          fi
           test -n "$JAR" || { echo "Validator-JAR nicht gefunden"; exit 1; }
+          echo "Verwende: $JAR"
           echo "JAR=$PWD/$JAR" >> "$GITHUB_ENV"
           SCEN=$(find config -name 'scenarios.xml' | head -1)
           echo "SCENARIOS=$PWD/$SCEN" >> "$GITHUB_ENV"
