@@ -1,0 +1,49 @@
+# Prüft die E-Mail-DNS-Einträge von invoiq.de (Resend-Versand/-Empfang,
+# Firmen-Postfächer via ImprovMX, DMARC) — einmal direkt am autoritativen
+# Nameserver (was eingetragen ist) und über öffentliche Resolver (was
+# Resend und andere Mailserver sehen).
+name: email-dns-check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/email-dns-check.yml'
+
+jobs:
+  dns:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: dig installieren
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq dnsutils >/dev/null
+
+      - name: Einträge abfragen
+        run: |
+          set -u
+          AUTH=$(dig +short NS invoiq.de @1.1.1.1 | head -1)
+          echo "Nameserver (autoritativ): ${AUTH:-UNBEKANNT}"
+          q() {
+            local type=$1 name=$2
+            local a=$(dig +short "$type" "$name" @"${AUTH:-ns1.vercel-dns.com}" | tr '\n' ' ')
+            local g=$(dig +short "$type" "$name" @8.8.8.8 | tr '\n' ' ')
+            local c=$(dig +short "$type" "$name" @1.1.1.1 | tr '\n' ' ')
+            printf '%-6s %-38s\n   autoritativ: %s\n   Google:      %s\n   Cloudflare:  %s\n' "$type" "$name" "${a:-—}" "${g:-—}" "${c:-—}"
+          }
+          echo; echo "══ Kunden-Adressen: rechnungen.invoiq.de (Resend) ══"
+          q MX    rechnungen.invoiq.de
+          q CNAME send.rechnungen.invoiq.de
+          q CNAME rsend.rechnungen.invoiq.de
+          q TXT   resend._domainkey.rechnungen.invoiq.de
+          q A     rechnungen.invoiq.de
+          echo; echo "══ Plattform-Versand: invoiq.de (Resend) ══"
+          q TXT   send.invoiq.de
+          q MX    send.invoiq.de
+          q TXT   resend._domainkey.invoiq.de
+          echo; echo "══ Firmen-Postfächer: invoiq.de (ImprovMX) ══"
+          q MX    invoiq.de
+          q TXT   invoiq.de
+          q TXT   _dmarc.invoiq.de
+          echo; echo "══ Ziel des Empfangs-MX ══"
+          q A     inbound-smtp.eu-west-1.amazonaws.com
+          q A     mx1.improvmx.com
