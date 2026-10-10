@@ -99,6 +99,11 @@ jobs:
             fi
           done
           [ "$reports" -eq "$samples" ] || { echo "Nicht für jedes Beispiel ein Report"; status=1; }
+          if [ $status -ne 0 ]; then
+            first=$(find "$RUNNER_TEMP/reports" -name '*ubl-report.xml' | sort | head -1)
+            echo "──── Rohbericht: $(basename "$first") ────"
+            sed 's/></>\n</g' "$first" | grep -vE '^\s*$' | head -150
+          fi
           exit $status
 
       - name: Reports aufbewahren
