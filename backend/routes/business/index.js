@@ -379,6 +379,7 @@ export async function businessRoutes(fastify) {
       amount_net: totals.amount_net, amount_vat: totals.amount_tax, amount_gross: totals.amount_gross,
       reference: source.reference || source.doc_number,
       notes: totals.notes.join(' ') || null,
+      delivery_date: source.delivery_date || null,
     }, org, req.user);
 
     const validation = validateEN16931(invoiceData, { outbound: true });

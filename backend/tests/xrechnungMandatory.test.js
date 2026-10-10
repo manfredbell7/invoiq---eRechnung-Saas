@@ -118,3 +118,19 @@ test('XRechnung 3.0 nutzt die gültige CustomizationID (xeinkauf.de)', () => {
   assert.ok(cii.includes(`<ram:ID>${id}</ram:ID>`));
   assert.doesNotMatch(ubl + cii, /xoev-de/);
 });
+
+test('Leistungsdatum BT-72: Lieferdatum, sonst Rechnungsdatum (UBL + CII)', () => {
+  const ubl = generateXML(withSellerDefaults({ ...base, format: 'xrechnung' }, org));
+  assert.match(ubl, /<cbc:ActualDeliveryDate>2026-10-10<\/cbc:ActualDeliveryDate>/);
+  const withDelivery = generateXML(withSellerDefaults({ ...base, format: 'xrechnung', delivery_date: '2026-10-01' }, org));
+  assert.match(withDelivery, /<cbc:ActualDeliveryDate>2026-10-01<\/cbc:ActualDeliveryDate>/);
+  const cii = generateXML(withSellerDefaults({ ...base, format: 'xrechnung-cii' }, org));
+  assert.match(cii, /<ram:ActualDeliverySupplyChainEvent>[\s\S]*20261010/);
+});
+
+test('XRechnung-CII enthält den Geschäftsprozess (BT-23); ZUGFeRD nicht zwingend', () => {
+  const cii = generateXML(withSellerDefaults({ ...base, format: 'xrechnung-cii' }, org));
+  assert.match(cii, /<ram:BusinessProcessSpecifiedDocumentContextParameter>\s*<ram:ID>urn:fdc:peppol\.eu:2017:poacc:billing:01:1\.0<\/ram:ID>/);
+  const zf = generateXML(withSellerDefaults({ ...base, format: 'zugferd' }, org));
+  assert.doesNotMatch(zf, /BusinessProcessSpecifiedDocumentContextParameter/);
+});

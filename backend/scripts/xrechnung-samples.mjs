@@ -29,7 +29,7 @@ const cases = {
 
 let failed = 0;
 for (const [name, items] of Object.entries(cases)) {
-  for (const format of ['xrechnung', 'xrechnung-cii']) {
+  for (const format of ['xrechnung', 'xrechnung-cii', 'zugferd', 'peppol']) {
     const invoice = withSellerDefaults({
       invoice_number: `TEST-${name}`, invoice_date: '2026-10-10', due_date: '2026-10-24',
       format, currency: 'EUR',
@@ -42,7 +42,8 @@ for (const [name, items] of Object.entries(cases)) {
     }, org);
     const v = validateEN16931(invoice, { outbound: true });
     if (!v.passed) { console.error(`✗ ${name}/${format}: eigene Prüfung`, v.errors); failed++; continue; }
-    const file = join(outDir, `${name}.${format === 'xrechnung' ? 'ubl' : 'cii'}.xml`);
+    const ext = { xrechnung: 'ubl', 'xrechnung-cii': 'cii', zugferd: 'zugferd', peppol: 'peppol' }[format];
+    const file = join(outDir, `${name}.${ext}.xml`);
     writeFileSync(file, generateXML(invoice));
     console.log(`✓ ${file}`);
   }
