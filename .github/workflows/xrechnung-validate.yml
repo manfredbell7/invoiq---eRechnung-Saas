@@ -94,7 +94,7 @@ jobs:
               echo "✓ akzeptiert: $name"
             else
               echo "✗ ABGELEHNT: $name"
-              grep -oE '<rep:message[^>]*code="[^"]+"[^>]*>[^<]*' "$r" | sed 's/<rep:message[^>]*code="\([^"]*\)"[^>]*>/   \1: /' | head -20
+              python3 backend/scripts/kosit-report.py "$r" || true
               status=1
             fi
           done
