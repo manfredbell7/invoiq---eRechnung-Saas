@@ -29,7 +29,9 @@ const cases = {
 
 let failed = 0;
 for (const [name, items] of Object.entries(cases)) {
-  for (const format of ['xrechnung', 'xrechnung-cii', 'zugferd', 'peppol']) {
+  // Peppol BIS fehlt bewusst: die KoSIT-XRechnung-Konfiguration hat dafür kein
+  // Prüfszenario (Peppol hat eigene Schematron-Regeln von OpenPeppol).
+  for (const format of ['xrechnung', 'xrechnung-cii', 'zugferd']) {
     const invoice = withSellerDefaults({
       invoice_number: `TEST-${name}`, invoice_date: '2026-10-10', due_date: '2026-10-24',
       format, currency: 'EUR',

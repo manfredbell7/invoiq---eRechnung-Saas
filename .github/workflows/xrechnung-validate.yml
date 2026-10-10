@@ -1,5 +1,5 @@
-# Prüft die erzeugten E-Rechnungen (XRechnung UBL + CII, ZUGFeRD, Peppol BIS)
-# mit dem offiziellen KoSIT-
+# Prüft die erzeugten E-Rechnungen (XRechnung UBL + CII, ZUGFeRD) mit dem
+# offiziellen KoSIT-
 # Validator und der aktuellen XRechnung-Konfiguration — dieselbe Prüfung,
 # die Behörden-Portale (ZRE, OZG-RE) beim Empfang durchführen.
 name: xrechnung-validate
