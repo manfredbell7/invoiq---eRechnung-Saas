@@ -74,12 +74,21 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p "$RUNNER_TEMP/reports"
-          java -jar "$JAR" -s "$SCENARIOS" -r "$REPO" -o "$RUNNER_TEMP/reports" "$RUNNER_TEMP"/samples/*.xml || true
-          samples=$(ls "$RUNNER_TEMP"/samples/*.xml | wc -l)
-          reports=$(ls "$RUNNER_TEMP"/reports/*.xml 2>/dev/null | wc -l)
+          # Bis 1.5 ein ausführbares Standalone-JAR; ab 1.6 JAR + libs/ ohne
+          # Main-Manifest → Hauptklasse (CommandLineApplication) aus dem JAR lesen
+          if unzip -p "$JAR" META-INF/MANIFEST.MF | grep -q '^Main-Class:'; then
+            java -jar "$JAR" -s "$SCENARIOS" -r "$REPO" -o "$RUNNER_TEMP/reports" "$RUNNER_TEMP"/samples/*.xml || true
+          else
+            MAIN=$(unzip -l "$JAR" | grep -oE '[^ ]*/CommandLineApplication\.class' | head -1 | sed 's/\.class$//; s#/#.#g')
+            echo "Hauptklasse: $MAIN"
+            test -n "$MAIN" || { echo "Hauptklasse nicht gefunden"; exit 1; }
+            java -cp "$JAR:$(dirname "$JAR")/libs/*" "$MAIN" -s "$SCENARIOS" -r "$REPO" -o "$RUNNER_TEMP/reports" "$RUNNER_TEMP"/samples/*.xml || true
+          fi
+          samples=$(find "$RUNNER_TEMP/samples" -name '*.xml' | wc -l)
+          reports=$(find "$RUNNER_TEMP/reports" -name '*.xml' | wc -l)
           echo "Beispiele: $samples · Reports: $reports"
           status=0
-          for r in "$RUNNER_TEMP"/reports/*.xml; do
+          for r in $(find "$RUNNER_TEMP/reports" -name '*.xml' | sort); do
             name=$(basename "$r")
             if grep -q '<rep:accept' "$r"; then
               echo "✓ akzeptiert: $name"
