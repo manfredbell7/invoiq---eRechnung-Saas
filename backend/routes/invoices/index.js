@@ -3,6 +3,7 @@ import { db } from '../../config/db.js';
 import { supabase } from '../../config/database.js';
 import { authMiddleware, checkDocLimit } from '../../middleware/auth.js';
 import { generateXML, validateEN16931, hashXML, parseInboundXML } from '../../services/xmlEngine.js';
+import { withSellerDefaults } from '../../lib/sellerProfile.js';
 import { archiveService } from '../../services/archiveService.js';
 import { deliveryService } from '../../services/deliveryService.js';
 
@@ -129,6 +130,7 @@ export async function invoiceRoutes(fastify) {
           buyer_vat_id: { type: 'string' },
           buyer_address: { type: 'string' },
           buyer_city: { type: 'string' },
+          buyer_zip: { type: 'string' },
           buyer_country: { type: 'string', default: 'DE' },
           buyer_email: { type: 'string' },
           buyer_peppol_id: { type: 'string' },
@@ -151,7 +153,7 @@ export async function invoiceRoutes(fastify) {
           reference: { type: 'string' },
           leitweg_id: { type: 'string' },
           brand_color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
-          invoice_template: { type: 'string', enum: ['classic', 'modern', 'compact'] },
+          invoice_template: { type: 'string', enum: ['classic', 'modern', 'compact', 'elegant', 'bold'] },
           status: { type: 'string', enum: ['draft'] },
         }
       }
@@ -160,12 +162,10 @@ export async function invoiceRoutes(fastify) {
     const body = req.body;
     const org  = req.org;
 
-    // Org-Daten als Absender-Fallback wenn Felder leer
-    const seller_name    = body.seller_name    || org.name    || '';
-    const seller_vat_id  = body.seller_vat_id  || org.vat_id  || '';
-    const seller_address = body.seller_address || org.address || '';
-    const seller_city    = body.seller_city    || org.city    || '';
-    const seller_iban    = body.seller_iban    || org.iban    || '';
+    // Verkäuferdaten aus den Einstellungen ergänzen (alle XRechnung-
+    // Pflichtfelder: PLZ, Kontakt, Steuernummer, elektronische Adresse …)
+    const seller = withSellerDefaults(body, org, req.user);
+    const { seller_name, seller_vat_id, seller_address, seller_city, seller_iban } = seller;
 
     if (!seller_name) {
       return reply.code(400).send({
@@ -201,7 +201,7 @@ export async function invoiceRoutes(fastify) {
     const leitweg_id = body.leitweg_id || org.leitweg_id || null;
 
     const invoiceData = {
-      ...body,
+      ...seller,
       seller_name,
       seller_vat_id,
       seller_address,
@@ -218,8 +218,8 @@ export async function invoiceRoutes(fastify) {
       created_by:   req.user?.id,
     };
 
-    // EN 16931 Validation
-    const validation = validateEN16931(invoiceData);
+    // EN 16931 + Empfänger-Pflichtregeln (XRechnung BR-DE, Peppol-Endpunkte)
+    const validation = validateEN16931(invoiceData, { outbound: true });
     invoiceData.validation_result = validation;
     invoiceData.validation_passed = validation.passed;
 
@@ -263,6 +263,7 @@ export async function invoiceRoutes(fastify) {
       buyer_vat_id: invoiceData.buyer_vat_id || null,
       buyer_address: invoiceData.buyer_address || null,
       buyer_city: invoiceData.buyer_city || null,
+      buyer_zip: invoiceData.buyer_zip || null,
       buyer_country: invoiceData.buyer_country || 'DE',
       buyer_email: invoiceData.buyer_email || null,
       amount_net: invoiceData.amount_net,
@@ -387,7 +388,7 @@ export async function invoiceRoutes(fastify) {
     const invoice = await db.findInvoiceById(req.params.id, req.org.id);
     if (!invoice) return reply.code(404).send({ error: 'Rechnung nicht gefunden' });
 
-    const validation = validateEN16931(invoice);
+    const validation = validateEN16931(withSellerDefaults(invoice, req.org, req.user), { outbound: true });
     await db.updateInvoice(invoice.id, req.org.id, {
       validation_result: validation,
       validation_passed: validation.passed,
@@ -521,7 +522,7 @@ export async function invoiceRoutes(fastify) {
     const { data: xmlRow } = await import('../../config/database.js').then(m =>
       m.supabase.from('invoices').select('xml_content').eq('id', invoice.id).single()
     );
-    const xmlContent = xmlRow?.xml_content || generateXML(invoice, invoice.format || 'xrechnung');
+    const xmlContent = xmlRow?.xml_content || generateXML(withSellerDefaults(invoice, req.org, req.user), invoice.format || 'xrechnung');
     const xmlBuffer = Buffer.from(xmlContent, 'utf-8');
 
     // Menschenlesbares PDF mit gewählter Vorlage (modern/classic/minimal)
@@ -624,7 +625,7 @@ function sanitizeInvoice(inv) {
     const { data: xmlRow } = await import('../../config/database.js').then(m =>
       m.supabase.from('invoices').select('xml_content').eq('id', invoice.id).single()
     );
-    const xmlContent = xmlRow?.xml_content || generateXML(invoice, 'xrechnung');
+    const xmlContent = xmlRow?.xml_content || generateXML(withSellerDefaults(invoice, req.org, req.user), 'xrechnung');
 
     // Lookup Peppol-ID first
     const { sendViaPeppol, lookupPeppolId } = await import('../../services/peppolSoftService.js');

@@ -21,6 +21,7 @@ import {
   TRANSITIONS, canTransition, canConvert, SOURCE_STATUS_AFTER_CONVERT, isValidDocType,
 } from '../../services/documentFlow.js';
 import { generateXML, validateEN16931, hashXML } from '../../services/xmlEngine.js';
+import { withSellerDefaults } from '../../lib/sellerProfile.js';
 
 const HEADER_FIELDS = 'id, doc_type, doc_number, status, partner_id, partner_name, partner_vat_id, partner_email, partner_address, partner_zip, partner_city, partner_country, doc_date, valid_until, delivery_date, currency, payment_terms_days, amount_net, amount_tax, amount_gross, tax_breakdown, reference, notes, source_document_id, invoice_id, created_at, updated_at';
 
@@ -361,7 +362,7 @@ export async function businessRoutes(fastify) {
       vat_rate: TAX_CODES[i.tax_code]?.rate ?? 19, tax_code: i.tax_code,
     }));
 
-    const invoiceData = {
+    const invoiceData = withSellerDefaults({
       invoice_number: invoiceNumber,
       invoice_date: new Date().toISOString().slice(0, 10),
       due_date: dueDate,
@@ -372,14 +373,15 @@ export async function businessRoutes(fastify) {
       seller_iban: org.iban || '',
       buyer_name: source.partner_name, buyer_vat_id: source.partner_vat_id || '',
       buyer_address: source.partner_address || '', buyer_city: source.partner_city || '',
+      buyer_zip: source.partner_zip || '',
       buyer_country: source.partner_country || 'DE', buyer_email: source.partner_email || '',
       line_items: lineItems,
       amount_net: totals.amount_net, amount_vat: totals.amount_tax, amount_gross: totals.amount_gross,
       reference: source.reference || source.doc_number,
       notes: totals.notes.join(' ') || null,
-    };
+    }, org, req.user);
 
-    const validation = validateEN16931(invoiceData);
+    const validation = validateEN16931(invoiceData, { outbound: true });
     if (!validation.passed) {
       return reply.code(422).send({ error: 'EN 16931 Validierung fehlgeschlagen — bitte Firmendaten in den Einstellungen vervollständigen.', validation });
     }
@@ -399,6 +401,7 @@ export async function businessRoutes(fastify) {
       seller_iban: invoiceData.seller_iban || null,
       buyer_name: invoiceData.buyer_name, buyer_vat_id: invoiceData.buyer_vat_id || null,
       buyer_address: invoiceData.buyer_address || null, buyer_city: invoiceData.buyer_city || null,
+      buyer_zip: invoiceData.buyer_zip || null,
       buyer_country: invoiceData.buyer_country, buyer_email: invoiceData.buyer_email || null,
       amount_net: totals.amount_net, amount_vat: totals.amount_tax, amount_gross: totals.amount_gross,
       currency: invoiceData.currency,

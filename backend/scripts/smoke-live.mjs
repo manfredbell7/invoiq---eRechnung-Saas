@@ -15,6 +15,7 @@ const EMAIL = `smoke-${ts}@invoiq-smoketest.de`;
 const PASSWORD = `Smoke!${ts}xyz`;
 
 let token = null;
+let customerId = null;
 let passed = 0, failed = 0;
 const results = [];
 
@@ -105,6 +106,14 @@ await step('GET /auth/me liefert User + Org', async () => {
   return `org="${r.data.org?.name}"`;
 });
 
+await step('Stammdaten für XRechnung pflegen (Einstellungen)', async () => {
+  const r = await call('POST', '/auth/settings', {
+    contact_name: 'Smoke Tester', phone: '+49 30 1234567',
+    iban: 'DE89370400440532013000', bic: 'COBADEFFXXX', bank_name: 'Testbank',
+  });
+  assert(r.status === 200, `HTTP ${r.status}: ${JSON.stringify(r.data).slice(0, 200)}`);
+});
+
 await step('Passwort-Reset-Anstoß (forgot-password)', async () => {
   const r = await call('POST', '/auth/forgot-password', { email: EMAIL });
   assert(r.status === 200, `HTTP ${r.status}: ${JSON.stringify(r.data).slice(0, 150)}`);
@@ -117,6 +126,8 @@ await step('Kunde anlegen', async () => {
     vat_id: 'DE811111111', payment_terms_days: 14,
   });
   assert(r.status === 201 || r.status === 200, `HTTP ${r.status}: ${JSON.stringify(r.data).slice(0, 200)}`);
+  customerId = r.data.id || r.data.customer?.id;
+  assert(customerId, 'keine Kunden-ID');
 });
 
 await step('Artikel anlegen', async () => {
@@ -132,7 +143,7 @@ const ITEMS = [{ description: 'Beratungsstunde Senior', quantity: 8, unit_price:
 
 await step('Belegkette 1/5: Anfrage anlegen', async () => {
   const r = await call('POST', '/business/documents', {
-    doc_type: 'request', partner_name: 'Mustermann GmbH', items: ITEMS,
+    doc_type: 'request', partner_id: customerId, partner_name: 'Mustermann GmbH', items: ITEMS,
   });
   assert(r.status === 201, `HTTP ${r.status}: ${JSON.stringify(r.data).slice(0, 200)}`);
   docId = r.data.id || r.data.document?.id;
@@ -184,7 +195,24 @@ await step('XRechnung-XML der Rechnung abrufbar und valide strukturiert', async 
   assert(r.body.includes('ubl:Invoice'), 'kein UBL-Root');
   assert(r.body.includes('xrechnung_3.0'), 'XRechnung-CustomizationID fehlt');
   assert(r.body.includes('1428.00'), 'Bruttosumme 1428.00 fehlt (8×150 + 19 %)');
-  return `${r.body.length} Bytes UBL`;
+  // XRechnung-Pflichtfelder (BT-34/49 elektronische Adressen, BR-DE-4/9 PLZ, BR-DE-6 Telefon)
+  assert(/<cbc:EndpointID schemeID="EM">[^<]+@rechnungen\.invoiq\.de</.test(r.body), 'Verkäufer-EndpointID (BT-34) fehlt');
+  assert(r.body.includes('<cbc:EndpointID schemeID="EM">einkauf@mustermann.example</cbc:EndpointID>'), 'Käufer-EndpointID (BT-49) fehlt');
+  assert(r.body.includes('<cbc:PostalZone>10115</cbc:PostalZone>'), 'Verkäufer-PLZ (BR-DE-4) fehlt');
+  assert(r.body.includes('<cbc:PostalZone>80331</cbc:PostalZone>'), 'Käufer-PLZ (BR-DE-9) fehlt');
+  assert(r.body.includes('<cbc:Telephone>+49 30 1234567</cbc:Telephone>'), 'Verkäufer-Telefon (BR-DE-6) fehlt');
+  return `${r.body.length} Bytes UBL, Pflichtfelder vollständig`;
+});
+
+await step('XRechnung ohne Käufer-PLZ wird abgelehnt (422, BR-DE-9)', async () => {
+  const r = await call('POST', '/invoices', {
+    invoice_number: `NEG-${Date.now()}`, invoice_date: new Date().toISOString().slice(0, 10),
+    format: 'xrechnung', buyer_name: 'Ohne PLZ GmbH', buyer_city: 'Köln', buyer_email: 'ap@ohne-plz.example',
+    line_items: [{ description: 'Test', quantity: 1, unit_price: 10, vat_rate: 19 }],
+  });
+  assert(r.status === 422, `HTTP ${r.status} statt 422`);
+  const codes = (r.data.validation?.errors || []).map(e => e.code);
+  assert(codes.includes('BR-DE-9'), `BR-DE-9 nicht gemeldet: ${codes.join(',')}`);
 });
 
 // ── FI (neue Ausbaustufe) ─────────────────────────────────────

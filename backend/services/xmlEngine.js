@@ -72,7 +72,13 @@ function buildTaxGroups(items) {
 }
 
 // ── EN 16931 VALIDATION ───────────────────────────────────────
-export function validateEN16931(invoice) {
+/**
+ * @param {object} invoice
+ * @param {{outbound?: boolean}} [opts]  outbound: true → zusätzlich die
+ *   Pflichtregeln der Empfängerseite prüfen (XRechnung BR-DE-*, Peppol-
+ *   Endpunkte). Für geparste Eingangsrechnungen NICHT setzen.
+ */
+export function validateEN16931(invoice, opts = {}) {
   const errors = [];
   const warnings = [];
 
@@ -100,8 +106,64 @@ export function validateEN16931(invoice) {
   if ((invoice.format || 'xrechnung').startsWith('xrechnung') && !invoice.leitweg_id && !invoice.reference)
     warnings.push({ code: 'BT-10', msg: 'Leitweg-ID/BuyerReference empfohlen (XRechnung-Pflicht bei Behörden, BT-10)' });
 
+  if (opts.outbound) checkRecipientRules(invoice, errors, warnings);
+
   const passed = errors.length === 0;
   return { passed, errors, warnings, standard: 'EN 16931', version: '1.3.4' };
+}
+
+// Pflichtangaben, ohne die eine XRechnung vom Empfänger (KoSIT-Validator,
+// Behörden-Portale ZRE/OZG-RE) abgelehnt wird. Bei XRechnung blockierend,
+// bei ZUGFeRD/Factur-X als Hinweis; bei Peppol blockieren die Endpunkte.
+const SETTINGS = 'Einstellungen → Unternehmen';
+function checkRecipientRules(inv, errors, warnings) {
+  const fmt = String(inv.format || 'xrechnung').toLowerCase();
+  const isXR = fmt.startsWith('xrechnung');
+  const isPeppol = fmt === 'peppol';
+  const has = (v) => v !== undefined && v !== null && String(v).trim() !== '';
+  const brDe = isXR ? errors : warnings;
+  const endpointList = (isXR || isPeppol) ? errors : warnings;
+
+  const sellerRules = [
+    ['BR-DE-3', inv.seller_city, `Ort des Verkäufers fehlt (BR-DE-3) — ${SETTINGS}`],
+    ['BR-DE-4', inv.seller_zip, `PLZ des Verkäufers fehlt (BR-DE-4) — ${SETTINGS}`],
+    ['BR-DE-5', inv.seller_contact_name, `Ansprechpartner fehlt (BR-DE-5) — ${SETTINGS}`],
+    ['BR-DE-6', inv.seller_phone, `Telefonnummer des Verkäufers fehlt (BR-DE-6) — ${SETTINGS}`],
+    ['BR-DE-7', inv.seller_email, `E-Mail des Verkäufers fehlt (BR-DE-7) — ${SETTINGS}`],
+    ['BT-31/32', has(inv.seller_vat_id) || has(inv.seller_tax_number), `USt-IdNr. oder Steuernummer des Verkäufers fehlt (§ 14 UStG, BT-31/BT-32) — ${SETTINGS}`],
+    ['BR-DE-1', inv.seller_iban, `Zahlungsinformationen fehlen: IBAN des Verkäufers (BR-DE-1) — ${SETTINGS}`],
+  ];
+  for (const [code, val, msg] of sellerRules) {
+    const ok = typeof val === 'boolean' ? val : has(val);
+    if (!ok) brDe.push({ code, msg });
+  }
+
+  const buyerRules = [
+    ['BR-DE-8', inv.buyer_city, 'Ort des Rechnungsempfängers fehlt (BR-DE-8)'],
+    ['BR-DE-9', inv.buyer_zip, 'PLZ des Rechnungsempfängers fehlt (BR-DE-9)'],
+  ];
+  for (const [code, val, msg] of buyerRules) if (!has(val)) brDe.push({ code, msg });
+
+  if (!has(inv.seller_endpoint_email) && !has(inv.seller_email) && !has(inv.seller_peppol_id) && !(isPeppol && has(inv.seller_vat_id)))
+    endpointList.push({ code: 'BT-34', msg: `Elektronische Adresse des Verkäufers fehlt (BT-34) — ${SETTINGS}` });
+  if (!has(inv.buyer_email) && !has(inv.buyer_peppol_id) && !has(inv.buyer_vat_id))
+    endpointList.push({ code: 'BT-49', msg: 'E-Mail-Adresse oder USt-IdNr. des Rechnungsempfängers fehlt (elektronische Adresse, BT-49)' });
+}
+
+
+// Elektronische Adresse (BT-34 Verkäufer / BT-49 Käufer) — seit XRechnung 3.0
+// Pflicht. XRechnung akzeptiert E-Mail (schemeID "EM"); Peppol BIS verlangt
+// ein Peppol-Schema (9930 = DE-USt-IdNr., 0204 = Leitweg-ID) bzw. die
+// explizit hinterlegte Peppol-ID "schema:wert".
+function endpointFor({ peppolId, vatId, email }, peppol) {
+  if (peppolId && /^\d{4}:.+/.test(peppolId)) {
+    const [scheme, ...rest] = String(peppolId).split(':');
+    return { scheme, id: rest.join(':') };
+  }
+  if (peppol && vatId) return { scheme: '9930', id: String(vatId).replace(/\s/g, '') };
+  if (email) return { scheme: 'EM', id: email };
+  if (vatId) return { scheme: '9930', id: String(vatId).replace(/\s/g, '') };
+  return null;
 }
 
 // ── UBL-GENERATOR (XRechnung UBL / Peppol BIS 3.0) ────────────
@@ -111,6 +173,9 @@ function generateUBL(invoice, profile) {
   const t = buildTaxGroups(items);
   const buyerRef = invoice.leitweg_id || invoice.reference || invoice.buyer_name;
   const notes = [...new Set(t.groups.map(g => g.note).filter(Boolean))];
+  const isPeppol = profile === PROFILES.PEPPOL_BIS;
+  const sellerEp = endpointFor({ peppolId: invoice.seller_peppol_id, vatId: invoice.seller_vat_id, email: invoice.seller_endpoint_email || invoice.seller_email }, isPeppol);
+  const buyerEp  = endpointFor({ peppolId: invoice.buyer_peppol_id,  vatId: invoice.buyer_vat_id,  email: invoice.buyer_email }, isPeppol);
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <ubl:Invoice
@@ -133,10 +198,12 @@ function generateUBL(invoice, profile) {
   <!-- Seller (BG-4) -->
   <cac:AccountingSupplierParty>
     <cac:Party>
+      ${sellerEp ? `<cbc:EndpointID schemeID="${sellerEp.scheme}">${esc(sellerEp.id)}</cbc:EndpointID>` : ''}
       <cac:PartyName><cbc:Name>${esc(invoice.seller_name)}</cbc:Name></cac:PartyName>
       <cac:PostalAddress>
         <cbc:StreetName>${esc(invoice.seller_address || '')}</cbc:StreetName>
         <cbc:CityName>${esc(invoice.seller_city || '')}</cbc:CityName>
+        ${invoice.seller_zip ? `<cbc:PostalZone>${esc(invoice.seller_zip)}</cbc:PostalZone>` : ''}
         <cac:Country><cbc:IdentificationCode>${invoice.seller_country || 'DE'}</cbc:IdentificationCode></cac:Country>
       </cac:PostalAddress>
       ${invoice.seller_vat_id ? `
@@ -144,20 +211,33 @@ function generateUBL(invoice, profile) {
         <cbc:CompanyID>${esc(invoice.seller_vat_id)}</cbc:CompanyID>
         <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
       </cac:PartyTaxScheme>` : ''}
+      ${invoice.seller_tax_number ? `
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>${esc(invoice.seller_tax_number)}</cbc:CompanyID>
+        <cac:TaxScheme><cbc:ID>FC</cbc:ID></cac:TaxScheme>
+      </cac:PartyTaxScheme>` : ''}
       <cac:PartyLegalEntity>
         <cbc:RegistrationName>${esc(invoice.seller_name)}</cbc:RegistrationName>
+        ${invoice.seller_register_number ? `<cbc:CompanyID>${esc(invoice.seller_register_number)}</cbc:CompanyID>` : ''}
       </cac:PartyLegalEntity>
-      ${invoice.seller_email ? `<cac:Contact><cbc:ElectronicMail>${esc(invoice.seller_email)}</cbc:ElectronicMail></cac:Contact>` : ''}
+      ${(invoice.seller_contact_name || invoice.seller_phone || invoice.seller_email) ? `
+      <cac:Contact>
+        ${invoice.seller_contact_name ? `<cbc:Name>${esc(invoice.seller_contact_name)}</cbc:Name>` : ''}
+        ${invoice.seller_phone ? `<cbc:Telephone>${esc(invoice.seller_phone)}</cbc:Telephone>` : ''}
+        ${invoice.seller_email ? `<cbc:ElectronicMail>${esc(invoice.seller_email)}</cbc:ElectronicMail>` : ''}
+      </cac:Contact>` : ''}
     </cac:Party>
   </cac:AccountingSupplierParty>
 
   <!-- Buyer (BG-7) -->
   <cac:AccountingCustomerParty>
     <cac:Party>
+      ${buyerEp ? `<cbc:EndpointID schemeID="${buyerEp.scheme}">${esc(buyerEp.id)}</cbc:EndpointID>` : ''}
       <cac:PartyName><cbc:Name>${esc(invoice.buyer_name)}</cbc:Name></cac:PartyName>
       <cac:PostalAddress>
         <cbc:StreetName>${esc(invoice.buyer_address || '')}</cbc:StreetName>
         <cbc:CityName>${esc(invoice.buyer_city || '')}</cbc:CityName>
+        ${invoice.buyer_zip ? `<cbc:PostalZone>${esc(invoice.buyer_zip)}</cbc:PostalZone>` : ''}
         <cac:Country><cbc:IdentificationCode>${invoice.buyer_country || 'DE'}</cbc:IdentificationCode></cac:Country>
       </cac:PostalAddress>
       ${invoice.buyer_vat_id ? `
@@ -253,6 +333,8 @@ function generateCII(invoice, guidelineId, label) {
   const t = buildTaxGroups(items);
   const buyerRef = invoice.leitweg_id || invoice.reference || null;
   const dt = (d) => (d || '').replace(/-/g, '');
+  const sellerEp = endpointFor({ peppolId: invoice.seller_peppol_id, vatId: invoice.seller_vat_id, email: invoice.seller_endpoint_email || invoice.seller_email }, false);
+  const buyerEp  = endpointFor({ peppolId: invoice.buyer_peppol_id,  vatId: invoice.buyer_vat_id,  email: invoice.buyer_email }, false);
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice
@@ -314,11 +396,26 @@ function generateCII(invoice, guidelineId, label) {
       ${buyerRef ? `<ram:BuyerReference>${esc(buyerRef)}</ram:BuyerReference>` : ''}
       <ram:SellerTradeParty>
         <ram:Name>${esc(invoice.seller_name)}</ram:Name>
+        ${invoice.seller_register_number ? `
+        <ram:SpecifiedLegalOrganization><ram:ID>${esc(invoice.seller_register_number)}</ram:ID></ram:SpecifiedLegalOrganization>` : ''}
+        ${(invoice.seller_contact_name || invoice.seller_phone || invoice.seller_email) ? `
+        <ram:DefinedTradeContact>
+          ${invoice.seller_contact_name ? `<ram:PersonName>${esc(invoice.seller_contact_name)}</ram:PersonName>` : ''}
+          ${invoice.seller_phone ? `<ram:TelephoneUniversalCommunication><ram:CompleteNumber>${esc(invoice.seller_phone)}</ram:CompleteNumber></ram:TelephoneUniversalCommunication>` : ''}
+          ${invoice.seller_email ? `<ram:EmailURIUniversalCommunication><ram:URIID>${esc(invoice.seller_email)}</ram:URIID></ram:EmailURIUniversalCommunication>` : ''}
+        </ram:DefinedTradeContact>` : ''}
         <ram:PostalTradeAddress>
+          ${invoice.seller_zip ? `<ram:PostcodeCode>${esc(invoice.seller_zip)}</ram:PostcodeCode>` : ''}
           <ram:LineOne>${esc(invoice.seller_address || '')}</ram:LineOne>
           <ram:CityName>${esc(invoice.seller_city || '')}</ram:CityName>
           <ram:CountryID>${invoice.seller_country || 'DE'}</ram:CountryID>
         </ram:PostalTradeAddress>
+        ${sellerEp ? `
+        <ram:URIUniversalCommunication><ram:URIID schemeID="${sellerEp.scheme}">${esc(sellerEp.id)}</ram:URIID></ram:URIUniversalCommunication>` : ''}
+        ${invoice.seller_tax_number ? `
+        <ram:SpecifiedTaxRegistration>
+          <ram:ID schemeID="FC">${esc(invoice.seller_tax_number)}</ram:ID>
+        </ram:SpecifiedTaxRegistration>` : ''}
         ${invoice.seller_vat_id ? `
         <ram:SpecifiedTaxRegistration>
           <ram:ID schemeID="VA">${esc(invoice.seller_vat_id)}</ram:ID>
@@ -327,10 +424,13 @@ function generateCII(invoice, guidelineId, label) {
       <ram:BuyerTradeParty>
         <ram:Name>${esc(invoice.buyer_name)}</ram:Name>
         <ram:PostalTradeAddress>
+          ${invoice.buyer_zip ? `<ram:PostcodeCode>${esc(invoice.buyer_zip)}</ram:PostcodeCode>` : ''}
           <ram:LineOne>${esc(invoice.buyer_address || '')}</ram:LineOne>
           <ram:CityName>${esc(invoice.buyer_city || '')}</ram:CityName>
           <ram:CountryID>${invoice.buyer_country || 'DE'}</ram:CountryID>
         </ram:PostalTradeAddress>
+        ${buyerEp ? `
+        <ram:URIUniversalCommunication><ram:URIID schemeID="${buyerEp.scheme}">${esc(buyerEp.id)}</ram:URIID></ram:URIUniversalCommunication>` : ''}
         ${invoice.buyer_vat_id ? `
         <ram:SpecifiedTaxRegistration>
           <ram:ID schemeID="VA">${esc(invoice.buyer_vat_id)}</ram:ID>

@@ -1,0 +1,93 @@
+# Prüft die erzeugten XRechnungen (UBL + CII) mit dem offiziellen KoSIT-
+# Validator und der aktuellen XRechnung-Konfiguration — dieselbe Prüfung,
+# die Behörden-Portale (ZRE, OZG-RE) beim Empfang durchführen.
+name: xrechnung-validate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'backend/services/xmlEngine.js'
+      - 'backend/lib/sellerProfile.js'
+      - 'backend/scripts/xrechnung-samples.mjs'
+      - '.github/workflows/xrechnung-validate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/services/xmlEngine.js'
+      - 'backend/lib/sellerProfile.js'
+      - 'backend/scripts/xrechnung-samples.mjs'
+      - '.github/workflows/xrechnung-validate.yml'
+
+jobs:
+  kosit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Beispielrechnungen erzeugen
+        working-directory: backend
+        run: node scripts/xrechnung-samples.mjs "$RUNNER_TEMP/samples"
+
+      - name: KoSIT-Validator + XRechnung-Konfiguration laden (jeweils neueste Version)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          asset() {
+            curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/$1/releases/latest" \
+              | jq -r '.assets[] | select(.name | endswith(".zip")) | .browser_download_url' | head -1
+          }
+          VAL_URL=$(asset itplr-kosit/validator)
+          CFG_URL=$(asset itplr-kosit/validator-configuration-xrechnung)
+          echo "Validator:     $VAL_URL"
+          echo "Konfiguration: $CFG_URL"
+          curl -fsSL -o validator.zip "$VAL_URL"
+          curl -fsSL -o config.zip "$CFG_URL"
+          unzip -q validator.zip -d validator
+          unzip -q config.zip -d config
+          JAR=$(find validator -name '*standalone*.jar' | head -1)
+          test -n "$JAR" || { echo "Validator-JAR nicht gefunden"; exit 1; }
+          echo "JAR=$PWD/$JAR" >> "$GITHUB_ENV"
+          SCEN=$(find config -name 'scenarios.xml' | head -1)
+          echo "SCENARIOS=$PWD/$SCEN" >> "$GITHUB_ENV"
+          echo "REPO=$PWD/$(dirname "$SCEN")" >> "$GITHUB_ENV"
+
+      - name: Validieren
+        run: |
+          set -uo pipefail
+          mkdir -p "$RUNNER_TEMP/reports"
+          java -jar "$JAR" -s "$SCENARIOS" -r "$REPO" -o "$RUNNER_TEMP/reports" "$RUNNER_TEMP"/samples/*.xml || true
+          samples=$(ls "$RUNNER_TEMP"/samples/*.xml | wc -l)
+          reports=$(ls "$RUNNER_TEMP"/reports/*.xml 2>/dev/null | wc -l)
+          echo "Beispiele: $samples · Reports: $reports"
+          status=0
+          for r in "$RUNNER_TEMP"/reports/*.xml; do
+            name=$(basename "$r")
+            if grep -q '<rep:accept' "$r"; then
+              echo "✓ akzeptiert: $name"
+            else
+              echo "✗ ABGELEHNT: $name"
+              grep -oE '<rep:message[^>]*code="[^"]+"[^>]*>[^<]*' "$r" | sed 's/<rep:message[^>]*code="\([^"]*\)"[^>]*>/   \1: /' | head -20
+              status=1
+            fi
+          done
+          [ "$reports" -eq "$samples" ] || { echo "Nicht für jedes Beispiel ein Report"; status=1; }
+          exit $status
+
+      - name: Reports aufbewahren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kosit-reports
+          path: ${{ runner.temp }}/reports

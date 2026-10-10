@@ -75,6 +75,9 @@ export async function authRoutes(fastify) {
           // jede Registrierung den bezahlten Starter-Plan geschenkt.
           plan: 'free',
           plan_doc_limit: 10,
+          // Ansprechpartner (XRechnung BR-DE-5) mit der registrierenden
+          // Person vorbelegen — in den Einstellungen änderbar.
+          contact_name: full_name,
           inbound_email_slug: generateInboundEmailSlug(org_name, attempt),
           api_key: apiKey,
           api_key_created_at: new Date().toISOString(),
@@ -360,6 +363,7 @@ export async function authRoutes(fastify) {
       invoice_template: org.invoice_template || 'classic',
       leitweg_id:       org.leitweg_id       || '',
       default_due_days: org.default_due_days ?? 14,
+      contact_name:     org.contact_name     || '',
     };
   });
 
@@ -375,7 +379,7 @@ export async function authRoutes(fastify) {
                      'managing_director','logo_data','brand_color','email','website',
                      'default_format','default_delivery','auto_archive','en16931_strict',
                      'peppol_enabled','vida_reporting',
-                     'invoice_template','leitweg_id','default_due_days'];
+                     'invoice_template','leitweg_id','default_due_days','contact_name'];
     const updates = {};
     for(const key of allowed){
       if(req.body[key] !== undefined) updates[key] = req.body[key];
@@ -394,7 +398,7 @@ export async function authRoutes(fastify) {
       }
     }
     if (updates.invoice_template !== undefined &&
-        !['classic', 'modern', 'compact'].includes(updates.invoice_template)) {
+        !['classic', 'modern', 'compact', 'elegant', 'bold'].includes(updates.invoice_template)) {
       return reply.code(400).send({ error: 'Unbekannte Rechnungsvorlage.' });
     }
     if (updates.default_due_days !== undefined) {

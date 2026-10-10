@@ -89,14 +89,18 @@ function normalize(invoice, org = {}) {
   };
 }
 
-// Drei wählbare Vorlagen — gleiche Inhalte/Flusslogik, andere Optik.
+// Fünf wählbare Vorlagen — gleiche Inhalte/Flusslogik, andere Optik.
 // classic: Farbband + gefüllte Tabellenkopfzeile + Zebra (bisheriges Layout)
 // modern:  großer farbiger Briefkopf, luftige Tabelle mit farbiger Kopfzeile als Linie
 // compact: reduziert, ohne Farbflächen — für dezente/klassische Korrespondenz
+// elegant: Serifenschrift (Times), zentrierter Briefkopf mit Haarlinien — klassisch-edel
+// bold:    dunkler Briefkopf mit Farbband, dunkle Tabellenkopfzeile — markant
 export const TEMPLATES = {
-  classic: { band: true,  bigHeader: false, tableFill: true,  zebra: true,  totalFill: true,  label: 'Klassisch' },
-  modern:  { band: false, bigHeader: true,  tableFill: false, zebra: false, totalFill: true,  label: 'Modern' },
-  compact: { band: false, bigHeader: false, tableFill: false, zebra: false, totalFill: false, label: 'Kompakt' },
+  classic: { band: true,  bigHeader: false, tableFill: true,  zebra: true,  totalFill: true,  serif: false, dark: false, centered: false, label: 'Klassisch' },
+  modern:  { band: false, bigHeader: true,  tableFill: false, zebra: false, totalFill: true,  serif: false, dark: false, centered: false, label: 'Modern' },
+  compact: { band: false, bigHeader: false, tableFill: false, zebra: false, totalFill: false, serif: false, dark: false, centered: false, label: 'Kompakt' },
+  elegant: { band: false, bigHeader: false, tableFill: false, zebra: false, totalFill: false, serif: true,  dark: false, centered: true,  label: 'Elegant' },
+  bold:    { band: false, bigHeader: true,  tableFill: true,  zebra: true,  totalFill: true,  serif: false, dark: true,  centered: false, label: 'Markant' },
 };
 
 export async function renderInvoicePDF(invoice, org = {}) {
@@ -134,6 +138,8 @@ async function renderProfessional(invoice, org, embedFile) {
 
     const C = d.color;
     const TPL = TEMPLATES[d.template] || TEMPLATES.classic;
+    const FONT  = TPL.serif ? 'Times-Roman' : 'Helvetica';
+    const FONTB = TPL.serif ? 'Times-Bold'  : 'Helvetica-Bold';
     const bottomLimit = PAGE_H - FOOTER_H - 20;
     let logoImg = null;
     if (d.logo) {
@@ -143,8 +149,9 @@ async function renderProfessional(invoice, org, embedFile) {
     // ── Briefkopf (nur Seite 1 groß, Folgeseiten schmal) ─────
     const header = (first) => {
       if (first) {
-        if (TPL.bigHeader) {                                     // modern: farbige Kopffläche
-          doc.rect(0, 0, PAGE_W, 88).fill(C);
+        if (TPL.bigHeader) {                                     // modern/bold: große Kopffläche
+          doc.rect(0, 0, PAGE_W, 88).fill(TPL.dark ? DARK : C);
+          if (TPL.dark) doc.rect(0, 0, PAGE_W, 6).fill(C);       // bold: Farbband über dunklem Kopf
           let x = M;
           if (logoImg) {
             try {
@@ -153,24 +160,37 @@ async function renderProfessional(invoice, org, embedFile) {
               x = M + 142;
             } catch { /* defekt → nur Text */ }
           }
-          doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(18).text(d.seller.name, x, 28, { width: PAGE_W - x - M });
+          doc.fillColor('#FFFFFF').font(FONTB).fontSize(18).text(d.seller.name, x, 28, { width: PAGE_W - x - M });
           const contact = [d.seller.email, d.seller.phone, d.seller.website].filter(Boolean).join('  ·  ');
-          if (contact) doc.font('Helvetica').fontSize(8.5).fillColor('#FFFFFF').fillOpacity(0.75).text(contact, x, 52, { width: PAGE_W - x - M }).fillOpacity(1);
+          if (contact) doc.font(FONT).fontSize(8.5).fillColor('#FFFFFF').fillOpacity(0.75).text(contact, x, 52, { width: PAGE_W - x - M }).fillOpacity(1);
           return 112;
+        }
+        if (TPL.centered) {                                       // elegant: zentriert, Haarlinien
+          if (logoImg) {
+            try { doc.image(logoImg, PAGE_W / 2 - 50, 20, { fit: [100, 34] }); } catch { /* defekt → nur Text */ }
+          }
+          const ny = logoImg ? 58 : 30;
+          doc.fillColor(DARK).font(FONTB).fontSize(19).text(d.seller.name, M, ny, { width: PAGE_W - 2 * M, align: 'center' });
+          const contact = [d.seller.email, d.seller.phone, d.seller.website].filter(Boolean).join('   ·   ');
+          if (contact) doc.font(FONT).fontSize(8.5).fillColor(GRAY).text(contact, M, ny + 24, { width: PAGE_W - 2 * M, align: 'center' });
+          const ly = ny + 40;
+          doc.moveTo(M, ly).lineTo(PAGE_W - M, ly).strokeColor(C).lineWidth(0.8).stroke();
+          doc.moveTo(M, ly + 2.5).lineTo(PAGE_W - M, ly + 2.5).strokeColor(C).lineWidth(0.4).stroke();
+          return ly + 14;
         }
         if (TPL.band) doc.rect(0, 0, PAGE_W, 8).fill(C);         // classic: Farbband
         let x = M;
         if (logoImg) {
           try { doc.image(logoImg, M, 26, { fit: [120, 44] }); x = M + 134; } catch { /* defekt → nur Text */ }
         }
-        doc.fillColor(DARK).font('Helvetica-Bold').fontSize(TPL.band ? 17 : 14).text(d.seller.name, x, 32, { width: 300 });
+        doc.fillColor(DARK).font(FONTB).fontSize(TPL.band ? 17 : 14).text(d.seller.name, x, 32, { width: 300 });
         const contact = [d.seller.email, d.seller.phone, d.seller.website].filter(Boolean).join('  ·  ');
-        if (contact) doc.font('Helvetica').fontSize(8.5).fillColor(GRAY).text(contact, x, TPL.band ? 54 : 50, { width: 340 });
+        if (contact) doc.font(FONT).fontSize(8.5).fillColor(GRAY).text(contact, x, TPL.band ? 54 : 50, { width: 340 });
         if (!TPL.band) doc.moveTo(M, 74).lineTo(PAGE_W - M, 74).strokeColor(LIGHT).lineWidth(0.75).stroke(); // compact: Haarlinie
         return 96;
       }
       if (TPL.band || TPL.bigHeader) doc.rect(0, 0, PAGE_W, 6).fill(C);
-      doc.fillColor(GRAY).font('Helvetica').fontSize(8)
+      doc.fillColor(GRAY).font(FONT).fontSize(8)
         .text(`${d.title} ${d.number} · ${d.seller.name}`, M, 22);
       return 48;
     };
@@ -183,8 +203,8 @@ async function renderProfessional(invoice, org, embedFile) {
     doc.moveTo(M, y + 29).lineTo(M + 220, y + 29).strokeColor(LIGHT).lineWidth(0.5).stroke();
 
     let ry = y + 38;
-    doc.fillColor(DARK).font('Helvetica-Bold').fontSize(11).text(d.buyer.name, M, ry);
-    doc.font('Helvetica').fontSize(10);
+    doc.fillColor(DARK).font(FONTB).fontSize(11).text(d.buyer.name, M, ry);
+    doc.font(FONT).fontSize(10);
     for (const line of [d.buyer.address, d.buyer.city, d.buyer.country].filter(Boolean)) {
       ry = doc.y; doc.text(line, M, ry);
     }
@@ -203,14 +223,14 @@ async function renderProfessional(invoice, org, embedFile) {
     ];
     doc.fontSize(9);
     for (const [k, v] of info) {
-      doc.fillColor(GRAY).font('Helvetica').text(k, infoX, iy, { width: 105 });
-      doc.fillColor(DARK).font('Helvetica-Bold').text(String(v), infoX + 108, iy, { width: infoW - 108, align: 'right' });
+      doc.fillColor(GRAY).font(FONT).text(k, infoX, iy, { width: 105 });
+      doc.fillColor(DARK).font(FONTB).text(String(v), infoX + 108, iy, { width: infoW - 108, align: 'right' });
       iy += 15;
     }
 
     // ── Titel ────────────────────────────────────────────────
     y = Math.max(doc.y + 30, iy + 26, 268);
-    doc.fillColor(TPL.totalFill ? C : DARK).font('Helvetica-Bold').fontSize(19).text(d.title + (d.kind === 'standard' ? ` ${d.number}` : ''), M, y);
+    doc.fillColor(TPL.totalFill ? C : DARK).font(FONTB).fontSize(19).text(d.title + (d.kind === 'standard' ? ` ${d.number}` : ''), M, y);
     y += 30;
 
     // ── Positionstabelle ─────────────────────────────────────
@@ -224,22 +244,22 @@ async function renderProfessional(invoice, org, embedFile) {
     ];
     const tableHead = () => {
       if (TPL.tableFill) {
-        doc.rect(M, y, PAGE_W - 2 * M, 20).fill(C);
-        doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(8.5);
+        doc.rect(M, y, PAGE_W - 2 * M, 20).fill(TPL.dark ? DARK : C);
+        doc.fillColor('#FFFFFF').font(FONTB).fontSize(8.5);
         for (const c of cols) doc.text(c.label, c.x + 4, y + 6, { width: c.w - 8, align: c.align });
         y += 20;
         return;
       }
       // modern/compact: Textkopf mit farbiger bzw. dunkler Unterstreichung
       const headColor = TPL.bigHeader ? C : DARK;
-      doc.fillColor(headColor).font('Helvetica-Bold').fontSize(8.5);
+      doc.fillColor(headColor).font(FONTB).fontSize(8.5);
       for (const c of cols) doc.text(c.label, c.x + 4, y + 5, { width: c.w - 8, align: c.align });
       doc.moveTo(M, y + 19).lineTo(PAGE_W - M, y + 19).strokeColor(headColor).lineWidth(TPL.bigHeader ? 1.5 : 1).stroke();
       y += 22;
     };
     tableHead();
 
-    doc.font('Helvetica').fontSize(9);
+    doc.font(FONT).fontSize(9);
     d.items.forEach((it, idx) => {
       const descH = doc.heightOfString(it.desc || '—', { width: cols[1].w - 8 });
       const rowH = Math.max(18, descH + 8);
@@ -247,7 +267,7 @@ async function renderProfessional(invoice, org, embedFile) {
         doc.addPage();
         y = header(false);
         tableHead();
-        doc.font('Helvetica').fontSize(9);
+        doc.font(FONT).fontSize(9);
       }
       if (TPL.zebra && idx % 2 === 1) doc.rect(M, y, PAGE_W - 2 * M, rowH).fill('#F8F9FB');
       if (!TPL.zebra && idx > 0) doc.moveTo(M, y).lineTo(PAGE_W - M, y).strokeColor(LIGHT).lineWidth(0.4).stroke();
@@ -274,7 +294,7 @@ async function renderProfessional(invoice, org, embedFile) {
     if (y + sumH > bottomLimit) { doc.addPage(); y = header(false); }
     y += 10;
     const sx = 330, sw = PAGE_W - M - sx;
-    doc.fontSize(9.5).font('Helvetica');
+    doc.fontSize(9.5).font(FONT);
     for (const [k, v] of sumLines) {
       doc.fillColor(GRAY).text(k, sx, y, { width: sw - 90 });
       doc.fillColor(DARK).text(v, sx + sw - 88, y, { width: 88, align: 'right' });
@@ -282,14 +302,14 @@ async function renderProfessional(invoice, org, embedFile) {
     }
     if (TPL.totalFill) {
       doc.rect(sx, y, sw, 24).fill(C);
-      doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10.5)
+      doc.fillColor('#FFFFFF').font(FONTB).fontSize(10.5)
         .text('Gesamtbetrag', sx + 8, y + 6, { width: sw - 100 })
         .text(eur(d.gross), sx + sw - 96, y + 6, { width: 88, align: 'right' });
     } else {
       // compact: Doppellinie statt Farbfläche
       doc.moveTo(sx, y).lineTo(sx + sw, y).strokeColor(DARK).lineWidth(0.8).stroke();
       doc.moveTo(sx, y + 2).lineTo(sx + sw, y + 2).strokeColor(DARK).lineWidth(0.8).stroke();
-      doc.fillColor(DARK).font('Helvetica-Bold').fontSize(10.5)
+      doc.fillColor(DARK).font(FONTB).fontSize(10.5)
         .text('Gesamtbetrag', sx, y + 9, { width: sw - 90 })
         .text(eur(d.gross), sx + sw - 88, y + 9, { width: 88, align: 'right' });
     }
@@ -314,7 +334,7 @@ async function renderProfessional(invoice, org, embedFile) {
       doc.fontSize(9);
       payLines.forEach((line, i) => {
         doc.fillColor(i === 1 && d.kind !== 'cancellation' ? DARK : GRAY)
-          .font(i === 1 && d.kind !== 'cancellation' ? 'Helvetica-Bold' : 'Helvetica')
+          .font(i === 1 && d.kind !== 'cancellation' ? FONTB : FONT)
           .text(line, M + 14, py, { width: PAGE_W - 2 * M - 28 });
         py += 13;
       });
@@ -327,7 +347,7 @@ async function renderProfessional(invoice, org, embedFile) {
       doc.switchToPage(range.start + p);
       const fy = PAGE_H - FOOTER_H;
       doc.moveTo(M, fy).lineTo(PAGE_W - M, fy).strokeColor(LIGHT).lineWidth(0.5).stroke();
-      doc.fontSize(7).font('Helvetica').fillColor(GRAY);
+      doc.fontSize(7).font(FONT).fillColor(GRAY);
       const colW = (PAGE_W - 2 * M) / 3;
       doc.text([d.seller.name, d.seller.address, d.seller.city].filter(Boolean).join('\n'), M, fy + 8, { width: colW - 10 });
       doc.text([

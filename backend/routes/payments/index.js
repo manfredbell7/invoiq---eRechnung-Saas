@@ -51,7 +51,7 @@ export async function paymentRoutes(fastify) {
   fastify.get('/payments/plans', async (req, reply) => {
     return reply.send({
       plans: [
-        { id:'free',       name:'Free',    price_monthly:0,  price_yearly:0,  docs_limit:10,    features:['10 Rechnungen/Monat','E-Rechnungen erstellen (XRechnung, ZUGFeRD)','Eigene Empfangsadresse inklusive','3 Rechnungsdesigns','1 Benutzer'] },
+        { id:'free',       name:'Free',    price_monthly:0,  price_yearly:0,  docs_limit:10,    features:['10 Rechnungen/Monat','E-Rechnungen erstellen (XRechnung, ZUGFeRD)','Eigene Empfangsadresse inklusive','5 Rechnungsdesigns + Logo & Markenfarbe','1 Benutzer'] },
         { id:'starter',    name:'Basis',   price_monthly:15, price_yearly:12, docs_limit:100,   features:['100 Rechnungen/Monat','E-Mail-Versand direkt aus invoiq','Scan & Import mit KI-Erkennung','GoBD-Archiv 10 Jahre','Pflichtfeld-Automatik (Leitweg-ID, Zahlungsziel)'] },
         { id:'business',   name:'Plus',    price_monthly:23, price_yearly:19, docs_limit:500,   features:['500 Rechnungen/Monat','DATEV-Export (EXTF-Buchungsstapel)','Integrierte Buchhaltung (SKR03/04, Bilanz & GuV)','KI-Berater mit echten Zahlen','API-Zugang'] },
         { id:'enterprise', name:'Premium', price_monthly:30, price_yearly:25, docs_limit:99999, features:['Unbegrenzte Rechnungen','Alle Plus-Funktionen','Webhooks & Integrationen','Bevorzugter Support'] },
