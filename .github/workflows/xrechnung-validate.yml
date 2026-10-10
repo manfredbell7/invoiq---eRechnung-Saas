@@ -67,6 +67,8 @@ jobs:
           echo "Verwende: $JAR"
           echo "JAR=$PWD/$JAR" >> "$GITHUB_ENV"
           SCEN=$(find config -name 'scenarios.xml' | head -1)
+          echo "Erkennungsregeln der Konfiguration (match):"
+          grep -oE '<match>[^<]*</match>' "$SCEN" | head -12
           echo "SCENARIOS=$PWD/$SCEN" >> "$GITHUB_ENV"
           echo "REPO=$PWD/$(dirname "$SCEN")" >> "$GITHUB_ENV"
 
@@ -102,7 +104,7 @@ jobs:
           if [ $status -ne 0 ]; then
             first=$(find "$RUNNER_TEMP/reports" -name '*ubl-report.xml' | sort | head -1)
             echo "──── Rohbericht: $(basename "$first") ────"
-            sed 's/></>\n</g' "$first" | grep -vE '^\s*$' | head -150
+            sed 's/></>\n</g' "$first" | grep -E 'noScenarioMatched|Dokumenttyp|class="error"|<rep:message|svrl:text|Bewertung' | head -60 || true
           fi
           exit $status
 

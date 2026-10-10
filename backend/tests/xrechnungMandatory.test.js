@@ -107,3 +107,14 @@ test('Ansprechpartner fällt auf den Benutzernamen zurück', () => {
   const f = sellerFieldsFromOrg({ ...org, contact_name: '' }, { full_name: 'Jana Nutzer' });
   assert.equal(f.seller_contact_name, 'Jana Nutzer');
 });
+
+// Ohne korrekte Spezifikationskennung erkennt der KoSIT-Validator das
+// Dokument nicht als XRechnung ("kein Prüfszenario hat gegriffen").
+test('XRechnung 3.0 nutzt die gültige CustomizationID (xeinkauf.de)', () => {
+  const id = 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0';
+  const ubl = generateXML(withSellerDefaults({ ...base, format: 'xrechnung' }, org));
+  assert.ok(ubl.includes(`<cbc:CustomizationID>${id}</cbc:CustomizationID>`));
+  const cii = generateXML(withSellerDefaults({ ...base, format: 'xrechnung-cii' }, org));
+  assert.ok(cii.includes(`<ram:ID>${id}</ram:ID>`));
+  assert.doesNotMatch(ubl + cii, /xoev-de/);
+});

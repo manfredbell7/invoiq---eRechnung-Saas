@@ -17,7 +17,7 @@ import { TAX_CODES, isValidTaxCode } from './taxEngine.js';
 // ── PROFIL-KENNUNGEN ─────────────────────────────────────────
 export const PROFILES = {
   XRECHNUNG_UBL: {
-    customizationId: 'urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0',
+    customizationId: 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0',
     profileId: 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0',
   },
   PEPPOL_BIS: {
@@ -26,7 +26,7 @@ export const PROFILES = {
   },
   // ZUGFeRD 2.3 und Factur-X 1.0 sind im Profil EN 16931 technisch identisch
   // (gemeinsamer deutsch-französischer Standard); offizielle Guideline-URN:
-  XRECHNUNG_CII: 'urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0',
+  XRECHNUNG_CII: 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0',
   ZUGFERD_EN16931: 'urn:cen.eu:en16931:2017',
   FACTURX_EN16931: 'urn:cen.eu:en16931:2017',
 };

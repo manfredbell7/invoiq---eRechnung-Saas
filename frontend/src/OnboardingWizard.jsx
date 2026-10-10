@@ -737,7 +737,7 @@ export default function OnboardingWizard({ user, onComplete }) {
   xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
   xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
   <!-- invoiq · XRechnung 3.0 / EN 16931 / UBL 2.1 -->
-  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0</cbc:CustomizationID>
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</cbc:CustomizationID>
   <cbc:ID>TEST-${Date.now()}</cbc:ID>
   <cbc:IssueDate>${new Date().toISOString().split("T")[0]}</cbc:IssueDate>
   <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
